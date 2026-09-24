@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens — ver ux.md §2 */
+:root {
+  --bg: #faf6ee;
+  --surface: #fffdf8;
+  --surface-2: #f3ecdd;
+  --border: #e4dac6;
+  --ink: #1e2420;
+  --ink-muted: #5b6159;
+  --primary: #1f3d2b;
+  --primary-solid: #1f3d2b;
+  --primary-hover: #2a5239;
+  --primary-soft: #e3ece5;
+  --gold: #b08d3e;
+  --gold-ink: #7a5e22;
+  --gold-soft: #f1e6cc;
+  --danger: #b3261e;
+  --success: #2e7d4f;
+
+  --season-roxo: #5b2c83;
+  --season-roxo-soft: #eee6f4;
+  --season-dourado: #c9a24a;
+  --season-dourado-soft: #fbf4e2;
+  --season-verde: #2e7d4f;
+  --season-verde-soft: #e2f0e7;
+  --season-vermelho: #a4262c;
+  --season-vermelho-soft: #f6e3e3;
+
+  --shadow-1: 0 1px 2px rgba(31, 61, 43, 0.06), 0 1px 1px rgba(31, 61, 43, 0.04);
+  --shadow-2: 0 6px 20px -6px rgba(31, 61, 43, 0.18);
+  --shadow-3: 0 20px 48px -12px rgba(31, 61, 43, 0.28);
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #1d2420;
+  --surface: #252d28;
+  --surface-2: #2e3731;
+  --border: #3d4a42;
+  --ink: #ede6d6;
+  --ink-muted: #a9b0a6;
+  --primary: #8fc4a0;
+  --primary-solid: #3e7552;
+  --primary-hover: #4a8661;
+  --primary-soft: #2a3d31;
+  --gold: #d4b36a;
+  --gold-ink: #e0c07a;
+  --gold-soft: #2e2818;
+  --danger: #f2a09a;
+  --success: #8fd1a6;
+
+  --season-roxo: #a57fc9;
+  --season-roxo-soft: #2a2233;
+  --season-dourado: #d9b865;
+  --season-dourado-soft: #2e2818;
+  --season-verde: #6fbf8e;
+  --season-verde-soft: #1f2e25;
+  --season-vermelho: #e0787c;
+  --season-vermelho-soft: #3a2222;
+
+  --shadow-1: 0 0 0 1px #3d4a42;
+  --shadow-2: 0 0 0 1px #3d4a41;
+  --shadow-3: 0 0 0 1px #3d4a41;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-primary: var(--primary);
+  --color-primary-solid: var(--primary-solid);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
+  --color-gold-soft: var(--gold-soft);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+
+  --font-serif: var(--font-cormorant), Georgia, serif;
+  --font-sc: var(--font-cormorant-sc), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --shadow-card: var(--shadow-1);
+  --shadow-raised: var(--shadow-2);
+  --shadow-overlay: var(--shadow-3);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  transition:
+    background-color 200ms,
+    color 200ms;
+}
+
+::selection {
+  background: var(--gold-soft);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+mark {
+  background: var(--gold-soft);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Textura de pergaminho sutil (hero e login) */
+.parchment {
+  background-image:
+    radial-gradient(ellipse at top, rgba(176, 141, 62, 0.08), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+}
+.dark .parchment {
+  background-image: radial-gradient(ellipse at top, rgba(212, 179, 106, 0.06), transparent 60%);
+}
+
+.logo-img {
+  transition: filter 200ms;
+}
+.dark .logo-img {
+  filter: brightness(0) invert(0.92) sepia(0.2);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 100ms !important;
+  }
+}
+
+@keyframes chord-flash {
+  from {
+    background: var(--gold-soft);
+  }
+  to {
+    background: transparent;
+  }
+}
+.chord-flash .chord {
+  animation: chord-flash 400ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}

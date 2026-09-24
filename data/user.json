@@ -1,0 +1,10 @@
+{
+  "id": "u-1",
+  "name": "Ministério de Música",
+  "email": "musica@psjb.org.br",
+  "password": "cantos123",
+  "role": "musico",
+  "ministry": "Ministério de Música — Missa das 19h",
+  "parish": "Paróquia Catedral São João Batista",
+  "avatarInitials": "MM"
+}

@@ -1,0 +1,34 @@
+{
+  "moments": [
+    { "id": "velas", "label": "Velas", "description": "Acendimento das velas / refrão orante inicial", "order": 1 },
+    { "id": "entrada", "label": "Entrada", "description": "Canto de abertura", "order": 2 },
+    { "id": "ato-penitencial", "label": "Ato Penitencial", "order": 3 },
+    { "id": "gloria", "label": "Glória", "order": 4 },
+    { "id": "salmo", "label": "Salmo", "description": "Salmo responsorial", "order": 5 },
+    { "id": "aclamacao", "label": "Aclamação", "description": "Aclamação ao Evangelho", "order": 6 },
+    { "id": "preces", "label": "Preces da Comunidade", "order": 7 },
+    { "id": "ofertorio", "label": "Ofertório", "description": "Apresentação das oferendas", "order": 8 },
+    { "id": "santo", "label": "Santo", "order": 9 },
+    { "id": "cordeiro", "label": "Cordeiro", "order": 10 },
+    { "id": "comunhao", "label": "Comunhão", "order": 11 },
+    { "id": "saida", "label": "Saída", "description": "Canto final", "order": 12 }
+  ],
+  "seasons": [
+    { "id": "advento", "label": "Advento", "color": "#5B2C6F" },
+    { "id": "natal", "label": "Natal", "color": "#B8913A" },
+    { "id": "quaresma", "label": "Quaresma", "color": "#5B2C6F" },
+    { "id": "pascoa", "label": "Páscoa", "color": "#B8913A" },
+    { "id": "tempo-comum", "label": "Tempo Comum", "color": "#2F5D3A" }
+  ],
+  "years": [
+    { "id": "A", "label": "Ano A" },
+    { "id": "B", "label": "Ano B" },
+    { "id": "C", "label": "Ano C" }
+  ],
+  "themes": [
+    { "id": "espirito-santo", "label": "Espírito Santo" },
+    { "id": "mariano", "label": "Marianos" },
+    { "id": "paz", "label": "Paz" },
+    { "id": "vocacional-missao", "label": "Vocacionais e Missão" }
+  ]
+}
