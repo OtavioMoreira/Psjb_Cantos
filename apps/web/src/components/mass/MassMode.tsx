@@ -42,6 +42,7 @@ export function MassMode() {
   const [controls, setControls] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [wakeLockOk, setWakeLockOk] = useState<boolean | null>(null);
+  const [wakeDismissed, setWakeDismissed] = useState(false);
   const [visited, setVisited] = useState<Set<number>>(new Set([0]));
   const scroller = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -215,7 +216,7 @@ export function MassMode() {
                   {current ? "▶" : i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: pal.muted }}>
+                  <span className="block text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: pal.muted }}>
                     {s.slot.label}
                   </span>
                   <span className="block truncate text-[15px] font-medium">{sg?.title}</span>
@@ -255,7 +256,7 @@ export function MassMode() {
               <h1 className="truncate font-serif text-xl font-semibold leading-tight sm:text-2xl">{done ? mass.name : song?.title}</h1>
             </div>
             {!done && song?.key && (
-              <div className="hidden items-center gap-1 sm:flex" aria-label="Tom">
+              <div className="hidden items-center gap-1 lg:flex" aria-label="Tom">
                 <button aria-label="Descer meio tom" onClick={() => setTranspose(-1)} className={btn}>
                   <Minus size={22} />
                 </button>
@@ -286,7 +287,7 @@ export function MassMode() {
 
           {/* Tom no retrato/celular */}
           {!done && song?.key && (
-            <div className={`flex items-center justify-center gap-2 border-b py-1 sm:hidden ${controls ? "" : "hidden"}`} style={{ borderColor: pal.line }}>
+            <div className={`flex items-center justify-center gap-2 border-b py-1 lg:hidden ${controls ? "" : "hidden"}`} style={{ borderColor: pal.line }}>
               <button aria-label="Descer meio tom" onClick={() => setTranspose(-1)} className={btn}>
                 <Minus size={20} />
               </button>
@@ -349,21 +350,20 @@ export function MassMode() {
         >
           <ChevronLeft size={28} className="shrink-0" />
           <span className="min-w-0">
-            <span className="block text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: pal.muted }}>
+            <span className="block text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: pal.muted }}>
               Anterior
             </span>
             <span className="block truncate font-semibold">{done ? steps.at(-1)?.slot.label : prev?.slot.label ?? "—"}</span>
           </span>
         </button>
-        <div className="hidden flex-1 items-center justify-center gap-1.5 sm:flex" aria-hidden>
+        <div className="hidden flex-1 items-center justify-center gap-0.5 sm:flex" aria-hidden>
           {steps.map((_, i) => (
-            <button
-              key={i}
-              tabIndex={-1}
-              onClick={() => go(i)}
-              className="h-3 rounded-full transition-all"
-              style={{ width: i === index && !done ? 24 : 12, background: i === index && !done ? pal.chord : visited.has(i) ? pal.muted : pal.line }}
-            />
+            <button key={i} tabIndex={-1} onClick={() => go(i)} className="grid h-8 min-w-6 place-items-center">
+              <span
+                className="block h-3 rounded-full transition-all"
+                style={{ width: i === index && !done ? 24 : 12, background: i === index && !done ? pal.chord : visited.has(i) ? pal.muted : pal.line }}
+              />
+            </button>
           ))}
         </div>
         <button
@@ -373,7 +373,7 @@ export function MassMode() {
           style={!done ? { background: pal.soft } : undefined}
         >
           <span className="min-w-0">
-            <span className="block text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: pal.muted }}>
+            <span className="block text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: pal.muted }}>
               Próximo
             </span>
             <span className="block truncate font-semibold">{done ? "—" : next ? next.slot.label : "Fim ✣"}</span>
@@ -382,10 +382,15 @@ export function MassMode() {
         </button>
       </footer>
 
-      {wakeLockOk === false && controls && (
-        <p className="absolute bottom-[84px] left-1/2 w-[90%] max-w-md -translate-x-1/2 rounded-[10px] px-4 py-2 text-center text-xs" style={{ background: pal.ui, color: pal.muted }}>
-          Seu aparelho pode apagar a tela. Desative o bloqueio automático nas configurações.
-        </p>
+      {wakeLockOk === false && controls && !wakeDismissed && (
+        <button
+          onClick={() => setWakeDismissed(true)}
+          className="absolute bottom-[84px] left-1/2 flex w-[90%] max-w-md -translate-x-1/2 items-center gap-3 rounded-[10px] px-4 py-2 text-left text-xs shadow-raised"
+          style={{ background: pal.ui, color: pal.muted }}
+        >
+          <span className="flex-1">Seu aparelho pode apagar a tela. Desative o bloqueio automático nas configurações.</span>
+          <X size={16} className="shrink-0" aria-label="Fechar aviso" />
+        </button>
       )}
 
       {drawer && (

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Home, ListMusic, LogOut, Plus, User } from "lucide-react";
-import { initials, logout, useSession, useUser } from "@/lib/store";
+import { Home, ListMusic, LogOut, Plus, ShieldCheck, User } from "lucide-react";
+import { initials, logout, useIsAdmin, useSession, useUser } from "@/lib/store";
 import { useHydrated } from "@/lib/hooks";
+
+const ADMIN_LINK = { href: "/painel/admin/usuarios", label: "Usuários", short: "Admin", Icon: ShieldCheck };
 
 const LINKS = [
   { href: "/painel", label: "Visão geral", short: "Início", Icon: Home },
@@ -21,6 +23,8 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   const hydrated = useHydrated();
   const session = useSession();
   const user = useUser();
+  const isAdmin = useIsAdmin();
+  const links = isAdmin ? [...LINKS, ADMIN_LINK] : LINKS;
 
   useEffect(() => {
     if (hydrated && !session.loggedIn) router.replace(`/entrar?volta=${encodeURIComponent(pathname)}`);
@@ -40,7 +44,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
       ? pathname === "/painel"
       : href === "/painel/missas"
         ? pathname.startsWith("/painel/missas") && pathname !== "/painel/missas/nova"
-        : pathname === href;
+        : pathname.startsWith(href);
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-24 pt-6 sm:px-6 md:grid md:grid-cols-[220px_1fr] md:gap-10 md:pb-10 lg:px-10">
@@ -52,11 +56,11 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             </span>
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.name}</p>
-              <p className="truncate text-xs text-ink-muted">{user.ministry}</p>
+              <p className="truncate text-xs text-ink-muted">{isAdmin ? "Administrador" : user.ministry}</p>
             </div>
           </div>
           <nav aria-label="Painel" className="mt-6 space-y-1 border-t border-border pt-4">
-            {LINKS.map(({ href, label, Icon }) => (
+            {links.map(({ href, label, Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -80,8 +84,8 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
       </aside>
       <div className="min-w-0">{children}</div>
 
-      <nav aria-label="Painel" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        {LINKS.map(({ href, short, Icon }) => (
+      <nav aria-label="Painel" style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }} className="fixed inset-x-0 bottom-0 z-30 grid border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+        {links.map(({ href, short, Icon }) => (
           <Link
             key={href}
             href={href}

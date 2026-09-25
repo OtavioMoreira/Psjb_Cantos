@@ -22,7 +22,7 @@ export function Tag({
   season?: SeasonId;
 }) {
   const cls =
-    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium text-ink-muted transition-colors";
+    "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium text-ink-muted transition-colors";
   const style = season
     ? { borderColor: SEASON_STYLE[season].color, background: SEASON_STYLE[season].soft }
     : undefined;

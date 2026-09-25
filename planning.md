@@ -106,14 +106,57 @@ interface Song {
   updatedAt: string;
 }
 
+type UserRole = 'admin' | 'coordenador' | 'musico';
+type UserStatus = 'pendente' | 'ativo' | 'bloqueado'; // pendente = e-mail ainda não confirmado
+
 interface User {
   id: string;
   name: string;
-  email: string;
-  username: string;
-  password: string;      // Fase 1: texto puro, apenas ilustrativo. Fase 3: passwordHash (argon2/bcrypt)
-  role: 'admin' | 'musico' | 'coordenador';
-  avatarUrl?: string;
+  email: string;           // único, minúsculo; é o login
+  passwordHash: string;    // Fase 1 (mock): senha em texto puro no JSON, apenas ilustrativa
+  role: UserRole;
+  status: UserStatus;
+  ministry: string;
+  parish: string;
+  instrument?: string;
+  blockedReason?: string;  // exibido ao usuário bloqueado na tentativa de login
+  emailVerifiedAt: string | null;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Tokens de uso único (confirmação de e-mail, redefinição de senha, código 2FA).
+// Guardar somente o HASH do token/código, nunca o valor em texto puro.
+interface AuthToken {
+  id: string;
+  userId: string;
+  type: 'verify_email' | 'reset_password' | 'login_otp' | 'invite';
+  tokenHash: string;       // sha-256 do token ou do código de 6 dígitos
+  expiresAt: string;       // verify_email 24h · reset_password 1h · login_otp 10min · invite 7 dias
+  attempts: number;        // login_otp: máx. 5 tentativas
+  usedAt: string | null;
+  createdAt: string;
+}
+
+interface RefreshSession {
+  id: string;
+  userId: string;
+  refreshTokenHash: string;
+  userAgent: string;
+  ip: string;
+  expiresAt: string;       // ex.: 30 dias ("manter conectado") ou 1 dia
+  revokedAt: string | null;
+}
+
+// Trilha de auditoria das ações de admin (bloquear, liberar, mudar papel, redefinir senha, excluir).
+interface AuditLog {
+  id: string;
+  actorId: string;
+  action: string;          // 'user.block' | 'user.unblock' | 'user.role' | 'user.reset_password' | ...
+  targetId: string;
+  meta: Record<string, unknown>;
+  createdAt: string;
 }
 
 type MassSlotKey = 'velas' | 'entrada' | 'ato-penitencial' | 'gloria' | 'salmo'
@@ -149,7 +192,7 @@ interface Mass {
 data/
   songs.json        # Song[]
   categories.json   # Category[]
-  user.json         # User (usuário padrão ilustrativo)
+  users.json        # Usuários de demonstração (admin, coordenador, músicos; ativos, pendentes e bloqueados)
   media/            # (opcional, Fase 1) PDFs/mp3 de amostra; em produção vão para storage/CDN
 ```
 Exemplo `songs.json` (trecho):
@@ -208,19 +251,44 @@ Exemplo `songs.json` (trecho):
 - [ ] Botões "anterior/próximo" pela numeração.
 - [ ] Botão "Adicionar à minha missa" (escolher o momento).
 
-### E3. Login ilustrativo
-**US3.1:** Como admin, quero entrar com usuário e senha para acessar o painel.
-- [ ] O formulário valida no cliente contra `data/user.json` (ou contra a versão alterada no `localStorage`).
-- [ ] Credenciais inválidas mostram uma mensagem clara; as válidas redirecionam para `/painel`.
-- [ ] A sessão fake fica em `localStorage` + cookie não sensível (`psjb_session=1`) para o middleware redirecionar.
-- [ ] Um aviso visível diz: "Ambiente de demonstração, login ilustrativo".
-- [ ] Botão "Sair" limpa a sessão.
+### E3. Acesso: entrar, criar conta, confirmar e-mail e recuperar senha
+> Fase 1 (feito): tudo visual, com dados em `localStorage`. Os e-mails são simulados por um link "Abrir link de confirmação" na própria tela. Fase 3: API + banco + serviço de e-mail (ver §6.6 e §6.9).
+
+**US3.1:** Como usuário, quero entrar com e-mail e senha.
+- [x] Tela `/entrar` com abas **Entrar** e **Criar conta** (`/entrar?aba=criar`).
+- [x] Mensagens distintas: credenciais inválidas; conta **pendente** (com botão "Reenviar e-mail de confirmação"); conta **bloqueada** (mostra o motivo definido pelo admin).
+- [x] "Manter conectado" e link "Esqueci a senha".
+- [ ] Fase 3: segundo fator por código enviado ao e-mail (US3.5).
+
+**US3.2:** Como visitante, quero criar uma conta.
+- [x] Campos: nome completo, e-mail, ministério (opcional), senha + confirmação, com medidor de força (mín. 8 caracteres, letras e números).
+- [x] Aceite dos termos e da política de privacidade (LGPD).
+- [x] **reCAPTCHA** obrigatório antes de enviar (Fase 1: widget ilustrativo).
+- [x] A conta nasce com status **pendente** e não consegue entrar até confirmar o e-mail.
+- [x] Tela "Confirme seu e-mail" com reenvio limitado (1 a cada 60 s).
+- [ ] Fase 3: não revelar se o e-mail já existe (responder sempre "enviamos um link"; se já existir, o e-mail enviado avisa "você já tem conta").
+
+**US3.3:** Como usuário recém-cadastrado, quero confirmar meu e-mail.
+- [x] `/confirmar-email?token=…` valida o token e muda o status para **ativo** automaticamente.
+- [x] Token inválido/expirado mostra "Link inválido ou expirado" com caminho para pedir outro.
+- [ ] Fase 3: token de uso único, 24 h de validade, guardado só como hash.
+
+**US3.4:** Como usuário, quero recuperar minha senha.
+- [x] `/recuperar-senha` pede o e-mail e responde sempre a mesma mensagem (não revela se a conta existe).
+- [x] `/redefinir-senha?token=…` define a nova senha (com medidor de força).
+- [ ] Fase 3: link válido por 1 h, uso único; ao redefinir, revogar todas as sessões (refresh tokens) do usuário.
+
+**US3.5 (Fase 3): Login com dois fatores por e-mail.**
+- [ ] Após e-mail + senha corretos, a API envia um **código de 6 dígitos** para o e-mail e o front mostra a tela "Digite o código" (6 campos, colar funciona, reenviar após 60 s).
+- [ ] O código vale **10 minutos**, é de uso único e aceita no máximo **5 tentativas**; depois disso é preciso reiniciar o login.
+- [ ] Só depois do código correto a API emite os tokens JWT (ver §6.6).
+- [ ] Opção "Confiar neste dispositivo por 30 dias" (cookie assinado), para o músico não precisar do código a cada domingo no tablet da paróquia.
 
 ### E4. Perfil
-**US4.1:** Como admin, quero alterar nome, e-mail, usuário e senha do usuário padrão.
-- [ ] O formulário tem validação (e-mail válido; senha ≥ 8 caracteres; confirmação de senha).
-- [ ] Os dados alterados são salvos em `localStorage` e passam a valer no login seguinte.
-- [ ] Opção "Restaurar padrão" (volta ao `user.json`).
+**US4.1:** Como usuário, quero alterar meus dados.
+- [x] Nome, e-mail, paróquia, ministério, instrumento, tema e preferência de acidentes (♯/♭).
+- [x] Troca de senha exigindo a senha atual, com medidor de força.
+- [ ] Fase 3: trocar o e-mail exige confirmar o novo endereço (a conta continua com o e-mail antigo até a confirmação).
 
 ### E5. Monte sua Missa
 **US5.1:** Como coordenador ou músico, quero criar uma missa e escolher um canto para cada momento.
@@ -256,25 +324,52 @@ Exemplo `songs.json` (trecho):
 - [ ] Porta configurável via `PORT` (padrão 3333); CORS configurado para a origem do web.
 - [ ] Um teste automatizado da rota (via `fastify.inject`).
 
+### E8. Administração de usuários (somente papel **admin**)
+> Fase 1 (feito): `/painel/admin/usuarios`, visual, com dados em `localStorage`. O item "Usuários" só aparece no menu para admins; outros papéis veem "Acesso restrito".
+
+**US8.1:** Como admin, quero ver e encontrar usuários.
+- [x] Resumo clicável por status: Total, Ativos, Aguardando e-mail, Bloqueados.
+- [x] Busca por nome, e-mail ou ministério e filtro por papel.
+- [x] Tabela no desktop e cards no celular/tablet, com status, papel e último acesso.
+
+**US8.2:** Como admin, quero controlar o acesso.
+- [x] **Bloquear** com motivo (o motivo aparece para a pessoa ao tentar entrar) e **liberar** acesso; "Desfazer" no aviso.
+- [x] **Ativar manualmente** uma conta pendente e **reenviar** a confirmação de e-mail.
+- [x] **Redefinir senha**: enviar link por e-mail (recomendado) ou gerar senha temporária exibida uma única vez.
+- [x] **Editar** nome, e-mail, ministério e **papel** (admin, coordenador, músico).
+- [x] **Convidar** usuário (nasce pendente e recebe e-mail para criar a senha).
+- [x] **Excluir** com confirmação (sugerindo bloquear como alternativa reversível).
+- [x] Proteções: o admin não pode bloquear, excluir nem rebaixar a si mesmo.
+- [ ] Fase 3: toda ação gera registro em `AuditLog`; bloquear revoga imediatamente as sessões ativas; senha temporária obriga troca no próximo login; garantir que sempre exista ao menos 1 admin ativo.
+
+### E9. Responsividade (celular e tablet são o uso principal)
+- [x] Validado automaticamente em 9 aparelhos (Android 360px, iPhone SE, iPhone 14, Pixel 7, iPad Mini retrato/paisagem, iPad Pro 11" retrato/paisagem, Galaxy Tab S4) em todas as 14 páginas: sem rolagem horizontal, sem erros de console, alvos de toque ≥ 24 px (os principais ≥ 44 px) e textos ≥ 12 px.
+- [x] Modo Missa: no tablet em retrato o tom vai para uma segunda linha para o título não ser cortado.
+- [ ] Manter essa auditoria no CI (Playwright) para evitar regressões.
+
 ---
 
 ## 5. Mapa de rotas
 
 ### 5.1 Front-end (`apps/web`)
+Rotas com ID usam query string (`?id=`) para o site funcionar como export estático no GitHub Pages.
+
 | Rota | Descrição | Renderização |
 |------|-----------|--------------|
-| `/` | Home: busca, atalhos por tempo e momento, destaques | SSG |
+| `/` | Home: busca, tempo litúrgico atual, atalhos por tempo e momento | SSG |
 | `/cantos` | Listagem com busca e filtros (query params) | SSG + ilha client |
 | `/cantos/[slug]` | Detalhe do canto (ex.: `/cantos/001-a-feliz-espera`) | SSG (`generateStaticParams`) |
-| `/categorias/[tipo]/[id]` | Página indexável por categoria (ex.: `/categorias/tempo/quaresma`) | SSG |
-| `/missa` | Minhas missas (lista) | Client |
-| `/missa/nova` | Montar uma nova missa | Client |
-| `/missa/[id]` | Editar a missa | Client |
-| `/missa/[id]/apresentar` | Modo Missa (tela cheia) | Client |
-| `/login` | Login ilustrativo | Client |
-| `/painel` | Painel (protegido pela sessão fake) | Client |
-| `/painel/perfil` | Alterar os dados do usuário padrão | Client |
-| `/sobre` | Sobre o projeto e créditos | SSG |
+| `/entrar` · `/entrar?aba=criar` | Entrar / criar conta (reCAPTCHA) | Client |
+| `/confirmar-email?token=` | Confirma o e-mail e ativa a conta | Client |
+| `/recuperar-senha` · `/redefinir-senha?token=` | Recuperação de senha | Client |
+| `/painel` | Visão geral | Client (protegida) |
+| `/painel/perfil` | Meus dados, senha e preferências | Client (protegida) |
+| `/painel/missas` | Minhas missas | Client (protegida) |
+| `/painel/missas/nova` · `/painel/missas/editar?id=` | Monte sua Missa | Client (protegida) |
+| `/painel/admin/usuarios` | Administração de usuários | Client (somente admin) |
+| `/missa?id=` | Modo Missa (tela cheia, tablet) | Client |
+| `/sobre` | Sobre o projeto | SSG |
+| `/dados/cantos.json` | Índice estático de cantos (busca na letra, editor, Modo Missa) | Estático |
 
 ### 5.2 API (`apps/api`)
 | Método | Rota | Fase | Retorno |
@@ -283,8 +378,20 @@ Exemplo `songs.json` (trecho):
 | GET | `/api/test` | 1 | string de teste |
 | GET | `/api/songs`, `/api/songs/:slug` | 2 | JSON |
 | GET | `/api/categories` | 2 | JSON |
-| POST | `/api/auth/login`, `/api/auth/logout` | 3 | cookie httpOnly |
-| GET/PUT | `/api/me` | 3 | usuário |
+| POST | `/api/auth/signup` | 3 | cria usuário **pendente** + envia e-mail de confirmação (exige token reCAPTCHA) |
+| POST | `/api/auth/verify-email` | 3 | `{ token }` → status **ativo** |
+| POST | `/api/auth/resend-verification` | 3 | reenvio (rate limit) |
+| POST | `/api/auth/login` | 3 | e-mail + senha (+ reCAPTCHA após falhas) → envia **código 2FA** por e-mail; retorna `challengeId` |
+| POST | `/api/auth/login/verify` | 3 | `{ challengeId, code }` → access token (JWT) + refresh token em cookie httpOnly |
+| POST | `/api/auth/refresh` | 3 | rotaciona o refresh token e emite novo access token |
+| POST | `/api/auth/logout` | 3 | revoga o refresh token atual |
+| POST | `/api/auth/forgot` · `/api/auth/reset` | 3 | recuperação de senha |
+| GET/PATCH | `/api/me` · POST `/api/me/password` | 3 | perfil e troca de senha |
+| GET | `/api/admin/users?status=&role=&q=&page=` | 3 | listagem paginada (admin) |
+| PATCH | `/api/admin/users/:id` | 3 | nome, e-mail, ministério, papel |
+| POST | `/api/admin/users/:id/block` · `/unblock` · `/activate` | 3 | controle de acesso (gera `AuditLog`) |
+| POST | `/api/admin/users/:id/resend-verification` · `/reset-password` | 3 | e-mails de suporte |
+| POST | `/api/admin/users/invite` · DELETE `/api/admin/users/:id` | 3 | convite e exclusão |
 | POST/PUT/DELETE | `/api/songs[/:id]` | 4 | CRUD (admin) |
 | POST | `/api/uploads` | 4 | URL assinada |
 | CRUD | `/api/masses`, `GET /api/masses/share/:token` | 5 | missas e compartilhamento |
@@ -297,7 +404,7 @@ Exemplo `songs.json` (trecho):
 ```
 /
 ├─ package.json          # workspaces: ["apps/*", "packages/*"]
-├─ data/                 # songs.json, categories.json, user.json
+├─ data/                 # songs.json, categories.json, users.json
 ├─ apps/
 │  ├─ web/               # Next.js (App Router, TS, Tailwind)
 │  │  ├─ app/            # rotas
@@ -345,11 +452,35 @@ Exemplo `songs.json` (trecho):
 - Rotas `/painel`, `/login` e `/missa/*` com `noindex`.
 - **Redirecionamentos 301** das URLs antigas relevantes, se existirem.
 
-### 6.6 Segurança (preparação para auth real — Fase 3)
-- A Fase 1 é **explicitamente insegura** (senha em JSON, validação no cliente): só para demonstração, sem dados reais.
-- Fase 3: senhas com **argon2id** (ou bcrypt custo ≥ 12); sessão em **cookie httpOnly + Secure + SameSite=Lax** com JWT de curta duração + refresh rotativo (ou sessão no servidor); proteção contra CSRF; rate limit no login (`@fastify/rate-limit`); `@fastify/helmet`; validação de entrada com schema (Zod/TypeBox); upload com checagem de MIME e tamanho, e URLs assinadas.
-- Segredos só via variáveis de ambiente (`.env` fora do git; `.env.example` versionado).
-- Headers no Next: CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`.
+### 6.6 Segurança e autenticação (Fase 3)
+
+**Senhas**
+- Hash com **argon2id** (ou bcrypt custo ≥ 12). Política: mín. 8 caracteres, com letras e números; checar senhas vazadas (lista/HIBP) se possível.
+
+**Login com JWT + dois fatores por e-mail**
+1. `POST /api/auth/login` com e-mail e senha. Se a conta estiver **pendente** → 403 `EMAIL_NOT_VERIFIED`; **bloqueada** → 403 `ACCOUNT_BLOCKED` (+ motivo). Mensagem genérica para credenciais erradas.
+2. Senha correta → a API gera um **código de 6 dígitos** (criptograficamente aleatório), salva só o **hash** em `AuthToken(type='login_otp')` com validade de **10 min** e máx. **5 tentativas**, envia por e-mail e devolve `challengeId`.
+3. O front mostra a tela "Digite o código enviado para m***@email.com" (reenviar após 60 s).
+4. `POST /api/auth/login/verify` com `challengeId` + código correto → a API emite:
+   - **access token JWT** de curta duração (**15 min**), assinado (RS256/EdDSA ou HS256 com segredo forte), com `sub`, `role`, `iat`, `exp`, `jti`;
+   - **refresh token** opaco e aleatório em **cookie httpOnly + Secure + SameSite=Lax** (30 dias com "manter conectado", senão 1 dia), guardado só como hash em `RefreshSession` e **rotacionado** a cada uso (reuso detectado → revoga toda a família).
+5. O access token fica **só em memória** no front (nunca em `localStorage`); ao expirar, o front chama `/api/auth/refresh` silenciosamente.
+6. "Confiar neste dispositivo por 30 dias" dispensa o código naquele aparelho (cookie assinado ligado ao usuário).
+- Bloquear usuário, redefinir senha ou trocar e-mail **revoga todas as sessões** do usuário.
+- Autorização por papel no servidor (middleware `requireRole('admin')`) — esconder o menu no front não é segurança.
+
+**reCAPTCHA**
+- Google reCAPTCHA **v3** (invisível, com score) no cadastro, na recuperação de senha e no login após 3 falhas; ou **v2 checkbox** (é o que o visual da Fase 1 imita).
+- O front envia o token; a API valida em `POST https://www.google.com/recaptcha/api/siteverify` com a chave secreta (nunca no front). Score mínimo sugerido: 0,5.
+- Alternativa sem Google: Cloudflare Turnstile (mesma arquitetura).
+
+**Outros**
+- Rate limit (`@fastify/rate-limit`) em login, cadastro, reenvios e 2FA (por IP e por e-mail).
+- `@fastify/helmet`, CORS restrito à origem do site, validação de entrada com schema (Zod/TypeBox).
+- Tokens de e-mail (confirmação 24 h, redefinição 1 h, convite 7 dias) de **uso único**, guardados só como hash.
+- Respostas que não revelam se um e-mail está cadastrado (cadastro e recuperação).
+- `AuditLog` para todas as ações de admin; LGPD: consentimento no cadastro, exportar/excluir dados a pedido.
+- Upload com checagem de MIME e tamanho, e URLs assinadas.
 
 ### 6.7 Qualidade
 - **TypeScript `strict`** (+ `noUncheckedIndexedAccess`) em todos os apps.
@@ -366,6 +497,17 @@ Exemplo `songs.json` (trecho):
 - IDs de taxonomia em kebab-case, sem acentos.
 
 ---
+
+### 6.9 Serviços externos necessários (Fase 3)
+| Serviço | Uso | Opções |
+|---|---|---|
+| Banco de dados | usuários, tokens, sessões, missas, cantos, auditoria | PostgreSQL (Neon, Supabase, RDS) + Prisma/Drizzle |
+| E-mail transacional | confirmação de cadastro, código 2FA, recuperação de senha, convite, aviso de bloqueio | Resend, Amazon SES, Postmark, Brevo (SPF, DKIM e DMARC configurados no domínio `psjb.org.br`) |
+| reCAPTCHA | cadastro, recuperação, login após falhas | Google reCAPTCHA v3/v2 ou Cloudflare Turnstile |
+| Hospedagem da API | Node/Fastify | Render, Railway, Fly.io, VPS |
+| Hospedagem do front | Next.js | GitHub Pages (export estático, atual) ou Vercel |
+
+Modelos de e-mail a criar (pt-BR, com o logo): **Confirme seu e-mail**, **Seu código de acesso** (6 dígitos, 10 min), **Redefinir senha**, **Você foi convidado**, **Seu acesso foi bloqueado/liberado**, **Seu e-mail foi alterado**.
 
 ## 7. Roadmap e checklist
 
@@ -396,7 +538,12 @@ Exemplo `songs.json` (trecho):
 
 ### Fase 3: Banco e auth real
 - [ ] PostgreSQL + ORM, migrações e seeds a partir dos JSONs.
-- [ ] Autenticação real (argon2 + cookie httpOnly) e perfis de acesso.
+- [ ] Autenticação real: argon2id, **JWT (access 15 min) + refresh rotativo em cookie httpOnly**, **2FA com código por e-mail**, papéis (admin, coordenador, músico).
+- [ ] Cadastro com **reCAPTCHA** validado no servidor e **confirmação de e-mail** (status pendente → ativo).
+- [ ] Recuperação de senha por e-mail; convites.
+- [ ] Serviço de e-mail transacional + modelos (§6.9).
+- [ ] Endpoints de administração de usuários + `AuditLog` (§5.2).
+- [ ] Trocar `lib/store.ts` (localStorage) pelas chamadas à API, mantendo as telas.
 
 ### Fase 4: Admin
 - [ ] CRUD de cantos e taxonomias, editor ChordPro com pré-visualização.

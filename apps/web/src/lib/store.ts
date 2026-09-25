@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import defaultUser from "@data/user.json";
+import usersJson from "@data/users.json";
 import type { Mass, MassSlot, MomentId, User } from "./types";
 import { liturgicalSeason, liturgicalYear, nextSundayIso } from "./liturgy";
 
@@ -59,63 +59,210 @@ function createStore<T>(key: string, fallback: T) {
   return { read, write, useValue };
 }
 
-/* ---------------- Sessão e usuário ---------------- */
+/* ---------------- Usuários e sessão ---------------- */
 
-const DEMO_PASSWORD = defaultUser.password;
-const seedUser: User = {
-  id: defaultUser.id,
-  name: defaultUser.name,
-  email: defaultUser.email,
-  role: defaultUser.role,
-  ministry: defaultUser.ministry,
-  parish: defaultUser.parish,
-};
-export const DEMO_EMAIL = defaultUser.email;
-export { DEMO_PASSWORD };
+type StoredUser = User & { password: string; token?: string | null };
 
-interface Session {
-  loggedIn: boolean;
+/** Contas de demonstração exibidas na tela de login. */
+export const DEMO_ACCOUNTS = [
+  { label: "Administrador", email: "admin@psjb.org.br", password: "admin123" },
+  { label: "Músico", email: "musica@psjb.org.br", password: "cantos123" },
+];
+
+const usersStore = createStore<StoredUser[]>("psjb:users", usersJson as StoredUser[]);
+const sessionStore = createStore<{ userId: string | null }>("psjb:session", { userId: null });
+
+const now = () => new Date().toISOString();
+const token = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+const sameEmail = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+const strip = ({ password: _p, token: _t, ...u }: StoredUser): User => u; // eslint-disable-line @typescript-eslint/no-unused-vars
+
+function writeUser(id: string, patch: Partial<StoredUser>) {
+  usersStore.write(usersStore.read().map((u) => (u.id === id ? { ...u, ...patch } : u)));
 }
 
-const sessionStore = createStore<Session>("psjb:session", { loggedIn: false });
-const userStore = createStore<User & { password: string }>("psjb:user", {
-  ...seedUser,
-  instrument: "Violão",
-  password: DEMO_PASSWORD,
-});
+export function useUsers(): User[] {
+  const list = usersStore.useValue();
+  return useMemo(() => list.map(strip), [list]);
+}
 
-export const useSession = sessionStore.useValue;
+export function useSession() {
+  const { userId } = sessionStore.useValue();
+  const list = usersStore.useValue();
+  const user = list.find((u) => u.id === userId);
+  const loggedIn = Boolean(user && user.status === "ativo");
+  return { loggedIn, userId: loggedIn ? userId : null };
+}
+
+const GUEST: User = {
+  id: "",
+  name: "Visitante",
+  email: "",
+  role: "musico",
+  status: "ativo",
+  ministry: "",
+  parish: "",
+  createdAt: "",
+  emailVerifiedAt: null,
+  lastLoginAt: null,
+};
 
 export function useUser(): User {
-  const u = userStore.useValue();
+  const { userId } = sessionStore.useValue();
+  const list = usersStore.useValue();
   return useMemo(() => {
-    const user: User & { password?: string } = { ...u };
-    delete user.password;
-    return user;
-  }, [u]);
+    const u = list.find((x) => x.id === userId);
+    return u ? strip(u) : GUEST;
+  }, [list, userId]);
 }
 
-export function login(email: string, password: string) {
-  const u = userStore.read();
-  const ok = email.trim().toLowerCase() === u.email.toLowerCase() && password === u.password;
-  if (ok) sessionStore.write({ loggedIn: true });
-  return ok;
+export function useIsAdmin() {
+  const user = useUser();
+  const { loggedIn } = useSession();
+  return loggedIn && user.role === "admin";
+}
+
+export type LoginResult = { ok: true } | { ok: false; reason: "credenciais" | "pendente" | "bloqueado"; message?: string };
+
+export function login(email: string, password: string): LoginResult {
+  const u = usersStore.read().find((x) => sameEmail(x.email, email));
+  if (!u || u.password !== password) return { ok: false, reason: "credenciais" };
+  if (u.status === "pendente") return { ok: false, reason: "pendente" };
+  if (u.status === "bloqueado") return { ok: false, reason: "bloqueado", message: u.blockedReason };
+  writeUser(u.id, { lastLoginAt: now() });
+  sessionStore.write({ userId: u.id });
+  return { ok: true };
 }
 
 export function logout() {
-  sessionStore.write({ loggedIn: false });
+  sessionStore.write({ userId: null });
 }
 
 export function updateUser(patch: Partial<User>) {
-  userStore.write({ ...userStore.read(), ...patch });
+  const { userId } = sessionStore.read();
+  if (userId) writeUser(userId, patch);
 }
 
 export function changePassword(current: string, next: string) {
-  const u = userStore.read();
-  if (u.password !== current) return false;
-  userStore.write({ ...u, password: next });
+  const { userId } = sessionStore.read();
+  const u = usersStore.read().find((x) => x.id === userId);
+  if (!u || u.password !== current) return false;
+  writeUser(u.id, { password: next });
   return true;
 }
+
+/* Cadastro com confirmação de e-mail — Fase 3: POST /api/auth/signup + e-mail com token */
+
+export function signup(data: { name: string; email: string; password: string; ministry: string }) {
+  if (usersStore.read().some((u) => sameEmail(u.email, data.email))) return { ok: false as const, reason: "existe" as const };
+  const t = token();
+  const user: StoredUser = {
+    id: "u-" + uid(),
+    name: data.name.trim(),
+    email: data.email.trim().toLowerCase(),
+    password: data.password,
+    role: "musico",
+    status: "pendente",
+    ministry: data.ministry.trim(),
+    parish: "Paróquia Catedral São João Batista",
+    createdAt: now(),
+    emailVerifiedAt: null,
+    lastLoginAt: null,
+    token: t,
+  };
+  usersStore.write([...usersStore.read(), user]);
+  return { ok: true as const, token: t };
+}
+
+/** Reenvia (simula) o e-mail de confirmação. Devolve o token só para a demonstração. */
+export function resendVerification(email: string) {
+  const u = usersStore.read().find((x) => sameEmail(x.email, email) && x.status === "pendente");
+  if (!u) return null;
+  const t = token();
+  writeUser(u.id, { token: t });
+  return t;
+}
+
+export function verifyEmail(t: string): "ok" | "invalido" {
+  const u = usersStore.read().find((x) => x.token && x.token === t);
+  if (!u) return "invalido";
+  writeUser(u.id, { status: u.status === "pendente" ? "ativo" : u.status, emailVerifiedAt: now(), token: null });
+  return "ok";
+}
+
+/* Recuperação de senha — Fase 3: POST /api/auth/forgot e /api/auth/reset */
+
+export function requestPasswordReset(email: string) {
+  const u = usersStore.read().find((x) => sameEmail(x.email, email));
+  if (!u) return null; // a UI responde igual nos dois casos (não revela se o e-mail existe)
+  const t = token();
+  writeUser(u.id, { token: t });
+  return t;
+}
+
+export function resetPassword(t: string, password: string) {
+  const u = usersStore.read().find((x) => x.token && x.token === t);
+  if (!u) return false;
+  writeUser(u.id, { password, token: null });
+  return true;
+}
+
+/* Administração — Fase 3: /api/admin/users (somente papel admin) */
+
+export const admin = {
+  update(id: string, patch: Partial<Pick<User, "name" | "email" | "role" | "ministry">>) {
+    writeUser(id, patch);
+  },
+  block(id: string, reason: string) {
+    writeUser(id, { status: "bloqueado", blockedReason: reason.trim() || undefined });
+  },
+  unblock(id: string) {
+    const u = usersStore.read().find((x) => x.id === id);
+    writeUser(id, { status: u?.emailVerifiedAt ? "ativo" : "pendente", blockedReason: undefined });
+  },
+  activate(id: string) {
+    writeUser(id, { status: "ativo", emailVerifiedAt: now(), token: null });
+  },
+  resendVerification(id: string) {
+    writeUser(id, { token: token() });
+  },
+  sendResetLink(id: string) {
+    writeUser(id, { token: token() });
+  },
+  /** Gera uma senha temporária (a pessoa deve trocar no primeiro acesso). */
+  temporaryPassword(id: string) {
+    const pwd = Math.random().toString(36).slice(2, 6) + "-" + Math.random().toString(36).slice(2, 6);
+    writeUser(id, { password: pwd });
+    return pwd;
+  },
+  invite(data: { name: string; email: string; role: User["role"] }) {
+    if (usersStore.read().some((u) => sameEmail(u.email, data.email))) return false;
+    usersStore.write([
+      ...usersStore.read(),
+      {
+        id: "u-" + uid(),
+        name: data.name.trim(),
+        email: data.email.trim().toLowerCase(),
+        password: token().slice(0, 10),
+        role: data.role,
+        status: "pendente",
+        ministry: "",
+        parish: "Paróquia Catedral São João Batista",
+        createdAt: now(),
+        emailVerifiedAt: null,
+        lastLoginAt: null,
+        token: token(),
+      },
+    ]);
+    return true;
+  },
+  remove(id: string) {
+    const list = usersStore.read();
+    const removed = list.find((u) => u.id === id);
+    usersStore.write(list.filter((u) => u.id !== id));
+    return () => removed && usersStore.write([...usersStore.read(), removed]);
+  },
+};
 
 export function initials(name: string) {
   return name

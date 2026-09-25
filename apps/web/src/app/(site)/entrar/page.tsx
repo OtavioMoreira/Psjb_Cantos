@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { LoginForm } from "@/components/layout/LoginForm";
+import { AuthForms } from "@/components/auth/AuthForms";
+import { AuthPage } from "@/components/auth/AuthCard";
 
-export const metadata: Metadata = { title: "Entrar" };
+export const metadata: Metadata = { title: "Entrar ou criar conta" };
 
 export default function EntrarPage() {
   return (
-    <div className="parchment flex min-h-[calc(100vh-72px)] items-center justify-center px-4 py-12">
+    <AuthPage>
       <Suspense>
-        <LoginForm />
+        <AuthForms />
       </Suspense>
-    </div>
+    </AuthPage>
   );
 }

@@ -97,7 +97,7 @@ export function SongViewer({ song }: { song: Song }) {
                   <Plus size={18} />
                 </IconBtn>
                 {transpose !== 0 && (
-                  <button onClick={() => setTranspose(0)} className="flex items-center gap-1 text-sm text-primary underline-offset-2 hover:underline">
+                  <button onClick={() => setTranspose(0)} className="flex min-h-10 items-center gap-1 px-1 text-sm text-primary underline-offset-2 hover:underline">
                     <RotateCcw size={14} /> original
                   </button>
                 )}
@@ -122,7 +122,7 @@ export function SongViewer({ song }: { song: Song }) {
                     role="radio"
                     aria-checked={showChords === v}
                     onClick={() => setShowChords(v as boolean)}
-                    className="rounded-md px-3 py-1 text-ink-muted aria-checked:bg-primary-soft aria-checked:font-semibold aria-checked:text-primary"
+                    className="min-h-9 rounded-md px-3 py-1 text-ink-muted aria-checked:bg-primary-soft aria-checked:font-semibold aria-checked:text-primary"
                   >
                     {l}
                   </button>
@@ -137,7 +137,7 @@ export function SongViewer({ song }: { song: Song }) {
               preferFlats={prefs.preferFlats}
             />
             {song.media.cifraPdf && (
-              <a href={song.media.cifraPdf} target="_blank" rel="noopener" className="mt-8 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+              <a href={song.media.cifraPdf} target="_blank" rel="noopener" className="mt-8 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary hover:underline">
                 <Download size={16} /> Baixar cifra original (PDF)
               </a>
             )}

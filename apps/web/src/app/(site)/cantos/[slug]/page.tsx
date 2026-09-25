@@ -41,7 +41,7 @@ export default async function SongPage(props: PageProps<"/cantos/[slug]">) {
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10">
-      <Link href="/cantos" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-primary">
+      <Link href="/cantos" className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-ink-muted hover:text-primary">
         <ArrowLeft size={16} /> Voltar aos cantos
       </Link>
 

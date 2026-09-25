@@ -22,7 +22,7 @@ npm run dev:web   # http://localhost:3000
 npm run dev:api   # http://localhost:3333/api/test
 ```
 
-Login de demonstração: `musica@psjb.org.br` / `cantos123`. Os dados estão em `data/user.json`.
+Contas de demonstração: admin `admin@psjb.org.br` / `admin123` e músico `musica@psjb.org.br` / `cantos123`. Os dados estão em `data/users.json`.
 
 ## Onde trocar os JSONs pela API
 

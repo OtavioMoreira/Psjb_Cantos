@@ -355,7 +355,7 @@ function defaultName(date: string) {
 
 function IconBtn({ label, children, ...props }: { label: string } & React.ComponentProps<"button">) {
   return (
-    <button aria-label={label} title={label} className="grid h-9 w-9 place-items-center rounded-full text-ink-muted hover:bg-surface hover:text-primary disabled:opacity-30" {...props}>
+    <button aria-label={label} title={label} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-muted hover:bg-surface hover:text-primary disabled:opacity-30" {...props}>
       {children}
     </button>
   );

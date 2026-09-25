@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Home, LayoutDashboard, ListMusic, LogOut, Menu, Search, User, X, Info } from "lucide-react";
+import { BookOpen, Home, LayoutDashboard, ListMusic, LogOut, Menu, Search, ShieldCheck, User, X, Info } from "lucide-react";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
-import { initials, logout, useSession, useUser } from "@/lib/store";
+import { initials, logout, useIsAdmin, useSession, useUser } from "@/lib/store";
 import { useHydrated } from "@/lib/hooks";
 
 const NAV = [
@@ -22,6 +22,7 @@ export function Header() {
   const [menu, setMenu] = useState(false);
   const session = useSession();
   const user = useUser();
+  const isAdmin = useIsAdmin();
   const hydrated = useHydrated();
   const loggedIn = hydrated && session.loggedIn;
   const menuRef = useRef<HTMLDivElement>(null);
@@ -88,7 +89,7 @@ export function Header() {
               className="hidden items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm text-ink-muted transition-colors hover:border-primary lg:flex"
             >
               <Search size={16} /> Buscar canto…
-              <kbd className="ml-4 rounded border border-border px-1.5 text-[11px]">/</kbd>
+              <kbd className="ml-4 rounded border border-border px-1.5 text-xs">/</kbd>
             </Link>
             <Link href="/cantos?foco=1" aria-label="Buscar canto" className="grid h-10 w-10 place-items-center rounded-full text-ink-muted hover:bg-surface-2 lg:hidden">
               <Search size={20} strokeWidth={1.75} />
@@ -112,6 +113,7 @@ export function Header() {
                       { href: "/painel", label: "Painel", Icon: LayoutDashboard },
                       { href: "/painel/missas", label: "Minhas Missas", Icon: ListMusic },
                       { href: "/painel/perfil", label: "Meu perfil", Icon: User },
+                      ...(isAdmin ? [{ href: "/painel/admin/usuarios", label: "Usuários (admin)", Icon: ShieldCheck }] : []),
                     ].map(({ href, label, Icon }) => (
                       <Link key={href} role="menuitem" href={href} onClick={() => setMenu(false)} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-primary-soft">
                         <Icon size={16} /> {label}

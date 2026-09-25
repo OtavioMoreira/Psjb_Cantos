@@ -62,14 +62,23 @@ export interface Taxonomy {
   themes: Category[];
 }
 
+export type UserRole = "admin" | "coordenador" | "musico";
+/** pendente = aguardando confirmação de e-mail. */
+export type UserStatus = "ativo" | "pendente" | "bloqueado";
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: UserRole;
+  status: UserStatus;
   ministry: string;
   parish: string;
   instrument?: string;
+  createdAt: string;
+  emailVerifiedAt: string | null;
+  lastLoginAt: string | null;
+  blockedReason?: string;
 }
 
 export interface MassItem {

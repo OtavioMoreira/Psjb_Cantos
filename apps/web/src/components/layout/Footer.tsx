@@ -16,11 +16,11 @@ export function Footer() {
               <p>Repertório litúrgico do Ministério de Música</p>
             </div>
           </div>
-          <nav aria-label="Rodapé" className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-            <Link href="/cantos" className="hover:text-primary">Cantos</Link>
-            <Link href="/painel/missas/nova" className="hover:text-primary">Monte sua Missa</Link>
-            <Link href="/sobre" className="hover:text-primary">Sobre</Link>
-            <Link href="/entrar" className="hover:text-primary">Entrar</Link>
+          <nav aria-label="Rodapé" className="flex flex-wrap justify-center gap-x-2">
+            <Link href="/cantos" className="inline-flex min-h-11 items-center px-2 hover:text-primary">Cantos</Link>
+            <Link href="/painel/missas/nova" className="inline-flex min-h-11 items-center px-2 hover:text-primary">Monte sua Missa</Link>
+            <Link href="/sobre" className="inline-flex min-h-11 items-center px-2 hover:text-primary">Sobre</Link>
+            <Link href="/entrar" className="inline-flex min-h-11 items-center px-2 hover:text-primary">Entrar</Link>
           </nav>
         </div>
         <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-border pt-6 sm:flex-row">
