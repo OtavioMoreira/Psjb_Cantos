@@ -7,6 +7,7 @@ import { Field } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "@/components/ui/Toast";
+import { passwordScore } from "@/components/auth/PasswordStrength";
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -131,7 +132,7 @@ function SecurityCard() {
         onSubmit={(e) => {
           e.preventDefault();
           setErr("");
-          if (next.length < 6) return setErr("Use pelo menos 6 caracteres.");
+          if (next.length < 8 || passwordScore(next) < 2) return setErr("Use pelo menos 8 caracteres, com letras e números.");
           if (next !== confirm) return setErr("A confirmação não confere com a nova senha.");
           if (!changePassword(cur, next)) return setErr("Senha atual incorreta.");
           setCur("");

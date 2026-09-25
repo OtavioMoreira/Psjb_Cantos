@@ -8,6 +8,7 @@ import type { Mass } from "@/lib/types";
 import { SEASON_STYLE, formatDateShort } from "@/lib/liturgy";
 import { deleteMass, duplicateMass, saveMass } from "@/lib/store";
 import { toast } from "@/components/ui/Toast";
+import { MassPdfButton } from "./MassPdfButton";
 import { massEditUrl, massModeUrl } from "@/lib/routes";
 
 export function massProgress(m: Mass) {
@@ -96,6 +97,7 @@ export function MassCard({ mass }: { mass: Mass }) {
           <Link href={massEditUrl(mass.id)} className="inline-flex items-center gap-2 rounded-[10px] border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary-soft">
             <Pencil size={16} /> Editar
           </Link>
+          <MassPdfButton mass={mass} compact className="min-h-0 py-2" />
         </div>
       </div>
     </article>

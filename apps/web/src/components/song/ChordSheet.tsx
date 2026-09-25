@@ -1,67 +1,8 @@
 "use client";
 
 import { Fragment, useMemo } from "react";
-import { parseSheet, transposeChord, transposeLine } from "@/lib/chords";
-
-type Chord = { at: number; chord: string };
-type Word = { text: string; chords: Chord[] };
-
-type Block =
-  | { type: "pair"; words: Word[] }
-  | { type: "chords"; text: string }
-  | { type: "lyric"; text: string }
-  | { type: "blank" };
-
-/**
- * Junta cada linha de acordes com a letra logo abaixo e divide em palavras.
- * Cada palavra carrega seus acordes (posição relativa), então a linha só quebra entre palavras
- * e o acorde nunca se separa da sílaba.
- */
-function toBlocks(lyrics: string): Block[] {
-  const lines = parseSheet(lyrics);
-  const out: Block[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
-    const next = lines[i + 1];
-    if (l.type === "chords" && next?.type === "lyric") {
-      const chords = [...l.text.matchAll(/\S+/g)].map((m) => ({ at: m.index!, chord: m[0] }));
-      const words: Word[] = [];
-      for (const m of next.text.matchAll(/\S*\s*/g)) {
-        if (!m[0]) continue;
-        words.push({ text: m[0], chords: [] });
-        const w = words.at(-1)!;
-        const s = m.index!;
-        const e = s + m[0].length;
-        w.chords = chords.filter((c) => c.at >= s && c.at < e).map((c) => ({ ...c, at: c.at - s }));
-      }
-      // Acordes além do fim da letra vão para a última palavra.
-      const len = next.text.length;
-      const tail = chords.filter((c) => c.at >= len);
-      if (words.length && tail.length) {
-        const last = words.at(-1)!;
-        const end = last.text.trimEnd().length + 1;
-        last.chords.push(...tail.map((c) => ({ ...c, at: end })));
-      }
-      out.push({ type: "pair", words });
-      i++;
-    } else {
-      out.push(l);
-    }
-  }
-  // Colapsa linhas em branco repetidas
-  return out.filter((b, i) => !(b.type === "blank" && out[i - 1]?.type === "blank"));
-}
-
-/** Monta a linha de acordes de uma palavra, empurrando acordes que colidiriam após a transposição. */
-function chordRow(chords: Chord[], t: (c: string) => string) {
-  let row = "";
-  for (const c of chords) {
-    const name = t(c.chord);
-    const at = row.length === 0 ? c.at : Math.max(c.at, row.length + 1);
-    row = row.padEnd(at, " ") + name;
-  }
-  return row;
-}
+import { transposeChord, transposeLine } from "@/lib/chords";
+import { chordRow, toBlocks } from "@/lib/sheet";
 
 export function ChordSheet({
   lyrics,
@@ -71,6 +12,7 @@ export function ChordSheet({
   preferFlats = false,
   chordClassName = "text-primary",
   className = "",
+  plain = false,
 }: {
   lyrics: string;
   transpose?: number;
@@ -79,6 +21,8 @@ export function ChordSheet({
   preferFlats?: boolean;
   chordClassName?: string;
   className?: string;
+  /** Visual objetivo (Modo Missa): sem capitular nem cores de destaque, só preto no branco e refrão em negrito. */
+  plain?: boolean;
 }) {
   const blocks = useMemo(() => toBlocks(lyrics), [lyrics]);
   const t = (c: string) => transposeChord(c, transpose, preferFlats);
@@ -89,19 +33,28 @@ export function ChordSheet({
 
   if (!showChords) {
     const text = blocks
-      .map((b) => (b.type === "pair" ? b.words.map((w) => w.text).join("") : b.type === "lyric" ? b.text : b.type === "blank" ? "" : null))
-      .filter((l): l is string => l !== null)
-      .map((l) => l.trim());
-    const first = text.findIndex((l) => l);
+      .map((b) =>
+        b.type === "pair"
+          ? { text: b.words.map((w) => w.text).join(""), chorus: b.chorus }
+          : b.type === "lyric"
+            ? { text: b.text, chorus: b.chorus }
+            : b.type === "blank"
+              ? { text: "" }
+              : null,
+      )
+      .filter((l): l is { text: string; chorus?: boolean } => l !== null)
+      .map((l) => ({ ...l, text: l.text.trim() }));
+    const first = text.findIndex((l) => l.text);
+    const dropCap = "first-letter:float-left first-letter:mr-2 first-letter:font-sc first-letter:text-[3.4em] first-letter:leading-[0.8] first-letter:text-primary";
     return (
-      <div className={`font-serif leading-relaxed ${className}`} style={{ fontSize: fontSize + 4 }}>
+      <div className={`${plain ? "font-sans leading-snug" : "font-serif leading-relaxed"} ${className}`} style={{ fontSize: plain ? fontSize : fontSize + 4 }}>
         {text.map((l, i) =>
-          l ? (
-            <p key={i} className={i === first ? "first-letter:float-left first-letter:mr-2 first-letter:font-sc first-letter:text-[3.4em] first-letter:leading-[0.8] first-letter:text-primary" : ""}>
-              <Verse text={l} />
+          l.text ? (
+            <p key={i} className={`${l.chorus ? "font-bold" : ""} ${i === first && !plain ? dropCap : ""}`}>
+              <Verse text={l.text} plain={plain} />
             </p>
           ) : (
-            <div key={i} className="h-[0.9em]" />
+            <div key={i} className={plain ? "h-[0.5em]" : "h-[0.9em]"} />
           ),
         )}
       </div>
@@ -125,8 +78,8 @@ export function ChordSheet({
           );
         if (b.type === "lyric")
           return (
-            <div key={i} className="whitespace-pre-wrap">
-              <Verse text={b.text} />
+            <div key={i} className={`whitespace-pre-wrap ${b.chorus ? "font-bold" : ""}`}>
+              <Verse text={b.text} plain={plain} />
             </div>
           );
         const hasChords = b.words.some((w) => w.chords.length);
@@ -139,7 +92,7 @@ export function ChordSheet({
                     {chordRow(w.chords, t) || " "}
                   </span>
                 )}
-                <span>{k === 0 ? <Verse text={w.text} /> : w.text}</span>
+                <span className={b.chorus ? "font-bold" : undefined}>{k === 0 ? <Verse text={w.text} plain={plain} /> : w.text}</span>
               </span>
             ))}
           </div>
@@ -150,13 +103,13 @@ export function ChordSheet({
 }
 
 /** Destaca o número da estrofe ("1.", "2.") */
-function Verse({ text }: { text: string }) {
+function Verse({ text, plain = false }: { text: string; plain?: boolean }) {
   const m = text.match(/^(\s*)(\d+\.)(.*)$/s);
   if (!m) return <>{text}</>;
   return (
     <Fragment>
       {m[1]}
-      <strong className="text-gold-ink">{m[2]}</strong>
+      <strong className={plain ? undefined : "text-gold-ink"}>{m[2]}</strong>
       {m[3]}
     </Fragment>
   );

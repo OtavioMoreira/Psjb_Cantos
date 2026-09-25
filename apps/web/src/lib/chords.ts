@@ -65,7 +65,8 @@ export function parseSheet(lyrics: string): SheetLine[] {
     const line = raw.replace(/\t/g, "    ").replace(/\s+$/, "");
     if (!line.trim()) return { type: "blank" };
     if (isChordLine(line)) return { type: "chords", text: line };
-    return { type: "lyric", text: line };
+    const chorus = parseChorus(line);
+    return chorus ? { type: "lyric", text: chorus, chorus: true } : { type: "lyric", text: line };
   });
 }
 
@@ -88,10 +89,20 @@ export function transposeLine(line: string, semitones: number, preferFlats = fal
   return out;
 }
 
-/** Remove as linhas de acordes — usado para busca e trechos. */
+/**
+ * Refrão: linha de letra marcada como **texto** (vem do negrito do site antigo).
+ * Devolve a linha sem os marcadores, mantendo o recuo (os acordes dependem das posições).
+ */
+function parseChorus(line: string) {
+  const m = line.match(/^(\s*)\*\*(.*)\*\*\s*$/);
+  return m ? m[1] + m[2] : null;
+}
+
+/** Remove as linhas de acordes e as marcações — usado para busca e trechos. */
 export function lyricsOnly(lyrics: string) {
   return lyrics
     .split("\n")
     .filter((l) => !isChordLine(l))
+    .map((l) => parseChorus(l) ?? l)
     .join("\n");
 }

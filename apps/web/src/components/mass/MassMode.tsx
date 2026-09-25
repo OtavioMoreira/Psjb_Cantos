@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Expand, List, Minus, Moon, Plus, Shrink, Sun, SunDim, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Expand, Guitar, List, Minus, Moon, Plus, Shrink, Sun, SunDim, Type, X } from "lucide-react";
 import type { MassItem, MassSlot } from "@/lib/types";
 import { saveMass, setPrefs, usePrefs, useMasses } from "@/lib/store";
 import { useHydrated } from "@/lib/hooks";
@@ -49,6 +49,7 @@ export function MassMode() {
 
   const pal = PALETTES[prefs.massPalette];
   const fontSize = prefs.massFontSize;
+  const showChords = prefs.massShowChords ?? true;
 
   const steps: Step[] = useMemo(
     () => (mass ? mass.slots.flatMap((slot) => slot.items.map((item) => ({ slot, item }))) : []),
@@ -121,6 +122,21 @@ export function MassMode() {
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       lock?.release().catch(() => {});
+    };
+  }, []);
+
+  // Entra em tela cheia no primeiro toque ou tecla (o navegador exige um gesto). Se a pessoa sair, não força de novo.
+  useEffect(() => {
+    const enter = () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+      window.removeEventListener("pointerdown", enter);
+      window.removeEventListener("keydown", enter);
+    };
+    window.addEventListener("pointerdown", enter);
+    window.addEventListener("keydown", enter);
+    return () => {
+      window.removeEventListener("pointerdown", enter);
+      window.removeEventListener("keydown", enter);
     };
   }, []);
 
@@ -255,7 +271,7 @@ export function MassMode() {
               </p>
               <h1 className="truncate font-serif text-xl font-semibold leading-tight sm:text-2xl">{done ? mass.name : song?.title}</h1>
             </div>
-            {!done && song?.key && (
+            {!done && song?.key && showChords && (
               <div className="hidden items-center gap-1 lg:flex" aria-label="Tom">
                 <button aria-label="Descer meio tom" onClick={() => setTranspose(-1)} className={btn}>
                   <Minus size={22} />
@@ -274,6 +290,14 @@ export function MassMode() {
             <button aria-label="Aumentar letra" onClick={() => setPrefs({ massFontSize: Math.min(56, fontSize + 2) })} className={`${btn} text-lg font-bold`}>
               A+
             </button>
+            <button
+              aria-label={showChords ? "Mostrar só a letra" : "Mostrar cifra"}
+              title={showChords ? "Só letra" : "Cifra"}
+              onClick={() => setPrefs({ massShowChords: !showChords })}
+              className={btn}
+            >
+              {showChords ? <Type size={22} /> : <Guitar size={22} />}
+            </button>
             <button aria-label={`Paleta: ${pal.label}. Trocar`} onClick={cyclePalette} className={btn}>
               <pal.Icon size={22} />
             </button>
@@ -286,7 +310,7 @@ export function MassMode() {
           </header>
 
           {/* Tom no retrato/celular */}
-          {!done && song?.key && (
+          {!done && song?.key && showChords && (
             <div className={`flex items-center justify-center gap-2 border-b py-1 lg:hidden ${controls ? "" : "hidden"}`} style={{ borderColor: pal.line }}>
               <button aria-label="Descer meio tom" onClick={() => setTranspose(-1)} className={btn}>
                 <Minus size={20} />
@@ -320,7 +344,10 @@ export function MassMode() {
               </div>
             ) : song ? (
               <div key={index} className="animate-fade-in mx-auto max-w-5xl px-5 py-6 sm:px-10 sm:py-8">
-                <p className="mb-4 text-sm" style={{ color: pal.muted }}>
+                <h2 className="font-sans font-bold leading-tight" style={{ fontSize: Math.round(fontSize * 1.2) }}>
+                  {song.title}
+                </h2>
+                <p className="mb-5 mt-1 text-sm" style={{ color: pal.muted }}>
                   {formatNumber(song.number)}
                   {song.composer && ` · ${song.composer}`}
                 </p>
@@ -329,6 +356,8 @@ export function MassMode() {
                   transpose={step.item.transpose}
                   fontSize={fontSize}
                   preferFlats={prefs.preferFlats}
+                  showChords={showChords}
+                  plain
                   chordClassName="[color:var(--mm-chord)]"
                 />
                 <div className="h-24" />

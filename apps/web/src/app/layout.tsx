@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Cormorant_SC, Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/Toast";
+import { BASE_PATH } from "@/lib/routes";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -21,6 +22,9 @@ export const metadata: Metadata = {
   },
   description:
     "Repertório litúrgico da Catedral São João Batista: letras, cifras, partituras e áudios. Monte sua missa e use no tablet.",
+  // iOS não tem tela cheia via navegador: instalado na tela de início, abre sem barras.
+  appleWebApp: { capable: true, title: "Cantos PSJB", statusBarStyle: "black-translucent" },
+  icons: { apple: `${BASE_PATH}/apple-touch-icon.png` },
 };
 
 export const viewport: Viewport = {

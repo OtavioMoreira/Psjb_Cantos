@@ -281,6 +281,8 @@ export interface Prefs {
   preferFlats: boolean;
   theme: "light" | "dark" | "system";
   massPalette: "dia" | "noite" | "sepia";
+  /** Modo Missa: false = só a letra (para quem canta). */
+  massShowChords: boolean;
 }
 
 const prefsStore = createStore<Prefs>("psjb:prefs", {
@@ -289,6 +291,7 @@ const prefsStore = createStore<Prefs>("psjb:prefs", {
   preferFlats: false,
   theme: "light",
   massPalette: "dia",
+  massShowChords: true,
 });
 export const usePrefs = prefsStore.useValue;
 export function setPrefs(patch: Partial<Prefs>) {

@@ -11,6 +11,7 @@ import { SEASON_STYLE, formatNumber, liturgicalSeason, liturgicalYear } from "@/
 import { keyLabel } from "@/lib/chords";
 import { taxonomy } from "@/lib/labels";
 import { SlotPicker } from "./SlotPicker";
+import { MassPdfButton } from "./MassPdfButton";
 import { ChordSheet } from "@/components/song/ChordSheet";
 import { toast } from "@/components/ui/Toast";
 import { massEditUrl, massModeUrl } from "@/lib/routes";
@@ -328,19 +329,20 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
         </div>
       )}
 
-      <div className="sticky bottom-16 z-20 mt-8 flex flex-wrap gap-3 rounded-[16px] border border-border bg-surface/95 p-3 shadow-raised backdrop-blur md:bottom-4">
-        <Link href="/painel/missas" className="inline-flex min-h-11 items-center rounded-[10px] px-4 text-sm font-semibold text-primary hover:bg-primary-soft">
+      <div className="sticky bottom-[72px] z-20 mt-8 flex items-center gap-2 rounded-[16px] border border-border bg-surface/95 p-3 shadow-raised backdrop-blur md:bottom-4">
+        <Link href="/painel/missas" className="hidden min-h-11 items-center rounded-[10px] px-4 text-sm font-semibold text-primary hover:bg-primary-soft sm:inline-flex">
           Voltar às missas
         </Link>
+        <MassPdfButton mass={{ ...mass, name: mass.name.trim() || defaultName(mass.date) }} className="shrink-0 sm:ml-auto" />
         <button
           onClick={() => {
             const saved = saveMass({ ...mass, name: mass.name.trim() || defaultName(mass.date) });
             router.push(massModeUrl(saved.id));
           }}
           disabled={filled === 0}
-          className="ml-auto inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-primary-solid px-5 text-sm font-semibold text-[#FFFDF8] hover:bg-primary-hover disabled:opacity-50"
+          className="flex-1 justify-center sm:flex-none inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-primary-solid px-5 text-sm font-semibold text-[#FFFDF8] hover:bg-primary-hover disabled:opacity-50"
         >
-          <Tablet size={18} /> Abrir no Modo Missa
+          <Tablet size={18} /> <span className="hidden sm:inline">Abrir no</span> Modo Missa
         </button>
       </div>
     </div>
