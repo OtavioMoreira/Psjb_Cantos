@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, MoreHorizontal, Pencil, Tablet, Trash2 } from "lucide-react";
+import { Copy, LogOut, MoreHorizontal, Pencil, Tablet, Trash2, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Mass } from "@/lib/types";
 import { SEASON_STYLE, formatDateShort } from "@/lib/liturgy";
-import { deleteMass, duplicateMass, saveMass } from "@/lib/store";
+import { canShareMasses, deleteMass, duplicateMass, leaveMass, massAccess, saveMass, useSession, useUser, useUsers } from "@/lib/store";
 import { toast } from "@/components/ui/Toast";
 import { MassPdfButton } from "./MassPdfButton";
+import { ShareMassButton, SharedAvatars } from "./ShareMass";
 import { massEditUrl, massModeUrl } from "@/lib/routes";
 
 export function massProgress(m: Mass) {
@@ -22,6 +23,12 @@ export function MassCard({ mass }: { mass: Mass }) {
   const [menu, setMenu] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { filled, total, songs } = massProgress(mass);
+  const { userId } = useSession();
+  const me = useUser();
+  const users = useUsers();
+  const owner = massAccess(mass, userId) === "dono";
+  const shared = mass.sharedWith ?? [];
+  const ownerName = users.find((u) => u.id === mass.ownerId)?.name ?? "outra pessoa";
   const color = mass.season ? SEASON_STYLE[mass.season].color : "var(--border)";
 
   useEffect(() => {
@@ -47,6 +54,23 @@ export function MassCard({ mass }: { mass: Mass }) {
               {mass.season && ` · ${SEASON_STYLE[mass.season].label}`}
               {mass.year && ` · Ano ${mass.year}`}
             </p>
+            {(!owner || shared.length > 0) && (
+              <p className="mt-2 flex items-center gap-2 text-sm text-ink-muted">
+                {owner ? (
+                  <>
+                    <SharedAvatars ids={shared} size={30} />
+                    Compartilhada com {shared.length} {shared.length === 1 ? "pessoa" : "pessoas"}
+                  </>
+                ) : (
+                  <>
+                    <Users size={16} className="shrink-0 text-gold-ink" />
+                    <span>
+                      Compartilhada por <strong className="font-medium text-ink">{ownerName}</strong>
+                    </span>
+                  </>
+                )}
+              </p>
+            )}
           </div>
           <div className="relative" ref={ref}>
             <button aria-label="Mais ações" aria-expanded={menu} onClick={() => setMenu((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full text-ink-muted hover:bg-surface-2">
@@ -60,24 +84,38 @@ export function MassCard({ mass }: { mass: Mass }) {
                     const c = duplicateMass(mass.id);
                     if (c) router.push(massEditUrl(c.id));
                   }}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-primary-soft"
+                  className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-primary-soft"
                 >
                   <Copy size={16} /> Duplicar
                 </button>
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    setMenu(false);
-                    const removed = deleteMass(mass.id);
-                    toast(`“${mass.name || "Missa"}” excluída.`, {
-                      label: "Desfazer",
-                      onClick: () => removed && saveMass(removed),
-                    });
-                  }}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-danger hover:bg-danger/10"
-                >
-                  <Trash2 size={16} /> Excluir
-                </button>
+                {owner ? (
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      setMenu(false);
+                      const removed = deleteMass(mass.id);
+                      toast(`“${mass.name || "Missa"}” excluída.`, {
+                        label: "Desfazer",
+                        onClick: () => removed && saveMass(removed),
+                      });
+                    }}
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-danger hover:bg-danger/10"
+                  >
+                    <Trash2 size={16} /> Excluir
+                  </button>
+                ) : (
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      setMenu(false);
+                      const undo = leaveMass(mass.id);
+                      toast(`Você saiu de “${mass.name || "Missa"}”.`, { label: "Desfazer", onClick: () => undo?.() });
+                    }}
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-danger hover:bg-danger/10"
+                  >
+                    <LogOut size={16} /> Sair desta missa
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -98,6 +136,9 @@ export function MassCard({ mass }: { mass: Mass }) {
             <Pencil size={16} /> Editar
           </Link>
           <MassPdfButton mass={mass} compact className="min-h-0 py-2" />
+          {owner && canShareMasses(me.role) && (
+            <ShareMassButton mass={mass} compact className="min-h-0 py-2" onChange={(sharedWith) => saveMass({ ...mass, sharedWith })} />
+          )}
         </div>
       </div>
     </article>

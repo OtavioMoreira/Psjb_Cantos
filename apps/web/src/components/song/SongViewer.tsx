@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Download, ExternalLink, FileMusic, Guitar, Headphones, Minus, Plus, RotateCcw } from "lucide-react";
 import type { Song } from "@/lib/types";
-import { keyLabel } from "@/lib/chords";
+import { keyLabel, wrapSemitones } from "@/lib/chords";
 import { setPrefs, usePrefs } from "@/lib/store";
 import { ChordSheet } from "./ChordSheet";
 
@@ -35,7 +35,7 @@ export function SongViewer({ song }: { song: Song }) {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
   const setTranspose = (n: number) => {
-    const v = ((n + 18) % 12) - 6; // mantém entre -6 e +5
+    const v = wrapSemitones(n);
     setParam("tom", v ? (v > 0 ? `+${v}` : String(v)) : null);
   };
   const fontSize = prefs.fontSize;
@@ -91,7 +91,7 @@ export function SongViewer({ song }: { song: Song }) {
                   <Minus size={18} />
                 </IconBtn>
                 <span aria-live="polite" className="min-w-[7.5rem] text-center font-semibold" title={transpose ? `${transpose > 0 ? "+" : ""}${transpose} semitons` : "Tom original"}>
-                  {keyLabel(song.key, transpose)}
+                  {keyLabel(song.key, transpose, prefs.preferFlats)}
                 </span>
                 <IconBtn label="Subir meio tom" onClick={() => setTranspose(transpose + 1)} disabled={!showChords}>
                   <Plus size={18} />

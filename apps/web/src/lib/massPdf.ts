@@ -163,7 +163,7 @@ export async function generateMassPdf(mass: Mass, songsById: Map<number, Song>, 
       formatNumber(song.number),
       song.composer,
       opts.chords && song.key
-        ? `Tom: ${keyLabel(song.key, item.transpose)}${item.transpose ? ` (original ${song.key})` : ""}`
+        ? `Tom: ${keyLabel(song.key, item.transpose, opts.preferFlats)}${item.transpose ? ` (original ${song.key})` : ""}`
         : null,
     ].filter(Boolean);
     if (meta.length) {

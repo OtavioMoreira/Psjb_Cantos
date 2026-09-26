@@ -103,4 +103,8 @@ export interface Mass {
   year: YearId | null;
   slots: MassSlot[];
   updatedAt: string;
+  /** Quem criou a missa. Missas antigas (sem dono) valem para qualquer pessoa do aparelho. */
+  ownerId?: string;
+  /** IDs dos usuários com quem a missa foi compartilhada. */
+  sharedWith?: string[];
 }

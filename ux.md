@@ -402,9 +402,34 @@ Minhas Missas                         [+ Nova missa]
 ┌───────────────────────────────────────────────────┐
 │▌ 25º Domingo do Tempo Comum        dom, 28 set    │
 │  10 cantos · Ano B · editada há 2 h               │
-│  [⤢ Modo Missa] [✎ Editar] [⋯ Duplicar/Compartilhar/Excluir]│
+│  (MM)(AB)(JM) Compartilhada com 3 pessoas          │
+│  ▬▬▬▬▬▬▬▬▬▬▬▬░░  9 de 10 momentos · 9 cantos       │
+│  [⤢ Modo Missa] [✎ Editar] [⬇ PDF] [👥 Compartilhar 3]  [⋯]│
 └───────────────────────────────────────────────────┘
 ```
+- **Missa compartilhada comigo:** no lugar das iniciais, "👥 Compartilhada por {nome}". Não tem botão Compartilhar, e o ⋯ troca "Excluir" por "Sair desta missa" (com "Desfazer").
+- O botão Compartilhar só aparece para o dono com papel Coordenador ou Admin.
+
+**Modal "Compartilhar missa"** (bottom sheet no celular, centralizado no tablet/desktop):
+```
+Compartilhar missa                                  ✕
+Quem você escolher vê {missa} em Minhas Missas, pode
+editar os cantos, abrir no Modo Missa e baixar o PDF.
+Com acesso (2)
+[(MM) Ministério de Música ✕] [(AB) Ana Beatriz Lima ✕]
+[🔍 Buscar por nome, e-mail ou ministério        ]
+┌──────────────────────────────────────────────┐
+│ ☑ (AB) Ana Beatriz Lima                       │
+│        Coordenador · Equipe de Liturgia · …   │
+│ ☐ (CE) Carlos Eduardo Souza                   │
+└──────────────────────────────────────────────┘
+Só aparecem pessoas com conta ativa.
+[Demonstração: salvo só neste aparelho…]
+                 [Cancelar] [✓ Compartilhar com 2 pessoas]
+```
+- A busca ignora acento e exige todos os termos. Cada linha é um alvo de 56 px que marca ou desmarca.
+- No celular a lista acompanha a rolagem do modal; do tablet para cima ela tem rolagem própria (máx. 288 px).
+- O botão de salvar fica desabilitado enquanto nada mudou. Ao salvar, o toast diz "Missa compartilhada com N pessoas.".
 - A faixa ▌ usa a cor do tempo litúrgico da data.
 - Excluir pede confirmação e oferece "Desfazer" no toast por 6s.
 - Duplicar cria "Cópia de …" com a data vazia e abre o editor.
@@ -443,7 +468,9 @@ Comportamento:
 - Os 10 momentos padrão já vêm listados. Vazios aparecem com borda tracejada `border` e o texto "+ Escolher canto".
 - **Canto escolhido:** card com o número e o autor na 1ª linha, **o título inteiro na 2ª linha** (serif 20px, quebra linha se precisar, nunca é cortado) e o **tom numa linha própria** abaixo, separada por um filete.
 - No cabeçalho, Data e Horário ficam lado a lado também no celular.
-- **Barra de ações fixa:** no desktop, "Voltar às missas", "Baixar PDF" e "Abrir no Modo Missa". No celular, fica numa linha só, com **[PDF] [Modo Missa]** (o voltar some, porque a barra inferior do painel já tem "Missas"), posicionada acima da barra do painel.
+- **Tom do canto na missa:** abaixo do título, "TOM [−] Ré (D) (+2) [+] ↺ Original (C)". O 👁 abre a cifra já transposta, com o mesmo controle no topo da janela; mudar lá também salva na missa.
+- **Barra de ações fixa:** no desktop, "Voltar às missas", "Baixar PDF", "Compartilhar" e "Abrir no Modo Missa". No celular, fica numa linha só, com **[PDF] [👥] [Modo Missa]** (o voltar some, porque a barra inferior do painel já tem "Missas", e o Compartilhar vira só ícone), posicionada acima da barra do painel. O Compartilhar só aparece para o dono Coordenador/Admin.
+- **Aviso de compartilhamento:** abaixo do título, "(iniciais) Compartilhada com N pessoas: todos podem editar." para o dono, ou "👥 Compartilhada por {nome}. Você pode editar os cantos." para quem recebeu.
 - **SlotPicker**: pré-filtrado pelo momento do slot e pelo tempo da data (chips removíveis). Para Salmo e Aclamação, filtra também pelo Ano. A busca é a mesma da listagem. "Mostrar todos os momentos" remove o filtro de momento.
 - Escolher um canto preenche o slot e avança o foco para o próximo slot vazio (o picker continua aberto no desktop, fecha no mobile).
 - Cada slot aceita vários cantos (ex.: 2 de Comunhão). Rótulos de momento extra podem ser editados ("Ação de graças", "Aspersão", "Coroação de Nossa Senhora").

@@ -2,13 +2,13 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMasses } from "@/lib/store";
+import { useMyMasses } from "@/lib/store";
 import { MassEditor } from "@/components/mass/MassEditor";
 import { ButtonLink } from "@/components/ui/Button";
 
 function Editor() {
   const id = useSearchParams().get("id");
-  const mass = useMasses().find((m) => m.id === id);
+  const mass = useMyMasses().find((m) => m.id === id);
   if (!mass) {
     return (
       <div className="py-16 text-center">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { ArrowRight, Plus } from "lucide-react";
-import { useMasses, useUser } from "@/lib/store";
+import { useMyMasses, useUser } from "@/lib/store";
 import { useSongIndex } from "@/lib/useSongIndex";
 import { todayIso } from "@/lib/liturgy";
 import { Divider } from "@/components/ui/Ornament";
@@ -12,7 +12,7 @@ import { MassCard } from "@/components/mass/MassCard";
 
 export default function PainelPage() {
   const user = useUser();
-  const masses = useMasses();
+  const masses = useMyMasses();
   const { songs } = useSongIndex();
   const today = todayIso();
   const upcoming = [...masses].filter((m) => m.date >= today).sort((a, b) => a.date.localeCompare(b.date));

@@ -45,10 +45,15 @@ export function transposeChord(chord: string, semitones: number, preferFlats = f
   );
 }
 
-/** Nome do tom por extenso: "Ré (D)" / "Si menor (Bm)". */
-export function keyLabel(key: string | null, semitones = 0) {
+/** Mantém a transposição entre −6 e +5 (as 12 tonalidades, sem repetir oitava). */
+export function wrapSemitones(n: number) {
+  return ((((n + 6) % 12) + 12) % 12) - 6;
+}
+
+/** Nome do tom por extenso: "Ré (D)" / "Si menor (Bm)". Sem preferência, segue a grafia do tom original. */
+export function keyLabel(key: string | null, semitones = 0, preferFlats?: boolean) {
   if (!key) return "—";
-  const k = transposeChord(key, semitones, key.includes("b"));
+  const k = transposeChord(key, semitones, preferFlats || key.includes("b"));
   const root = k.match(/^[A-G](#|b)?/)?.[0] ?? k;
   const minor = /^[A-G](#|b)?m(?!aj)/.test(k);
   const name = SOLFEGE[root[0]] + (root[1] === "#" ? "♯" : root[1] === "b" ? "♭" : "");

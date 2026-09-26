@@ -98,6 +98,9 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
   - Cantos do tempo da missa aparecem primeiro.
 - **Depois de escolher:** no desktop, o seletor pula para o próximo momento vazio; no celular, fecha.
 - **Tom por missa:** a transposição é salva no item da missa e não altera o canto original.
+  - Controle −/+ em cada canto do editor, de **−6 a +5** (passando do limite, dá a volta), com "↺ Original (tom)" quando mudou.
+  - O 👁 abre a cifra **já no tom desta missa**, com o mesmo controle de tom no topo. Pelo seletor (canto ainda fora da missa), a pré-visualização mostra o tom original.
+  - O nome do tom segue a preferência de sustenidos/bemóis, igual à cifra. O mesmo tom vale no Modo Missa e no PDF.
 - **Edição:**
   - Reordenar momentos com ↑/↓ ou arrastando no desktop.
   - Remover canto mostra "Desfazer".
@@ -119,7 +122,17 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
     - A cifra usa fonte monoespaçada, com a mesma regra de quebra da tela, e acorde e letra nunca ficam em páginas diferentes.
   - **Rodapé em todas as páginas:** nome da missa, data e "página X / N".
   - **Arquivo:** `missa-<nome>-<aaaa-mm-dd>.pdf`, formato A4.
-- **Onde fica salvo:** Fase 1 no `localStorage` do aparelho. **(futuro)** Na API, com compartilhamento por link para a equipe e sincronia entre computador e tablet.
+- **Onde fica salvo:** Fase 1 no `localStorage` do aparelho. **(futuro)** Na API, com sincronia entre computador e tablet.
+- **Compartilhar com a equipe:**
+  - **Quem compartilha:** o **dono** da missa (quem a criou), se o papel for **Coordenador ou Administrador**. O Músico só recebe missas compartilhadas.
+  - **Como:** o botão "Compartilhar" fica no editor (na barra de baixo, só o ícone no celular) e no card de "Minhas Missas". Ele abre um modal com **seleção múltipla e busca sem acento** por nome, e-mail, ministério ou papel. As pessoas escolhidas aparecem como chips removíveis ("Com acesso (N)"), e o botão salva com "Compartilhar com N pessoas".
+  - **Quem aparece na lista:** só contas **ativas**, sem o próprio dono. Pendentes e bloqueados não aparecem.
+  - **O que a pessoa pode fazer:** vê a missa em "Minhas Missas", **edita os cantos**, abre no Modo Missa e baixa o PDF. **Só o dono** exclui a missa e muda o compartilhamento.
+  - **Aviso na tela:** o card e o editor mostram "Compartilhada com N pessoas" (com as iniciais) para o dono e "Compartilhada por {nome}" para quem recebeu.
+  - **Sair:** quem recebeu pode escolher "Sair desta missa" (no menu ⋯, com "Desfazer"). A missa continua existindo para o dono.
+  - **Duplicar:** a cópia é de quem duplicou e começa **sem compartilhamento**.
+  - **Missas antigas sem dono** (criadas antes da regra) valem como da pessoa que está usando o aparelho.
+  - **Fase 1:** a lista de pessoas fica salva na própria missa, no `localStorage` (`ownerId` e `sharedWith`), então o compartilhamento só aparece para quem entra **no mesmo aparelho**. **(futuro)** Na API, a pessoa recebe um e-mail avisando e vê a missa em qualquer aparelho; a permissão é conferida no servidor (403 para quem não é dono nem convidado).
 
 ## 8. Modo Missa (`/missa?id=`): modo de apresentação na missa
 - **Objetivo:** tela cheia e visual objetivo, com **letra preta, fundo branco e refrão em negrito**. Não tem capitular nem cores de destaque na letra; o número da estrofe é só negrito.

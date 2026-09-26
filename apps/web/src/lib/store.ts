@@ -345,6 +345,8 @@ function seedMasses(): Mass[] {
       season: liturgicalSeason(d),
       year: liturgicalYear(d),
       updatedAt: new Date().toISOString(),
+      ownerId: "u-admin",
+      sharedWith: ["u-1", "u-2"],
       slots: DEFAULT_SLOTS.map((s) => ({
         id: uid(),
         ...s,
@@ -359,6 +361,35 @@ const massesStore = createStore<Mass[] | null>("psjb:masses", null);
 export function useMasses(): Mass[] {
   const v = massesStore.useValue();
   return v ?? SEED;
+}
+
+/** Missas que a pessoa logada criou ou que foram compartilhadas com ela. */
+export function useMyMasses(): Mass[] {
+  const all = useMasses();
+  const { userId } = useSession();
+  return useMemo(() => all.filter((m) => massAccess(m, userId) !== null), [all, userId]);
+}
+
+/** "dono", "compartilhada" ou null (sem acesso). Missa sem dono conta como da pessoa. */
+export function massAccess(m: Mass, userId: string | null): "dono" | "compartilhada" | null {
+  if (!m.ownerId || m.ownerId === userId) return "dono";
+  if (userId && m.sharedWith?.includes(userId)) return "compartilhada";
+  return null;
+}
+
+/** Compartilhar missas é do coordenador e do admin (o músico só recebe). */
+export function canShareMasses(role: User["role"]) {
+  return role === "admin" || role === "coordenador";
+}
+
+/** Quem recebeu a missa pode sair dela; a missa continua para o dono. */
+export function leaveMass(id: string) {
+  const { userId } = sessionStore.read();
+  const m = getMass(id);
+  if (!m || !userId) return;
+  const before = m.sharedWith ?? [];
+  massesStore.write(allMasses().map((x) => (x.id === id ? { ...x, sharedWith: before.filter((u) => u !== userId) } : x)));
+  return () => massesStore.write(allMasses().map((x) => (x.id === id ? { ...x, sharedWith: before } : x)));
 }
 const SEED = seedMasses();
 
@@ -387,7 +418,7 @@ export function newMass(): Mass {
 
 export function saveMass(mass: Mass) {
   const list = allMasses();
-  const next = { ...mass, updatedAt: new Date().toISOString() };
+  const next = { ...mass, ownerId: mass.ownerId ?? sessionStore.read().userId ?? undefined, updatedAt: new Date().toISOString() };
   const i = list.findIndex((m) => m.id === mass.id);
   massesStore.write(i >= 0 ? list.map((m) => (m.id === mass.id ? next : m)) : [next, ...list]);
   return next;
@@ -408,6 +439,9 @@ export function duplicateMass(id: string) {
     id: uid(),
     name: `Cópia de ${m.name || "missa"}`,
     date: "",
+    // A cópia é de quem duplicou e começa sem compartilhamento.
+    ownerId: undefined,
+    sharedWith: [],
   };
   return saveMass(copy);
 }

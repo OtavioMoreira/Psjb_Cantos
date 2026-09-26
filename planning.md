@@ -118,6 +118,8 @@ interface Mass {
   season: SeasonId | null; // sugerido pela data, editável
   year: YearId | null;     // sugerido pela data, editável
   slots: MassSlot[];
+  ownerId?: string;     // quem criou (só o dono exclui e compartilha)
+  sharedWith?: string[]; // IDs dos usuários com acesso (editam os cantos)
   updatedAt: string;
 }
 interface MassSlot { id: string; moment: MomentId | 'extra'; label: string; items: MassItem[] } // vários cantos por momento
@@ -231,7 +233,12 @@ Estado do cliente em `localStorage`:
   - a capa traz o roteiro, com a página de cada canto;
   - os cantos saem com o tom da missa, o refrão em negrito e rodapé com a paginação;
   - é gerado no navegador (jsPDF sob demanda), com o nome `missa-<nome>-<data>.pdf`.
-- 🔜 Missas salvas no servidor, compartilhamento por link com a equipe e sincronia entre aparelhos.
+- 🟡 **Compartilhar missa com a equipe** (Coordenador e Admin, só o dono):
+  - modal com seleção múltipla e busca de pessoas ativas;
+  - quem recebe vê a missa em "Minhas Missas", edita os cantos, abre no Modo Missa e baixa o PDF, e pode "Sair desta missa";
+  - só o dono exclui ou muda o compartilhamento.
+  - Fase 1: salvo na missa (`ownerId`, `sharedWith`) no `localStorage`, então só funciona no mesmo aparelho. Falta a API e o e-mail de aviso.
+- 🔜 Missas salvas no servidor e sincronia entre aparelhos.
 
 ### E6. Modo Missa: apresentação no tablet ✅
 - ✅ **Tela cheia automática** no primeiro toque. No iPhone, que não aceita tela cheia pelo navegador, o site é instalado na tela de início (manifest com `display: fullscreen` + `appleWebApp`).
@@ -325,7 +332,9 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | POST | `/api/admin/users/invite` · DELETE `/api/admin/users/:id` | 3 | convite e exclusão |
 | POST/PUT/DELETE | `/api/songs[/:id]` | 4 | CRUD de cantos (admin) |
 | POST | `/api/uploads` | 4 | URL assinada |
-| CRUD | `/api/masses` · GET `/api/masses/share/:token` | 5 | missas e compartilhamento |
+| CRUD | `/api/masses` (dono ou convidado; excluir só o dono) | 5 | missas |
+| PUT | `/api/masses/:id/shares` `{ userIds }` · DELETE `/api/masses/:id/shares/me` | 5 | compartilhar com a equipe (dono coordenador/admin) e sair; envia e-mail de aviso |
+| GET | `/api/users/search?q=` | 5 | busca de pessoas ativas para compartilhar (nome, e-mail, ministério) |
 
 ---
 
@@ -488,7 +497,8 @@ Modelos de e-mail (pt-BR, com o logo):
 
 ### Fase 5: Offline e compartilhamento
 - [ ] Service worker: cantos das missas em cache para o Modo Missa sem internet (hoje, o PDF cobre o uso offline).
-- [ ] Missas no servidor; compartilhar por link (somente leitura); sincronizar computador e tablet.
+- [ ] Missas no servidor; sincronizar computador e tablet.
+- [ ] Compartilhar com a equipe pela API (a tela já existe): permissão no servidor, busca de pessoas e e-mail "Uma missa foi compartilhada com você".
 
 ---
 

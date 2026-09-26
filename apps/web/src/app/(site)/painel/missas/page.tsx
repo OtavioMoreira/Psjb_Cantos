@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Search } from "lucide-react";
-import { useMasses } from "@/lib/store";
+import { useMyMasses } from "@/lib/store";
 import { todayIso } from "@/lib/liturgy";
 import { normalize } from "@/lib/search";
 import { ButtonLink } from "@/components/ui/Button";
@@ -12,7 +12,7 @@ import { MassCard } from "@/components/mass/MassCard";
 type View = "proximas" | "passadas" | "todas";
 
 export default function MissasPage() {
-  const masses = useMasses();
+  const masses = useMyMasses();
   const [q, setQ] = useState("");
   const [view, setView] = useState<View>("todas");
   const today = todayIso();

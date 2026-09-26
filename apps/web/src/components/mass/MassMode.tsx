@@ -8,7 +8,7 @@ import type { MassItem, MassSlot } from "@/lib/types";
 import { saveMass, setPrefs, usePrefs, useMasses } from "@/lib/store";
 import { useHydrated } from "@/lib/hooks";
 import { useSongIndex } from "@/lib/useSongIndex";
-import { keyLabel } from "@/lib/chords";
+import { keyLabel, wrapSemitones } from "@/lib/chords";
 import { formatNumber } from "@/lib/liturgy";
 import { ChordSheet } from "@/components/song/ChordSheet";
 import { Cross } from "@/components/ui/Ornament";
@@ -169,7 +169,7 @@ export function MassMode() {
       ...mass,
       slots: mass.slots.map((s) =>
         s.id === step.slot.id
-          ? { ...s, items: s.items.map((it) => (it.songId === step.item.songId ? { ...it, transpose: it.transpose + delta } : it)) }
+          ? { ...s, items: s.items.map((it) => (it.songId === step.item.songId ? { ...it, transpose: wrapSemitones(it.transpose + delta) } : it)) }
           : s,
       ),
     });
@@ -277,7 +277,7 @@ export function MassMode() {
                   <Minus size={22} />
                 </button>
                 <span className="min-w-[6.5rem] text-center text-sm font-semibold" aria-live="polite">
-                  {keyLabel(song.key, step.item.transpose)}
+                  {keyLabel(song.key, step.item.transpose, prefs.preferFlats)}
                 </span>
                 <button aria-label="Subir meio tom" onClick={() => setTranspose(1)} className={btn}>
                   <Plus size={22} />
@@ -315,7 +315,7 @@ export function MassMode() {
               <button aria-label="Descer meio tom" onClick={() => setTranspose(-1)} className={btn}>
                 <Minus size={20} />
               </button>
-              <span className="text-sm font-semibold">Tom: {keyLabel(song.key, step.item.transpose)}</span>
+              <span className="text-sm font-semibold">Tom: {keyLabel(song.key, step.item.transpose, prefs.preferFlats)}</span>
               <button aria-label="Subir meio tom" onClick={() => setTranspose(1)} className={btn}>
                 <Plus size={20} />
               </button>

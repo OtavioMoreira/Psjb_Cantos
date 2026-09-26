@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Check, ListPlus, Plus } from "lucide-react";
 import type { MomentId } from "@/lib/types";
-import { DEFAULT_SLOTS, addSongToMass, newMass, saveMass, useMasses, useSession } from "@/lib/store";
+import { DEFAULT_SLOTS, addSongToMass, newMass, saveMass, useMyMasses, useSession } from "@/lib/store";
 import { useHydrated } from "@/lib/hooks";
 import { formatDateShort } from "@/lib/liturgy";
 import { taxonomy } from "@/lib/labels";
@@ -17,7 +17,7 @@ export function AddToMass({ songId, moments, title }: { songId: number; moments:
   const pathname = usePathname();
   const session = useSession();
   const hydrated = useHydrated();
-  const masses = useMasses();
+  const masses = useMyMasses();
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
   const suggested = moments.find((m) => DEFAULT_SLOTS.some((s) => s.moment === m)) ?? moments[0] ?? "entrada";
