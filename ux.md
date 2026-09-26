@@ -408,7 +408,7 @@ Minhas Missas                         [+ Nova missa]
 └───────────────────────────────────────────────────┘
 ```
 - **Missa compartilhada comigo:** no lugar das iniciais, "👥 Compartilhada por {nome}". Não tem botão Compartilhar, e o ⋯ troca "Excluir" por "Sair desta missa" (com "Desfazer").
-- O botão Compartilhar só aparece para o dono com papel Coordenador ou Admin.
+- O botão Compartilhar aparece para o dono da missa, qualquer que seja o papel.
 
 **Modal "Compartilhar missa"** (bottom sheet no celular, centralizado no tablet/desktop):
 ```
@@ -469,7 +469,7 @@ Comportamento:
 - **Canto escolhido:** card com o número e o autor na 1ª linha, **o título inteiro na 2ª linha** (serif 20px, quebra linha se precisar, nunca é cortado) e o **tom numa linha própria** abaixo, separada por um filete.
 - No cabeçalho, Data e Horário ficam lado a lado também no celular.
 - **Tom do canto na missa:** abaixo do título, "TOM [−] Ré (D) (+2) [+] ↺ Original (C)". O 👁 abre a cifra já transposta, com o mesmo controle no topo da janela; mudar lá também salva na missa.
-- **Barra de ações fixa:** no desktop, "Voltar às missas", "Baixar PDF", "Compartilhar" e "Abrir no Modo Missa". No celular, fica numa linha só, com **[PDF] [👥] [Modo Missa]** (o voltar some, porque a barra inferior do painel já tem "Missas", e o Compartilhar vira só ícone), posicionada acima da barra do painel. O Compartilhar só aparece para o dono Coordenador/Admin.
+- **Barra de ações fixa:** no desktop, "Voltar às missas", "Baixar PDF", "Compartilhar" e "Abrir no Modo Missa". No celular, fica numa linha só, com **[PDF] [👥] [Modo Missa]** (o voltar some, porque a barra inferior do painel já tem "Missas", e o Compartilhar vira só ícone), posicionada acima da barra do painel. O Compartilhar aparece só para o dono da missa (qualquer papel).
 - **Aviso de compartilhamento:** abaixo do título, "(iniciais) Compartilhada com N pessoas: todos podem editar." para o dono, ou "👥 Compartilhada por {nome}. Você pode editar os cantos." para quem recebeu.
 - **SlotPicker**: pré-filtrado pelo momento do slot e pelo tempo da data (chips removíveis). Para Salmo e Aclamação, filtra também pelo Ano. A busca é a mesma da listagem. "Mostrar todos os momentos" remove o filtro de momento.
 - Escolher um canto preenche o slot e avança o foco para o próximo slot vazio (o picker continua aberto no desktop, fecha no mobile).

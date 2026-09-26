@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, Eye, GripVertical, Loader2, Minus, Plus, RotateCcw, Tablet, Trash2, Users, X } from "lucide-react";
 import type { Mass, MassSlot, Song } from "@/lib/types";
-import { canShareMasses, massAccess, saveMass, uid, usePrefs, useSession, useUser, useUsers } from "@/lib/store";
+import { massAccess, saveMass, uid, usePrefs, useSession, useUsers } from "@/lib/store";
 import { useSongIndex } from "@/lib/useSongIndex";
 import { SEASON_STYLE, formatNumber, liturgicalSeason, liturgicalYear } from "@/lib/liturgy";
 import { keyLabel, wrapSemitones } from "@/lib/chords";
@@ -32,7 +32,6 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
   const byId = useMemo(() => new Map((songs ?? []).map((s) => [s.id, s])), [songs]);
   const prefs = usePrefs();
   const { userId } = useSession();
-  const me = useUser();
   const users = useUsers();
   const owner = massAccess(mass, userId) === "dono";
   const shared = mass.sharedWith ?? [];
@@ -349,7 +348,7 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
           Voltar às missas
         </Link>
         <MassPdfButton mass={{ ...mass, name: mass.name.trim() || defaultName(mass.date) }} className="shrink-0 sm:ml-auto" />
-        {owner && canShareMasses(me.role) && (
+        {owner && (
           <ShareMassButton mass={mass} className="shrink-0" onChange={(sharedWith) => update((m) => ({ ...m, sharedWith }))} />
         )}
         <button

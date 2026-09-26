@@ -377,11 +377,6 @@ export function massAccess(m: Mass, userId: string | null): "dono" | "compartilh
   return null;
 }
 
-/** Compartilhar missas é do coordenador e do admin (o músico só recebe). */
-export function canShareMasses(role: User["role"]) {
-  return role === "admin" || role === "coordenador";
-}
-
 /** Quem recebeu a missa pode sair dela; a missa continua para o dono. */
 export function leaveMass(id: string) {
   const { userId } = sessionStore.read();

@@ -233,7 +233,7 @@ Estado do cliente em `localStorage`:
   - a capa traz o roteiro, com a página de cada canto;
   - os cantos saem com o tom da missa, o refrão em negrito e rodapé com a paginação;
   - é gerado no navegador (jsPDF sob demanda), com o nome `missa-<nome>-<data>.pdf`.
-- 🟡 **Compartilhar missa com a equipe** (Coordenador e Admin, só o dono):
+- 🟡 **Compartilhar missa com a equipe** (qualquer papel, só o dono):
   - modal com seleção múltipla e busca de pessoas ativas;
   - quem recebe vê a missa em "Minhas Missas", edita os cantos, abre no Modo Missa e baixa o PDF, e pode "Sair desta missa";
   - só o dono exclui ou muda o compartilhamento.
@@ -333,7 +333,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | POST/PUT/DELETE | `/api/songs[/:id]` | 4 | CRUD de cantos (admin) |
 | POST | `/api/uploads` | 4 | URL assinada |
 | CRUD | `/api/masses` (dono ou convidado; excluir só o dono) | 5 | missas |
-| PUT | `/api/masses/:id/shares` `{ userIds }` · DELETE `/api/masses/:id/shares/me` | 5 | compartilhar com a equipe (dono coordenador/admin) e sair; envia e-mail de aviso |
+| PUT | `/api/masses/:id/shares` `{ userIds }` · DELETE `/api/masses/:id/shares/me` | 5 | compartilhar com a equipe (só o dono, qualquer papel) e sair; envia e-mail de aviso |
 | GET | `/api/users/search?q=` | 5 | busca de pessoas ativas para compartilhar (nome, e-mail, ministério) |
 
 ---

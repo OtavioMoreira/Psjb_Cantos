@@ -6,7 +6,7 @@ import { Copy, LogOut, MoreHorizontal, Pencil, Tablet, Trash2, Users } from "luc
 import { useEffect, useRef, useState } from "react";
 import type { Mass } from "@/lib/types";
 import { SEASON_STYLE, formatDateShort } from "@/lib/liturgy";
-import { canShareMasses, deleteMass, duplicateMass, leaveMass, massAccess, saveMass, useSession, useUser, useUsers } from "@/lib/store";
+import { deleteMass, duplicateMass, leaveMass, massAccess, saveMass, useSession, useUsers } from "@/lib/store";
 import { toast } from "@/components/ui/Toast";
 import { MassPdfButton } from "./MassPdfButton";
 import { ShareMassButton, SharedAvatars } from "./ShareMass";
@@ -24,7 +24,6 @@ export function MassCard({ mass }: { mass: Mass }) {
   const ref = useRef<HTMLDivElement>(null);
   const { filled, total, songs } = massProgress(mass);
   const { userId } = useSession();
-  const me = useUser();
   const users = useUsers();
   const owner = massAccess(mass, userId) === "dono";
   const shared = mass.sharedWith ?? [];
@@ -136,7 +135,7 @@ export function MassCard({ mass }: { mass: Mass }) {
             <Pencil size={16} /> Editar
           </Link>
           <MassPdfButton mass={mass} compact className="min-h-0 py-2" />
-          {owner && canShareMasses(me.role) && (
+          {owner && (
             <ShareMassButton mass={mass} compact className="min-h-0 py-2" onChange={(sharedWith) => saveMass({ ...mass, sharedWith })} />
           )}
         </div>

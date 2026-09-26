@@ -124,7 +124,7 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
   - **Arquivo:** `missa-<nome>-<aaaa-mm-dd>.pdf`, formato A4.
 - **Onde fica salvo:** Fase 1 no `localStorage` do aparelho. **(futuro)** Na API, com sincronia entre computador e tablet.
 - **Compartilhar com a equipe:**
-  - **Quem compartilha:** o **dono** da missa (quem a criou), se o papel for **Coordenador ou Administrador**. O Músico só recebe missas compartilhadas.
+  - **Quem compartilha:** o **dono** da missa (quem a criou), **qualquer que seja o papel** (Administrador, Coordenador ou Músico).
   - **Como:** o botão "Compartilhar" fica no editor (na barra de baixo, só o ícone no celular) e no card de "Minhas Missas". Ele abre um modal com **seleção múltipla e busca sem acento** por nome, e-mail, ministério ou papel. As pessoas escolhidas aparecem como chips removíveis ("Com acesso (N)"), e o botão salva com "Compartilhar com N pessoas".
   - **Quem aparece na lista:** só contas **ativas**, sem o próprio dono. Pendentes e bloqueados não aparecem.
   - **O que a pessoa pode fazer:** vê a missa em "Minhas Missas", **edita os cantos**, abre no Modo Missa e baixa o PDF. **Só o dono** exclui a missa e muda o compartilhamento.
@@ -165,8 +165,8 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
 ## 9. Usuários: papéis e status
 - **Papéis:**
   - **Administrador:** gerencia usuários e usa tudo.
-  - **Coordenador:** monta e compartilha missas.
-  - **Músico:** usa o repertório e monta missas. É o papel padrão no cadastro.
+  - **Coordenador:** monta e compartilha missas (compartilhar vale para todos os papéis).
+  - **Músico:** usa o repertório, monta e compartilha as próprias missas. É o papel padrão no cadastro.
 - **Status:**
   - **pendente** (aparece como "Aguardando e-mail"): criou conta ou foi convidado e ainda não confirmou o e-mail. **Não consegue entrar.**
   - **ativo:** consegue entrar.
