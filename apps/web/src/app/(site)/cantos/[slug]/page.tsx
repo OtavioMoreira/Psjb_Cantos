@@ -3,9 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowLeft, Download, FileMusic, Guitar, Headphones } from "lucide-react";
-import { getSongBySlug, getSongs } from "@/lib/data";
+import { getSongBySlug, getSongs, getTaxonomy } from "@/lib/data";
 import { formatNumber } from "@/lib/liturgy";
-import { label } from "@/lib/labels";
 import { Tag } from "@/components/ui/Chip";
 import { Divider } from "@/components/ui/Ornament";
 import { SongViewer } from "@/components/song/SongViewer";
@@ -32,6 +31,10 @@ export default async function SongPage(props: PageProps<"/cantos/[slug]">) {
   const { slug } = await props.params;
   const song = await getSongBySlug(slug);
   if (!song) notFound();
+  // Rótulos da mesma fonte dos cantos (JSON ou API), para uma flag nova já aparecer com o nome.
+  const tx = await getTaxonomy();
+  const names = new Map([...tx.moments, ...tx.seasons, ...tx.years, ...tx.themes].map((c) => [c.id, c.label]));
+  const label = (id: string) => names.get(id) ?? id;
 
   const downloads = [
     { href: song.media.cifraPdf, label: "Cifra (PDF)", Icon: Guitar },

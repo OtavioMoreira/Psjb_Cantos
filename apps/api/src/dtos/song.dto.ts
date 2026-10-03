@@ -70,6 +70,11 @@ export const listSongsQuerySchema = z
     flags: idList,
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(200).default(50),
+    /** full=1 traz a letra junto (usado pelo build do site, que gera as páginas dos cantos). */
+    full: z
+      .enum(["1", "true", "0", "false"])
+      .optional()
+      .transform((v) => v === "1" || v === "true"),
   })
   .transform(({ flags, ...rest }) => ({ ...rest, flagIds: flags }));
 

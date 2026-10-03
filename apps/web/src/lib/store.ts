@@ -70,7 +70,8 @@ export const DEMO_ACCOUNTS = [
   { label: "Músico", email: "musica@psjb.org.br", password: "cantos123" },
 ];
 
-const usersStore = createStore<StoredUser[]>("psjb:users", usersJson as StoredUser[]);
+// Com a API, as contas de demonstração do JSON não entram: a lista vem do servidor.
+const usersStore = createStore<StoredUser[]>(API_ENABLED ? "psjb:api-users" : "psjb:users", API_ENABLED ? [] : (usersJson as StoredUser[]));
 const sessionStore = createStore<{ userId: string | null }>("psjb:session", { userId: null });
 
 const now = () => new Date().toISOString();
@@ -151,9 +152,9 @@ const API_STATUS: Record<ApiUser["status"], User["status"]> = { pending: "penden
  * Com a API, o usuário que vem do servidor é espelhado na lista local e vira a sessão.
  * Assim as telas que ainda leem o store (painel, missas, perfil) continuam funcionando.
  */
-export function syncApiUser(u: ApiUser) {
+function mirror(u: ApiUser): StoredUser {
   const prev = usersStore.read().find((x) => x.id === u.id);
-  const mirrored: StoredUser = {
+  return {
     ...prev,
     id: u.id,
     name: u.name,
@@ -171,8 +172,12 @@ export function syncApiUser(u: ApiUser) {
     lastLoginAt: u.lastLoginAt,
     blockedReason: u.blockedReason ?? undefined,
   };
+}
+
+export function syncApiUser(u: ApiUser) {
+  const mirrored = mirror(u);
   const list = usersStore.read();
-  usersStore.write(prev ? list.map((x) => (x.id === u.id ? mirrored : x)) : [...list, mirrored]);
+  usersStore.write(list.some((x) => x.id === u.id) ? list.map((x) => (x.id === u.id ? mirrored : x)) : [...list, mirrored]);
   if (sessionStore.read().userId !== u.id) clearMassCache(); // outra pessoa no mesmo aparelho
   sessionStore.write({ userId: u.id });
 }
@@ -269,7 +274,18 @@ export function resetPassword(t: string, password: string) {
   return true;
 }
 
-/* Administração — Fase 3: /api/admin/users (somente papel admin) */
+/* Administração — com a API: listar e ativar; o resto ainda é só da demonstração. */
+
+/** Admin: traz todas as contas do servidor (substitui a lista local). */
+export async function syncAdminUsers() {
+  const list = await api.admin.users();
+  usersStore.write(list.map(mirror));
+}
+
+/** Troca a foto do perfil (só com a API). */
+export async function uploadMyPhoto(file: File) {
+  syncApiUser(await api.uploadPhoto(file));
+}
 
 export const admin = {
   update(id: string, patch: Partial<Pick<User, "name" | "email" | "role" | "movement" | "movementId">>) {
@@ -284,6 +300,15 @@ export const admin = {
   },
   activate(id: string) {
     writeUser(id, { status: "ativo", emailVerifiedAt: now(), token: null });
+    // Na API, a resposta traz o usuário atualizado; se falhar, volta o que o servidor tem.
+    if (API_ENABLED)
+      return api.admin
+        .activate(id)
+        .then((u) => writeUser(id, mirror(u)))
+        .catch((err) => {
+          void syncAdminUsers();
+          throw err;
+        });
   },
   resendVerification(id: string) {
     writeUser(id, { token: token() });

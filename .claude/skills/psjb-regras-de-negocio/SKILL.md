@@ -251,11 +251,22 @@ Os eixos:
 ## 11. Perfil (`/painel/perfil`)
 - **Dados editáveis:** nome, e-mail, paróquia, movimento e instrumento/voz.
 - **Troca de senha:** exige a senha atual.
-- **Foto:** JPG, PNG ou WebP de até 2 MB (`PUT /api/me/photo`, campo `photo`). O tipo é conferido pelos bytes do arquivo, não pelo nome. Cada troca gera uma URL nova e apaga a foto anterior. Ainda não há tela para enviar a foto.
+- **Foto:** JPG, PNG ou WebP de até 2 MB (`PUT /api/me/photo`, campo `photo`). O tipo é conferido pelos bytes do arquivo, não pelo nome. Cada troca gera uma URL nova e apaga a foto anterior. No perfil, "Enviar foto" / "Trocar foto" (só com a API); a foto aparece no avatar do cabeçalho e do painel.
+- **Com a API**, nome, e-mail, movimento e senha ficam **só leitura** (com aviso) até existirem `PATCH /api/me` e `POST /api/me/password`.
 - **Preferências:** tema (claro, escuro ou sistema) e sustenidos/bemóis.
 - **(futuro)** Trocar o e-mail exige confirmar o novo endereço, e o antigo continua valendo até lá.
 
-## 12. Admin de usuários (`/painel/admin/usuarios`, só papel admin)
+## 12. Administração (só papel admin)
+- **`/painel/admin`** reúne Usuários, Cantos, Flags e Movimentos. Cantos, flags e movimentos só existem com a API; na demonstração, a tela avisa "Disponível na versão com servidor".
+- **Cantos:** o editor tem número, título, autor, tom, letra e cifra (com aba "Ver" para pré-visualizar acordes e refrão), flags por grupo, PDF da cifra, PDF da partitura, áudio (até 4 MB cada), Audiomack e "Visível no repertório".
+  - Os arquivos só podem ser enviados **depois de criar o canto**.
+  - Excluir um canto que está em missa é recusado: a tela mostra o motivo e sugere ocultar.
+- **Publicar no site:** as páginas dos cantos são **estáticas** (rápidas e disponíveis no Modo Missa com internet ruim). Mudanças em cantos e flags só aparecem no site público depois de **"Publicar no site"**, que gera o site de novo em alguns minutos. A página de um canto já mostra o nome das flags novas; filtros e etiquetas das listas atualizam no build.
+- **Flags:** o identificador é gerado a partir do nome (pode ser editado); cor e ordem são opcionais.
+- **Movimentos:** criar e renomear (nome único); o botão de excluir fica desabilitado quando há pessoas.
+
+### 12.1 Admin de usuários (`/painel/admin/usuarios`)
+- **Com a API:** a lista vem do servidor e "Ativar acesso" libera contas pendentes. As demais ações ficam desabilitadas até existirem no backend.
 - **Acesso:** o menu "Usuários" só aparece para admins. Outros papéis veem "Acesso restrito". **(futuro)** A API também recusa com 403, porque esconder o menu não é segurança.
 - **Visão geral:**
   - Resumo clicável: Total, Ativos, Aguardando e-mail e Bloqueados.

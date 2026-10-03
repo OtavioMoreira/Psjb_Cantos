@@ -5,7 +5,7 @@ Site de cantos litúrgicos da **Paróquia Catedral São João Batista**, que sub
 - **Idioma:** o usuário conversa em português (pt-BR). Textos de UI, commits e documentação também são em pt-BR.
 - **Regras de negócio:** estão todas na skill `.claude/skills/psjb-regras-de-negocio/SKILL.md`. Carregue-a antes de mexer em cantos, filtros, missas, Modo Missa, usuários, login ou admin.
 - **Documentos de referência:** `planning.md` (produto, histórias com status, rotas, API futura, segurança, roadmap), `ux.md` (design tokens, wireframes de todas as telas, componentes) e `README.md` (visão geral, contas de demonstração, URLs).
-- **Manter a documentação em dia:** ao combinar ou mudar uma regra, atualize a skill. Se a mudança afetar escopo, rotas ou API, atualize também o `planning.md`; se afetar telas ou layout, o `ux.md`.
+- **Manter a documentação em dia:** ao combinar ou mudar uma regra, atualize a skill. A cada entrega, atualize o `docs/ESTADO-DO-PROJETO.md`. Se a mudança afetar escopo, rotas ou API, atualize também o `planning.md`; se afetar telas ou layout, o `ux.md`.
 
 ## Fase atual
 **Transição da Fase 1 (visual) para a API.** O site publicado no GitHub Pages é a demonstração (sem banco); a API e o banco já existem e são usados quando o front tem `API_URL`.
@@ -28,7 +28,8 @@ apps/web/             Next.js 16 (App Router, TS strict, Tailwind 4, lucide-reac
   src/app/missa/      Modo Missa (tela cheia, sem header)
   src/app/dados/cantos.json/route.ts   índice estático com letras (force-static)
   src/app/manifest.ts app instalável na tela de início (display fullscreen; usado no iPhone)
-  src/lib/data/       ÚNICO ponto que lê data/ (server-only). Na Fase 2, trocar por fetch à API.
+  src/lib/data/       ÚNICO ponto que lê os cantos (server-only): JSON de data/ ou, com API_URL, a API (no build)
+  src/lib/apiSongs.ts conversão API → site (flags viram momentos, tempos, anos e temas); o next.config embute a taxonomia
   src/lib/store.ts    estado do cliente em localStorage (sessão, usuários, missas, preferências)
   src/lib/chords.ts   detecção de acordes, refrão (**…**), transposição
   src/lib/sheet.ts    estrutura da cifra por palavra: MESMA regra de quebra na tela e no PDF
@@ -48,7 +49,8 @@ apps/api/             Fastify + TS, arquitetura hexagonal (detalhes em planning.
   src/container.ts    liga actions e adaptadores
   test/               unit/ (regras puras) · http/ (rotas com adaptadores em memória + segurança)
                       · integration/ (Postgres real, banco *_test) · support/ (fakes e helpers)
-docs/postman/         coleção do Postman da API + ambientes (local, produção) e foto de exemplo
+docs/postman/         coleção do Postman (gerada por gerar_colecao.py) + ambientes e arquivos de exemplo
+docs/ESTADO-DO-PROJETO.md   o que está pronto e o que falta (front e backend): atualizar a cada entrega
 db/                   dump de produção (*.sql no .gitignore: dados reais, repositório público)
   postgres/           conversão fiel MySQL → PostgreSQL 18: migrar.py, 01-schema.sql (versionado),
                       02-dados.sql (gerado, fora do git), CONVERSAO.md e VERIFICACAO.md (auditoria)
@@ -106,5 +108,5 @@ Se `tsc` reclamar de `PageProps`/`LayoutProps`, rode `npx next typegen` em `apps
     - integração (`test/integration`) para qualquer SQL novo em `repositories/`.
   - **Rota nova:** se for pública, precisa entrar na lista `PUBLIC` de `test/http/security.test.ts`. Senão, a matriz de autorização exige 401 sem token e 403 de músico em `/admin`.
 - **API:**
-  - **Rota nova ou alterada** → atualize a coleção `docs/postman/psjb-cantos.postman_collection.json`. O teste `apps/api/test/postman.test.ts` falha se faltar alguma rota. Depois, rode a coleção com o newman contra a API local.
+  - **Rota nova ou alterada** → edite `docs/postman/gerar_colecao.py` e rode `python3 docs/postman/gerar_colecao.py`. O teste `apps/api/test/postman.test.ts` falha se faltar alguma rota. Depois, rode a coleção com o newman contra a API local.
   - **Regra de permissão** (dono, convidado, papel) fica na **action**, não na rota.

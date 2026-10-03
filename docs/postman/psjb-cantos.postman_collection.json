@@ -650,7 +650,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/songs?q=&flags=&page=1&pageSize=50",
+              "raw": "{{baseUrl}}/songs?q=&flags=&page=1&pageSize=50&full=1",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -678,6 +678,12 @@
                   "key": "pageSize",
                   "value": "50",
                   "description": "1 a 200"
+                },
+                {
+                  "key": "full",
+                  "value": "1",
+                  "description": "1 = traz a letra (usado pelo build do site)",
+                  "disabled": true
                 }
               ]
             },
@@ -1228,6 +1234,36 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Publicar no site",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/site/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "site",
+                "publish"
+              ]
+            },
+            "description": "Pede um novo build do site (Deploy Hook da Vercel em SITE_DEPLOY_HOOK_URL) para cantos e flags alterados aparecerem nas páginas. 202 = pedido aceito; 501 NOT_CONFIGURED se o hook não estiver configurado (normal no ambiente local)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 ou 501 (sem hook local)', () => pm.expect([202, 501]).to.include(pm.response.code));"
                 ]
               }
             }

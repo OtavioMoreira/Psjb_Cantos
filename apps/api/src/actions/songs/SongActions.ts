@@ -17,9 +17,11 @@ async function assertFlags(flags: FlagRepository, ids: number[]) {
 export class ListSongsAction {
   constructor(private readonly deps: Deps) {}
   /** Repertório público só com cantos ativos; o admin vê também os ocultos. */
-  async execute(filters: Omit<SongFilters, "includeInactive">, opts: { includeInactive: boolean }) {
-    const { songs, total } = await this.deps.songs.list({ ...filters, includeInactive: opts.includeInactive });
-    return { songs: songs.map(toSongSummaryDTO) as SongSummaryDTO[], total, page: filters.page, pageSize: filters.pageSize };
+  async execute(filters: Omit<SongFilters, "includeInactive"> & { full?: boolean }, opts: { includeInactive: boolean }) {
+    const { full, ...rest } = filters;
+    const { songs, total } = await this.deps.songs.list({ ...rest, includeInactive: opts.includeInactive });
+    const list: (SongDTO | SongSummaryDTO)[] = songs.map(full ? toSongDTO : toSongSummaryDTO);
+    return { songs: list, total, page: rest.page, pageSize: rest.pageSize };
   }
 }
 

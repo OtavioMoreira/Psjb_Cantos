@@ -3,12 +3,20 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Home, ListMusic, LogOut, Plus, ShieldCheck, User } from "lucide-react";
-import { initials, logout, syncApiUser, syncMasses, useIsAdmin, useSession, useUser } from "@/lib/store";
+import { Flag, Home, ListMusic, LogOut, Music, Plus, ShieldCheck, User, UserCog, Users } from "lucide-react";
+import { logout, syncApiUser, syncMasses, useIsAdmin, useSession, useUser } from "@/lib/store";
+import { UserAvatar } from "@/components/user/UserAvatar";
 import { api, API_ENABLED, ApiError } from "@/lib/api";
 import { useHydrated } from "@/lib/hooks";
 
-const ADMIN_LINK = { href: "/painel/admin/usuarios", label: "Usuários", short: "Admin", Icon: ShieldCheck };
+const ADMIN_LINK = { href: "/painel/admin", label: "Administração", short: "Admin", Icon: ShieldCheck };
+/** Seções do admin, listadas abaixo de "Administração" na barra lateral. */
+const ADMIN_SECTIONS = [
+  { href: "/painel/admin/usuarios", label: "Usuários", Icon: Users },
+  { href: "/painel/admin/cantos", label: "Cantos", Icon: Music },
+  { href: "/painel/admin/flags", label: "Flags", Icon: Flag },
+  { href: "/painel/admin/movimentos", label: "Movimentos", Icon: UserCog },
+];
 
 const LINKS = [
   { href: "/painel", label: "Visão geral", short: "Início", Icon: Home },
@@ -72,9 +80,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:block">
         <div className="sticky top-[96px]">
           <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-full bg-primary-solid font-serif text-xl font-semibold text-[#FFFDF8]">
-              {initials(user.name)}
-            </span>
+            <UserAvatar name={user.name} photoUrl={user.photoUrl} size={48} />
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.name}</p>
               <p className="truncate text-xs text-ink-muted">{isAdmin ? "Administrador" : user.movement}</p>
@@ -91,6 +97,21 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
                 <Icon size={18} /> {label}
               </Link>
             ))}
+            {isAdmin && pathname.startsWith("/painel/admin") && (
+              <ul className="ml-5 space-y-0.5 border-l border-border pl-2">
+                {ADMIN_SECTIONS.map(({ href, label, Icon }) => (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      aria-current={pathname.startsWith(href) ? "page" : undefined}
+                      className="flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-sm text-ink-muted hover:bg-surface-2 hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-primary"
+                    >
+                      <Icon size={16} /> {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
             <button
               onClick={() => {
                 logout();

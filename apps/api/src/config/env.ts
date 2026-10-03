@@ -17,6 +17,8 @@ const schema = z.object({
   /** Com o token, as fotos vão para o Vercel Blob; sem ele, para a pasta local uploads/. */
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
   PUBLIC_URL: z.string().default("http://localhost:3333"),
+  /** Deploy Hook da Vercel do projeto do front: "Publicar no site" dispara um novo build. */
+  SITE_DEPLOY_HOOK_URL: z.url().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

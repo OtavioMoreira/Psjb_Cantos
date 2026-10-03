@@ -272,8 +272,14 @@ Estado do cliente em `localStorage`:
 - ✅ Testes com `fastify.inject` e adaptadores em memória (`npm test -w api`).
 - 🔜 Tela de admin de usuários e perfil lendo da API; demais ações de admin (bloquear, editar, papel, excluir); troca de senha e recuperação; e-mail e 2FA.
 
-### E8. Administração de usuários (só papel **admin**) 🟡
-- ✅ `/painel/admin/usuarios`: o menu "Usuários" só aparece para admins; os demais veem "Acesso restrito".
+### E8. Administração (só papel **admin**) 🟡
+- ✅ **`/painel/admin`**: painel com atalhos e contagens para Usuários, Cantos, Flags e Movimentos. Na barra lateral, as quatro seções aparecem abaixo de "Administração".
+- ✅ **Com a API:**
+  - **Usuários:** a lista vem do servidor e "Ativar acesso" usa a API. Editar, bloquear, senha, convite e exclusão ficam desabilitados até existirem no backend (ver `docs/ESTADO-DO-PROJETO.md` §4).
+  - **Cantos** (`/painel/admin/cantos` e `/editar?id=`): busca; editor com letra e pré-visualização, flags agrupadas, PDFs, áudio, Audiomack, visibilidade e exclusão.
+  - **Flags** (`/painel/admin/flags`) e **Movimentos** (`/painel/admin/movimentos`).
+  - **"Publicar no site"** (`POST /api/admin/site/publish` → Deploy Hook da Vercel): gera as páginas estáticas de novo.
+- ✅ `/painel/admin/usuarios`: o menu só aparece para admins; os demais veem "Acesso restrito".
 - ✅ Resumo clicável (Total, Ativos, Aguardando e-mail, Bloqueados), busca, filtro por papel, tabela no desktop e cards no celular e no tablet.
 - ✅ **Ações:**
   - editar dados e papel;
@@ -360,6 +366,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | POST · PUT · PATCH · DELETE | `/api/admin/songs[/:id]` | ✅ | admin: CRUD. `flagIds` (várias), `media` (links), `active`. 409 `SONG_TAKEN` (número ou slug) e `SONG_IN_USE` (está em missa) |
 | PUT · DELETE | `/api/admin/songs/:id/files/:kind` | ✅ | admin: `kind` = `cifra-pdf`, `partitura-pdf` ou `audio`. multipart, campo `file`, até 4 MB |
 | POST · PUT · DELETE | `/api/admin/flags[/:id]` | ✅ | admin: `{ group, slug, name, color?, position? }`. 409 `FLAG_TAKEN` |
+| POST | `/api/admin/site/publish` | ✅ | admin: pede um novo build do site (Deploy Hook em `SITE_DEPLOY_HOOK_URL`) → 202; sem hook → 501 `NOT_CONFIGURED` |
 | POST | `/api/auth/login/verify` | 3 | 2FA: `{ challengeId, code }` → só então emite os tokens |
 | POST | `/api/auth/verify-email` · `/resend-verification` | 3 | quando houver serviço de e-mail |
 | POST | `/api/auth/forgot` · `/api/auth/reset` | 3 | recuperação de senha |
@@ -564,8 +571,9 @@ Modelos de e-mail (pt-BR, com o logo):
 
 ### Fase 4: Admin de cantos
 - ✅ API: CRUD de cantos e de flags (taxonomia), envio de PDF e áudio para o storage (Vercel Blob) e importação do repertório de exemplo.
-- [ ] Telas de admin de cantos e flags, com editor de cifra, pré-visualização e marcação de refrão.
-- [ ] Site público lendo os cantos da API (`lib/data`), em vez do `data/songs.json`.
+- ✅ Telas de admin de cantos, flags e movimentos, com pré-visualização da cifra e marcação de refrão.
+- ✅ Site público lendo os cantos e as flags da API no build (`lib/data` e `next.config`) quando há `API_URL`; "Publicar no site" gera de novo.
+- [ ] Aviso de "alterações não publicadas" no admin.
 - [ ] Arquivos acima de 4 MB: upload direto do navegador para o Blob (token do cliente), sem passar pela Function.
 - [ ] Migrar os 623 cantos do banco legado (`audios`) para `songs`.
 

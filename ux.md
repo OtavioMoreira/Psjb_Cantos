@@ -454,6 +454,22 @@ Só aparecem pessoas com conta ativa.
 - Excluir pede confirmação e oferece "Desfazer" no toast por 6s.
 - Duplicar cria "Cópia de …" com a data vazia e abre o editor.
 
+### 4.7.1 Administração (`/painel/admin`, só admin)
+- **Painel:** 4 cards (Usuários, Cantos, Flags, Movimentos) com ícone, descrição, contagem e, em Usuários, o selo `gold-soft` "N aguardando ativação". Uma coluna no celular, duas do tablet em diante.
+- **Barra lateral (desktop):** dentro de `/painel/admin`, as quatro seções aparecem recuadas abaixo de "Administração". No celular, o item "Admin" da barra inferior leva ao painel.
+- **Cabeçalho comum:** sobrelinha "🛡 ADMINISTRAÇÃO" em `gold-ink`, título em serifa e ações à direita (quebram para baixo no celular).
+- **Cantos:**
+  - lista em cards (2 colunas no desktop) com Nº em dourado, título, autor, até 4 flags, selo "Oculto" e ícones de cifra, partitura e áudio; busca com espera de 300 ms e "Mostrar mais (N)";
+  - ações no topo: [Publicar no site] [＋ Novo canto];
+  - **editor**: no desktop, duas colunas (dados e letra | flags, arquivos e visibilidade); no celular, uma. A letra tem abas Editar e Ver: na pré-visualização, os acordes ficam em `primary` e o refrão em negrito, em fonte mono;
+  - flags como chips alternáveis por grupo (com a bolinha de cor);
+  - cada arquivo é um bloco com "Abrir", [Enviar/Trocar] e [Remover];
+  - a barra de ações (Excluir | Salvar canto) fica fixa acima da navegação no celular.
+- **Flags:** um card por grupo, com "＋ Adicionar". Cada linha tem a bolinha de cor, o nome, o identificador, o número de cantos e os botões de editar e excluir (44 px). O modal tem grupo, nome, identificador (gerado do nome), cor (seletor + "Sem cor") e ordem.
+- **Movimentos:** campo + [Adicionar] no topo; lista com o número de pessoas, renomear na própria linha (✓/✕) e excluir desabilitado quando há pessoas.
+- **Publicar no site:** modal que explica que as páginas são geradas de antemão e que a atualização leva alguns minutos. Toast: "Publicação pedida. O site atualiza em alguns minutos."
+- **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Os campos sem backend ficam esmaecidos, com um aviso em `gold-soft` no topo.
+
 ### 4.8 Montar Missa: editor (`/painel/missas/nova`)
 **Desktop**: coluna de momentos à esquerda (cerca de 60%) e painel seletor à direita (cerca de 40%, sticky).
 ```

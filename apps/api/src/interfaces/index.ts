@@ -175,6 +175,13 @@ export interface FileStorage {
   delete(url: string): Promise<void>;
 }
 
+/** Publica o site de novo (build), para cantos e flags alterados aparecerem nas páginas estáticas. */
+export interface SitePublisher {
+  /** false = publicação não configurada neste ambiente. */
+  readonly enabled: boolean;
+  publish(): Promise<void>;
+}
+
 export interface Clock {
   now(): Date;
 }

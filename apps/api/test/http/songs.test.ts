@@ -136,4 +136,21 @@ describe("Cantos", () => {
     const removed = await req("admin", "DELETE", `/admin/songs/${id}/files/audio`);
     expect(removed.json().song.media.audio).toBeNull();
   });
+
+  it("?full=1 traz a letra na listagem (build do site); sem ele, não", async () => {
+    await req("admin", "POST", "/admin/songs", { title: "Com letra", lyrics: "D\n**Aleluia**" });
+    expect((await req(null, "GET", "/songs")).json().songs[0]).not.toHaveProperty("lyrics");
+    expect((await req(null, "GET", "/songs?full=1")).json().songs[0].lyrics).toBe("D\n**Aleluia**");
+  });
+});
+
+describe("Publicar no site", () => {
+  it("admin pede o build (202); músico não pode; sem hook configurado → 501", async () => {
+    expect((await req("admin", "POST", "/admin/site/publish")).statusCode).toBe(202);
+    expect(adapters.site.calls).toBe(1);
+    expect((await req("ana", "POST", "/admin/site/publish")).statusCode).toBe(403);
+    adapters.site.enabled = false;
+    expect((await req("admin", "POST", "/admin/site/publish")).json().error.code).toBe("NOT_CONFIGURED");
+    expect(adapters.site.calls).toBe(1);
+  });
 });

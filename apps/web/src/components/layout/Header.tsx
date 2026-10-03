@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { BookOpen, Home, LayoutDashboard, ListMusic, LogOut, Menu, Search, ShieldCheck, User, X, Info } from "lucide-react";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
-import { initials, logout, useIsAdmin, useSession, useUser } from "@/lib/store";
+import { logout, useIsAdmin, useSession, useUser } from "@/lib/store";
+import { UserAvatar } from "@/components/user/UserAvatar";
 import { useHydrated } from "@/lib/hooks";
 
 const NAV = [
@@ -102,9 +103,9 @@ export function Header() {
                   aria-expanded={menu}
                   aria-haspopup="menu"
                   aria-label="Menu do usuário"
-                  className="grid h-10 w-10 place-items-center rounded-full bg-primary-solid font-serif text-lg font-semibold text-[#FFFDF8]"
+                  className="rounded-full"
                 >
-                  {initials(user.name)}
+                  <UserAvatar name={user.name} photoUrl={user.photoUrl} size={40} />
                 </button>
                 {menu && (
                   <div role="menu" className="animate-fade-in absolute right-0 top-12 w-56 rounded-[16px] border border-border bg-surface p-2 shadow-overlay">
@@ -113,7 +114,7 @@ export function Header() {
                       { href: "/painel", label: "Painel", Icon: LayoutDashboard },
                       { href: "/painel/missas", label: "Minhas Missas", Icon: ListMusic },
                       { href: "/painel/perfil", label: "Meu perfil", Icon: User },
-                      ...(isAdmin ? [{ href: "/painel/admin/usuarios", label: "Usuários (admin)", Icon: ShieldCheck }] : []),
+                      ...(isAdmin ? [{ href: "/painel/admin", label: "Administração", Icon: ShieldCheck }] : []),
                     ].map(({ href, label, Icon }) => (
                       <Link key={href} role="menuitem" href={href} onClick={() => setMenu(false)} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-primary-soft">
                         <Icon size={16} /> {label}

@@ -18,7 +18,8 @@ import {
   Info,
 } from "lucide-react";
 import type { User, UserRole, UserStatus } from "@/lib/types";
-import { admin, initials, useUser, useUsers } from "@/lib/store";
+import { admin, initials, syncAdminUsers, useUser, useUsers } from "@/lib/store";
+import { API_ENABLED, ApiError } from "@/lib/api";
 import { normalize } from "@/lib/search";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -30,7 +31,8 @@ export const ROLE_LABEL: Record<UserRole, string> = { admin: "Administrador", mu
 
 const STATUS: Record<UserStatus, { label: string; cls: string; dot: string }> = {
   ativo: { label: "Ativo", cls: "bg-success/10 text-success", dot: "bg-success" },
-  pendente: { label: "Aguardando e-mail", cls: "bg-gold-soft text-gold-ink", dot: "bg-gold" },
+  // Com a API, a conta nova espera um admin ativar; na demonstração, a confirmação do e-mail.
+  pendente: { label: API_ENABLED ? "Aguardando ativação" : "Aguardando e-mail", cls: "bg-gold-soft text-gold-ink", dot: "bg-gold" },
   bloqueado: { label: "Bloqueado", cls: "bg-danger/10 text-danger", dot: "bg-danger" },
 };
 
@@ -50,9 +52,26 @@ type Dialog =
   | { kind: "delete"; user: User }
   | { kind: "invite" };
 
+/** Com a API, estas ações ainda não têm backend: aparecem desabilitadas. */
+const SOON = API_ENABLED ? "Em breve: ainda não existe na API" : undefined;
+
 export function UsersAdmin() {
   const users = useUsers();
   const me = useUser();
+  const [loading, setLoading] = useState(API_ENABLED);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Com a API, a lista vem do servidor ao abrir a tela.
+  useEffect(() => {
+    if (!API_ENABLED) return;
+    let alive = true;
+    syncAdminUsers()
+      .catch((e) => alive && setLoadError(e instanceof ApiError ? e.message : "Não foi possível carregar os usuários."))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<UserStatus | "todos">("todos");
   const [role, setRole] = useState<UserRole | "todos">("todos");
@@ -91,17 +110,24 @@ export function UsersAdmin() {
           </p>
           <h1 className="font-serif text-[32px] font-semibold text-primary sm:text-[40px]">Usuários</h1>
         </div>
-        <Button onClick={() => setDialog({ kind: "invite" })}>
+        <Button onClick={() => setDialog({ kind: "invite" })} disabled={API_ENABLED} title={SOON}>
           <UserPlus size={18} /> Convidar usuário
         </Button>
       </div>
 
       <div className="mt-4 flex gap-3 rounded-[10px] border border-gold/40 bg-gold-soft p-3 text-sm">
         <Info size={18} className="mt-0.5 shrink-0 text-gold-ink" />
-        <p>
-          <strong>Demonstração:</strong> as alterações ficam salvas só neste navegador. Envio de e-mails, bloqueio real e senhas
-          dependem da API e do banco de dados (veja <code className="font-mono text-xs">planning.md</code>).
-        </p>
+        {API_ENABLED ? (
+          <p>
+            <strong>Servidor:</strong> a lista e a ativação de contas já usam a API. Editar, bloquear, redefinir senha, convidar e excluir ainda
+            não existem no backend e aparecem desabilitados.
+          </p>
+        ) : (
+          <p>
+            <strong>Demonstração:</strong> as alterações ficam salvas só neste navegador. Envio de e-mails, bloqueio real e senhas dependem da
+            API e do banco de dados (veja <code className="font-mono text-xs">planning.md</code>).
+          </p>
+        )}
       </div>
 
       {/* Resumo por status (clicável como filtro) */}
@@ -110,7 +136,7 @@ export function UsersAdmin() {
           [
             ["todos", "Total", Users, "text-primary"],
             ["ativo", "Ativos", CircleCheck, "text-success"],
-            ["pendente", "Aguardando e-mail", Clock, "text-gold-ink"],
+            ["pendente", STATUS.pendente.label, Clock, "text-gold-ink"],
             ["bloqueado", "Bloqueados", Ban, "text-danger"],
           ] as const
         ).map(([id, label, Icon, color]) => (
@@ -154,8 +180,13 @@ export function UsersAdmin() {
       </div>
 
       <p className="mt-4 text-sm text-ink-muted" aria-live="polite">
-        {list.length} {list.length === 1 ? "usuário" : "usuários"}
+        {loading ? "Carregando…" : `${list.length} ${list.length === 1 ? "usuário" : "usuários"}`}
       </p>
+      {loadError && (
+        <p role="alert" className="mt-2 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+          {loadError}
+        </p>
+      )}
 
       {/* Tabela (desktop) */}
       <div className="mt-2 hidden overflow-hidden rounded-[16px] border border-border bg-surface shadow-card lg:block">
@@ -268,16 +299,18 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
       </button>
       {menu && (
         <div role="menu" className="animate-fade-in absolute right-0 top-11 z-20 w-64 rounded-[10px] border border-border bg-surface p-1.5 shadow-overlay">
-          <button role="menuitem" className={item} onClick={run(() => open({ kind: "edit", user }))}>
+          <button role="menuitem" disabled={API_ENABLED} title={SOON} className={item} onClick={run(() => open({ kind: "edit", user }))}>
             <Pencil size={16} /> Editar dados e papel
           </button>
-          <button role="menuitem" className={item} onClick={run(() => open({ kind: "password", user }))}>
+          <button role="menuitem" disabled={API_ENABLED} title={SOON} className={item} onClick={run(() => open({ kind: "password", user }))}>
             <KeyRound size={16} /> Redefinir senha
           </button>
           {user.status === "pendente" && (
             <>
               <button
                 role="menuitem"
+                disabled={API_ENABLED}
+                title={SOON}
                 className={item}
                 onClick={run(() => {
                   admin.resendVerification(user.id);
@@ -289,12 +322,16 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
               <button
                 role="menuitem"
                 className={item}
-                onClick={run(() => {
-                  admin.activate(user.id);
-                  toast(`${user.name} foi ativado(a) manualmente.`);
+                onClick={run(async () => {
+                  try {
+                    await admin.activate(user.id);
+                    toast(API_ENABLED ? `${user.name} já pode entrar.` : `${user.name} foi ativado(a) manualmente.`);
+                  } catch (e) {
+                    toast(e instanceof ApiError ? e.message : "Não foi possível ativar agora.");
+                  }
                 })}
               >
-                <CircleCheck size={16} /> Ativar sem confirmação
+                <CircleCheck size={16} /> {API_ENABLED ? "Ativar acesso" : "Ativar sem confirmação"}
               </button>
             </>
           )}
@@ -302,6 +339,8 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
           {user.status === "bloqueado" ? (
             <button
               role="menuitem"
+              disabled={API_ENABLED}
+              title={SOON}
               className={item}
               onClick={run(() => {
                 admin.unblock(user.id);
@@ -311,11 +350,11 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
               <ShieldCheck size={16} /> Liberar acesso
             </button>
           ) : (
-            <button role="menuitem" disabled={isMe} title={isMe ? "Você não pode bloquear a si mesmo" : undefined} className={`${item} text-danger`} onClick={run(() => open({ kind: "block", user }))}>
+            <button role="menuitem" disabled={isMe || API_ENABLED} title={SOON ?? (isMe ? "Você não pode bloquear a si mesmo" : undefined)} className={`${item} text-danger`} onClick={run(() => open({ kind: "block", user }))}>
               <Ban size={16} /> Bloquear acesso
             </button>
           )}
-          <button role="menuitem" disabled={isMe} className={`${item} text-danger hover:bg-danger/10`} onClick={run(() => open({ kind: "delete", user }))}>
+          <button role="menuitem" disabled={isMe || API_ENABLED} title={SOON} className={`${item} text-danger hover:bg-danger/10`} onClick={run(() => open({ kind: "delete", user }))}>
             <Trash2 size={16} /> Excluir usuário
           </button>
         </div>

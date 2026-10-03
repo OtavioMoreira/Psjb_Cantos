@@ -1,6 +1,7 @@
 "use client";
 
 import { BASE_PATH } from "./routes";
+import type { ApiFlag, ApiSong, FlagGroup } from "./apiSongs";
 
 /**
  * Cliente da API (apps/api). Ligado quando o build tem API_URL (next.config injeta NEXT_PUBLIC_USE_API).
@@ -81,11 +82,13 @@ function keep(r: AuthResult) {
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
+  // FormData (upload) define o próprio content-type com o boundary.
+  const json = init.body && !(init.body instanceof FormData);
   try {
     res = await fetch(`${BASE_PATH}/api${path}`, {
       ...init,
       credentials: "same-origin",
-      headers: { ...(init.body ? { "content-type": "application/json" } : {}), ...init.headers },
+      headers: { ...(json ? { "content-type": "application/json" } : {}), ...init.headers },
     });
   } catch {
     throw new ApiError(0, "NETWORK", "Sem conexão com o servidor. Verifique a internet e tente de novo.");
@@ -144,6 +147,43 @@ export const api = {
     const r = await authed<{ users: (ApiPerson & { email: string; movement: string | null })[] }>(`/users/search?q=${encodeURIComponent(q)}&limit=20`);
     return r.users;
   },
+  async uploadPhoto(file: File) {
+    const body = new FormData();
+    body.append("photo", file);
+    return (await authed<{ user: ApiUser }>("/me/photo", { method: "PUT", body })).user;
+  },
+  admin: {
+    users: async () => (await authed<{ users: ApiUser[] }>("/admin/users")).users,
+    activate: async (id: string) => (await authed<{ user: ApiUser }>(`/admin/users/${id}/activate`, { method: "PATCH" })).user,
+    songs: (q: { q?: string; flags?: number[]; page?: number; pageSize?: number } = {}) => {
+      const sp = new URLSearchParams();
+      if (q.q) sp.set("q", q.q);
+      if (q.flags?.length) sp.set("flags", q.flags.join(","));
+      sp.set("page", String(q.page ?? 1));
+      sp.set("pageSize", String(q.pageSize ?? 50));
+      return authed<{ songs: ApiSong[]; total: number; page: number; pageSize: number }>(`/admin/songs?${sp}`);
+    },
+    song: async (id: number) => (await authed<{ song: ApiSong }>(`/admin/songs/${id}`)).song,
+    createSong: async (body: SongInput) => (await authed<{ song: ApiSong }>("/admin/songs", { method: "POST", body: JSON.stringify(body) })).song,
+    updateSong: async (id: number, body: Partial<SongInput>) =>
+      (await authed<{ song: ApiSong }>(`/admin/songs/${id}`, { method: "PATCH", body: JSON.stringify(body) })).song,
+    deleteSong: (id: number) => authed<void>(`/admin/songs/${id}`, { method: "DELETE" }),
+    uploadSongFile: async (id: number, kind: SongFileKind, file: File) => {
+      const body = new FormData();
+      body.append("file", file);
+      return (await authed<{ song: ApiSong }>(`/admin/songs/${id}/files/${kind}`, { method: "PUT", body })).song;
+    },
+    removeSongFile: async (id: number, kind: SongFileKind) => (await authed<{ song: ApiSong }>(`/admin/songs/${id}/files/${kind}`, { method: "DELETE" })).song,
+    flags: async () => (await call<{ flags: (ApiFlag & { songs: number })[] }>("/flags")).flags,
+    createFlag: async (body: FlagInput) => (await authed<{ flag: ApiFlag }>("/admin/flags", { method: "POST", body: JSON.stringify(body) })).flag,
+    updateFlag: async (id: number, body: FlagInput) => (await authed<{ flag: ApiFlag }>(`/admin/flags/${id}`, { method: "PUT", body: JSON.stringify(body) })).flag,
+    deleteFlag: (id: number) => authed<void>(`/admin/flags/${id}`, { method: "DELETE" }),
+    movements: async () => (await call<{ movements: { id: number; name: string; members: number }[] }>("/movements")).movements,
+    createMovement: (name: string) => authed<unknown>("/admin/movements", { method: "POST", body: JSON.stringify({ name }) }),
+    renameMovement: (id: number, name: string) => authed<unknown>(`/admin/movements/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    deleteMovement: (id: number) => authed<void>(`/admin/movements/${id}`, { method: "DELETE" }),
+    publishSite: () => authed<{ ok: true }>("/admin/site/publish", { method: "POST" }),
+  },
   masses: {
     list: async () => (await authed<{ masses: ApiMass[] }>("/masses")).masses,
     get: async (id: string) => (await authed<{ mass: ApiMass }>(`/masses/${id}`)).mass,
@@ -158,3 +198,25 @@ export const api = {
     join: async (token: string) => (await authed<{ mass: ApiMass }>("/masses/join", { method: "POST", body: JSON.stringify({ token }) })).mass,
   },
 };
+
+export type SongFileKind = "cifra-pdf" | "partitura-pdf" | "audio";
+
+export interface SongInput {
+  number: number | null;
+  slug?: string;
+  title: string;
+  composer: string | null;
+  key: string | null;
+  lyrics: string;
+  media: { audio: string | null; audiomack: string | null; cifraPdf: string | null; partituraPdf: string | null };
+  flagIds: number[];
+  active: boolean;
+}
+
+export interface FlagInput {
+  group: FlagGroup;
+  slug: string;
+  name: string;
+  color: string | null;
+  position: number;
+}

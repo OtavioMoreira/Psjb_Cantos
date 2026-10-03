@@ -326,6 +326,15 @@ export class MemoryStorage implements FileStorage {
   }
 }
 
+/** Publicação do site falsa: conta quantas vezes foi pedida. */
+export class FakePublisher {
+  calls = 0;
+  constructor(public enabled = true) {}
+  async publish() {
+    this.calls++;
+  }
+}
+
 export function makeTestContainer(envOverrides: Record<string, string> = {}) {
   const env = loadEnv({ NODE_ENV: "test", ...envOverrides });
   const movements = new InMemoryMovements();
@@ -338,6 +347,7 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     masses: InMemoryMasses;
     songs: InMemorySongs;
     flags: InMemoryFlags;
+    site: FakePublisher;
     storage: MemoryStorage;
   } = {
     users,
@@ -346,6 +356,7 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     masses: new InMemoryMasses(users),
     songs: new InMemorySongs(flags),
     flags,
+    site: new FakePublisher(),
     hasher: fakeHasher,
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: new MemoryStorage(),

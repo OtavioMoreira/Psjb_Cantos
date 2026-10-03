@@ -28,6 +28,8 @@ import {
   UpdateSongAction,
   UploadSongFileAction,
 } from "./actions/songs/SongActions.js";
+import { PublishSiteAction } from "./actions/songs/PublishSiteAction.js";
+import { DeployHookPublisher } from "./services/DeployHookPublisher.js";
 import { CreateFlagAction, DeleteFlagAction, ListFlagsAction, UpdateFlagAction } from "./actions/songs/FlagActions.js";
 import { CreateMovementAction, DeleteMovementAction, ListMovementsAction, RenameMovementAction } from "./actions/movements/MovementActions.js";
 import type { Env } from "./config/env.js";
@@ -40,6 +42,7 @@ import type {
   MovementRepository,
   PasswordHasher,
   SessionRepository,
+  SitePublisher,
   SongRepository,
   TokenService,
   UserRepository,
@@ -63,6 +66,7 @@ export interface Adapters {
   masses: MassRepository;
   songs: SongRepository;
   flags: FlagRepository;
+  site: SitePublisher;
   hasher: PasswordHasher;
   tokens: TokenService;
   storage: FileStorage;
@@ -111,6 +115,7 @@ export function buildContainer(env: Env, adapters: Adapters) {
       createFlag: new CreateFlagAction(deps),
       updateFlag: new UpdateFlagAction(deps),
       deleteFlag: new DeleteFlagAction(deps),
+      publishSite: new PublishSiteAction(deps),
     },
   };
 }
@@ -130,6 +135,7 @@ export function createAdapters(env: Env): Adapters & { pool: Pool } {
     masses: new PgMassRepository(pool),
     songs: new PgSongRepository(pool),
     flags: new PgFlagRepository(pool),
+    site: new DeployHookPublisher(env.SITE_DEPLOY_HOOK_URL),
     hasher: new Argon2PasswordHasher(),
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: env.BLOB_READ_WRITE_TOKEN

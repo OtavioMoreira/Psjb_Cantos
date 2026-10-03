@@ -84,5 +84,7 @@ export async function routes(app: FastifyInstance, { container }: { container: C
     adminScope.post("/flags", songs.createFlag);
     adminScope.put("/flags/:id", songs.updateFlag);
     adminScope.delete("/flags/:id", songs.removeFlag);
+
+    adminScope.post("/site/publish", strict(10), songs.publishSite);
   }, { prefix: "/admin" });
 }

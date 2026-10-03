@@ -12,6 +12,7 @@ export type ErrorCode =
   | "SONG_TAKEN"
   | "SONG_IN_USE"
   | "FLAG_TAKEN"
+  | "NOT_CONFIGURED"
   | "UNAUTHORIZED"
   | "FORBIDDEN"
   | "NOT_FOUND"
@@ -32,6 +33,7 @@ const STATUS: Record<ErrorCode, number> = {
   SONG_TAKEN: 409,
   SONG_IN_USE: 409,
   FLAG_TAKEN: 409,
+  NOT_CONFIGURED: 501,
   INVALID_FILE: 415,
 };
 
