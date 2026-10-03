@@ -1,0 +1,76 @@
+name: Testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (unitários, integração e Postman)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: psjb
+          POSTGRES_PASSWORD: psjb
+          POSTGRES_DB: psjb_cantos
+          POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale-provider=icu --icu-locale=pt-BR
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U psjb -d psjb_cantos"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://psjb:psjb@localhost:5432/psjb_cantos
+      TEST_DATABASE_URL: postgres://psjb:psjb@localhost:5432/psjb_cantos_test
+      # Em CI os testes de integração não podem ser pulados por falta de banco.
+      REQUIRE_TEST_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck -w api
+      - name: Testes (unitários + integração com Postgres)
+        run: npm test -w api
+      - name: Banco de desenvolvimento (migrations, seed e cantos)
+        run: |
+          npm run db:migrate -w api
+          npm run db:seed -w api
+          npm run db:import-songs -w api
+      - name: Coleção do Postman contra a API rodando
+        run: |
+          npx tsx apps/api/src/server.ts > api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:3333/api/health && break; sleep 1; done
+          npx --yes newman@6 run docs/postman/psjb-cantos.postman_collection.json \
+            -e docs/postman/psjb-local.postman_environment.json --working-dir docs/postman
+      - name: Log da API (se falhar)
+        if: failure()
+        run: cat api.log || true
+
+  web:
+    name: Front (tipos, lint e regras)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        working-directory: apps/web
+        run: npx tsc --noEmit
+      - name: Lint
+        working-directory: apps/web
+        run: npx eslint src test
+      - name: Testes das regras (calendário, cifra, busca)
+        run: npm test -w web

@@ -6,7 +6,7 @@ import { Copy, LogOut, MoreHorizontal, Pencil, Tablet, Trash2, Users } from "luc
 import { useEffect, useRef, useState } from "react";
 import type { Mass } from "@/lib/types";
 import { SEASON_STYLE, formatDateShort } from "@/lib/liturgy";
-import { deleteMass, duplicateMass, leaveMass, massAccess, saveMass, useSession, useUsers } from "@/lib/store";
+import { deleteMass, duplicateMass, leaveMass, massAccess, saveMass, setMassShares, usePeopleLookup, useSession } from "@/lib/store";
 import { toast } from "@/components/ui/Toast";
 import { MassPdfButton } from "./MassPdfButton";
 import { ShareMassButton, SharedAvatars } from "./ShareMass";
@@ -24,10 +24,10 @@ export function MassCard({ mass }: { mass: Mass }) {
   const ref = useRef<HTMLDivElement>(null);
   const { filled, total, songs } = massProgress(mass);
   const { userId } = useSession();
-  const users = useUsers();
+  const person = usePeopleLookup();
   const owner = massAccess(mass, userId) === "dono";
   const shared = mass.sharedWith ?? [];
-  const ownerName = users.find((u) => u.id === mass.ownerId)?.name ?? "outra pessoa";
+  const ownerName = person(mass.ownerId ?? "")?.name ?? "outra pessoa";
   const color = mass.season ? SEASON_STYLE[mass.season].color : "var(--border)";
 
   useEffect(() => {
@@ -136,7 +136,7 @@ export function MassCard({ mass }: { mass: Mass }) {
           </Link>
           <MassPdfButton mass={mass} compact className="min-h-0 py-2" />
           {owner && (
-            <ShareMassButton mass={mass} compact className="min-h-0 py-2" onChange={(sharedWith) => saveMass({ ...mass, sharedWith })} />
+            <ShareMassButton mass={mass} compact className="min-h-0 py-2" onChange={(ids) => setMassShares(mass.id, ids)} />
           )}
         </div>
       </div>

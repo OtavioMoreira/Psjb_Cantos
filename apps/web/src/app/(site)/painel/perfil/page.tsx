@@ -4,6 +4,7 @@ import { useState } from "react";
 import { changePassword, initials, setPrefs, updateUser, usePrefs, useUser } from "@/lib/store";
 import type { User } from "@/lib/types";
 import { Field } from "@/components/ui/Field";
+import { MovementSelect } from "@/components/user/MovementSelect";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "@/components/ui/Toast";
@@ -27,7 +28,7 @@ export default function PerfilPage() {
       <div className="mt-6 space-y-5">
         {/* key força reinicializar o formulário quando o usuário salvo muda */}
         <PersonalCard key={user.name + user.email} user={user} />
-        <MinistryCard key={user.ministry + user.parish + user.instrument} user={user} />
+        <MovementCard key={user.movement + user.parish + user.instrument} user={user} />
         <SecurityCard />
         <PrefsCard />
       </div>
@@ -77,23 +78,27 @@ function PersonalCard({ user }: { user: User }) {
   );
 }
 
-function MinistryCard({ user }: { user: User }) {
+function MovementCard({ user }: { user: User }) {
   const [parish, setParish] = useState(user.parish);
-  const [ministry, setMinistry] = useState(user.ministry);
+  const [movement, setMovement] = useState({ id: user.movementId, name: user.movement });
   const [instrument, setInstrument] = useState(user.instrument ?? "");
-  const dirty = parish !== user.parish || ministry !== user.ministry || instrument !== (user.instrument ?? "");
+  const dirty = parish !== user.parish || movement.id !== user.movementId || instrument !== (user.instrument ?? "");
   return (
-    <Card title="Paróquia e ministério">
+    <Card title="Paróquia e movimento">
       <form
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          updateUser({ parish, ministry, instrument });
-          toast("Ministério atualizado.");
+          updateUser({ parish, movement: movement.name, movementId: movement.id, instrument });
+          toast("Dados atualizados.");
         }}
       >
         <Field label="Paróquia" name="parish" value={parish} onChange={(e) => setParish(e.target.value)} />
-        <Field label="Ministério" name="ministry" value={ministry} onChange={(e) => setMinistry(e.target.value)} />
+        <MovementSelect
+          label="Movimento"
+          value={movement.id}
+          onChange={(m) => setMovement({ id: m?.id ?? null, name: m?.name ?? "" })}
+        />
         <div>
           <label htmlFor="instrument" className="mb-1.5 block text-sm font-medium">
             Instrumento / voz

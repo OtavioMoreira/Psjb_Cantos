@@ -62,8 +62,8 @@ export interface Taxonomy {
   themes: Category[];
 }
 
-export type UserRole = "admin" | "coordenador" | "musico";
-/** pendente = aguardando confirmação de e-mail. */
+export type UserRole = "admin" | "musico";
+/** pendente = aguardando um admin ativar (com a API) ou a confirmação do e-mail (demonstração). */
 export type UserStatus = "ativo" | "pendente" | "bloqueado";
 
 export interface User {
@@ -72,9 +72,13 @@ export interface User {
   email: string;
   role: UserRole;
   status: UserStatus;
-  ministry: string;
+  /** Nome do movimento (vazio = nenhum). */
+  movement: string;
+  movementId: number | null;
   parish: string;
   instrument?: string;
+  phone?: string | null;
+  photoUrl?: string | null;
   createdAt: string;
   emailVerifiedAt: string | null;
   lastLoginAt: string | null;
@@ -107,4 +111,6 @@ export interface Mass {
   ownerId?: string;
   /** IDs dos usuários com quem a missa foi compartilhada. */
   sharedWith?: string[];
+  /** Com a API: token do link de convite (só o dono recebe). */
+  shareToken?: string | null;
 }

@@ -22,10 +22,11 @@ import { admin, initials, useUser, useUsers } from "@/lib/store";
 import { normalize } from "@/lib/search";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { MovementSelect } from "@/components/user/MovementSelect";
 import { Modal } from "@/components/ui/Modal";
 import { toast } from "@/components/ui/Toast";
 
-export const ROLE_LABEL: Record<UserRole, string> = { admin: "Administrador", coordenador: "Coordenador", musico: "Músico" };
+export const ROLE_LABEL: Record<UserRole, string> = { admin: "Administrador", musico: "Músico" };
 
 const STATUS: Record<UserStatus, { label: string; cls: string; dot: string }> = {
   ativo: { label: "Ativo", cls: "bg-success/10 text-success", dot: "bg-success" },
@@ -72,7 +73,7 @@ export function UsersAdmin() {
     return users
       .filter((u) => status === "todos" || u.status === status)
       .filter((u) => role === "todos" || u.role === role)
-      .filter((u) => !nq || normalize(`${u.name} ${u.email} ${u.ministry}`).includes(nq))
+      .filter((u) => !nq || normalize(`${u.name} ${u.email} ${u.movement}`).includes(nq))
       .sort((a, b) => {
         const order = { pendente: 0, bloqueado: 1, ativo: 2 };
         return order[a.status] - order[b.status] || a.name.localeCompare(b.name, "pt-BR");
@@ -133,7 +134,7 @@ export function UsersAdmin() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nome, e-mail ou ministério"
+            placeholder="Buscar por nome, e-mail ou movimento"
             className="h-11 w-full rounded-[10px] border border-border bg-surface pl-10 pr-3 outline-none focus:border-primary focus:ring-2 focus:ring-gold/40"
           />
         </label>
@@ -230,7 +231,7 @@ function UserIdentity({ user, isMe }: { user: User; isMe: boolean }) {
           {isMe && <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-ink-muted">você</span>}
         </p>
         <p className="truncate text-sm text-ink-muted">{user.email}</p>
-        {user.ministry && <p className="truncate text-xs text-ink-muted">{user.ministry}</p>}
+        {user.movement && <p className="truncate text-xs text-ink-muted">{user.movement}</p>}
       </div>
     </div>
   );
@@ -324,7 +325,7 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
 }
 
 function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClose: () => void }) {
-  const [form, setForm] = useState({ name: user.name, email: user.email, role: user.role, ministry: user.ministry });
+  const [form, setForm] = useState({ name: user.name, email: user.email, role: user.role, movement: user.movement, movementId: user.movementId });
   const valid = form.name.trim().length >= 3 && /^\S+@\S+\.\S+$/.test(form.email);
   return (
     <Modal
@@ -358,7 +359,12 @@ function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClos
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           hint="Ao trocar o e-mail, a API enviará uma nova confirmação."
         />
-        <Field label="Ministério" name="ministry" value={form.ministry} onChange={(e) => setForm({ ...form, ministry: e.target.value })} />
+        <MovementSelect
+          id="edit-movement"
+          label="Movimento"
+          value={form.movementId}
+          onChange={(m) => setForm({ ...form, movement: m?.name ?? "", movementId: m?.id ?? null })}
+        />
         <div>
           <label htmlFor="role" className="mb-1.5 block text-sm font-medium">
             Papel
@@ -377,7 +383,7 @@ function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClos
             ))}
           </select>
           <p className="mt-1.5 text-sm text-ink-muted">
-            {isMe ? "Você não pode alterar o próprio papel." : "Administrador gerencia usuários; Coordenador monta e compartilha missas; Músico usa o repertório."}
+            {isMe ? "Você não pode alterar o próprio papel." : "Administrador gerencia usuários; Músico usa o repertório e monta e compartilha missas."}
           </p>
         </div>
       </div>

@@ -24,10 +24,24 @@ Estas são as regras combinadas com o cliente. As marcadas **(futuro)** dependem
   - Os marcadores `**` nunca aparecem na tela nem entram na busca.
 - **Recursos ausentes:** a aba correspondente fica desabilitada ("Partitura ainda não disponível").
 - **Dados de exemplo:** os 121 cantos reais em `data/songs.json` foram extraídos da primeira página de 14 categorias do site antigo, e as mídias apontam para os arquivos de lá.
+- **Cantos no banco (API, 03/10/2026):** tabela `songs`, importada do `data/songs.json` por `npm run db:import-songs -w api`, **mantendo os ids** (as missas guardam `songId`). O site público ainda lê o JSON; a API já é a base para o admin de cantos.
+  - **Só admin** cria, edita e exclui (`/api/admin/songs`). Campos: número, título, autor, tom, letra com cifra, mídias e flags.
+  - **Arquivos:** PDF da cifra, PDF da partitura e áudio (MP3, M4A ou OGG), **até 4 MB cada** (limite das Functions da Vercel). O tipo é conferido pelos bytes. Trocar o arquivo apaga o anterior. Também dá para usar links externos (Audiomack, site antigo).
+  - **Slug:** gerado na criação (`NNN-titulo` ou só o título) e **não muda ao trocar o título**, para os links continuarem valendo.
+  - **Canto em uso não é excluído:** se estiver em alguma missa, a API recusa (409 `SONG_IN_USE`). Para tirar do repertório, **oculte** (`active: false`): some do público, mas o admin e as missas continuam vendo.
+  - **Missas** só aceitam `songId` que exista no banco (400 com `unknownSongIds`).
   - As categorias **Velas** e **Preces** não existem no site antigo. Para ilustrar, os cantos do Espírito Santo foram marcados como Velas e os de Paz como Preces. Revisar na migração real.
 
 ## 3. Categorias (taxonomia)
-A categoria única do site antigo virou **4 eixos independentes**, e um canto pode ter **vários valores em cada eixo**:
+A categoria única do site antigo virou **4 eixos independentes**, e um canto pode ter **vários valores em cada eixo**.
+
+**Flags (API):** cada valor de eixo é uma **flag** (tabela `flags`) de um **grupo**: `momento`, `tempo`, `ano`, `tema` ou `outro`. Um canto pode ter **várias flags, inclusive várias do mesmo grupo** (ex.: Ano A e Ano B; Advento e Natal).
+- **Gestão:** só admin cria, edita ou exclui (`/api/admin/flags`), por exemplo "Ano A" no grupo `ano`. O `slug` é único dentro do grupo e a cor é opcional (#RRGGBB).
+- **Excluir uma flag** tira a etiqueta dos cantos, sem apagar os cantos.
+- **Origem:** a importação cria as flags a partir do `data/categories.json` (24 flags).
+- **Filtro** `GET /api/songs?flags=1,2,3`: mesma regra do site, OU dentro do grupo e E entre grupos. A busca `q` ignora acento (`unaccent`) e, se for só número, procura pelo número do canto.
+
+Os eixos:
 - **Momento da Missa:** Velas, Entrada, Ato Penitencial, Glória, Salmo, Aclamação, Preces da Comunidade, Ofertório, Santo, Cordeiro, Comunhão, Saída.
 - **Tempo litúrgico** (cada um com sua cor):
 
@@ -122,17 +136,33 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
     - A cifra usa fonte monoespaçada, com a mesma regra de quebra da tela, e acorde e letra nunca ficam em páginas diferentes.
   - **Rodapé em todas as páginas:** nome da missa, data e "página X / N".
   - **Arquivo:** `missa-<nome>-<aaaa-mm-dd>.pdf`, formato A4.
-- **Onde fica salvo:** Fase 1 no `localStorage` do aparelho. **(futuro)** Na API, com sincronia entre computador e tablet.
+- **Onde fica salvo:** no front, ainda no `localStorage` do aparelho. **A API já tem as rotas** (`/api/masses`, ver `planning.md` §5.2), mas as telas ainda não usam:
+  - os momentos e cantos (`slots`) são salvos **inteiros** num campo JSON, porque o editor salva tudo a cada alteração;
+  - `PUT` substitui a missa inteira e `PATCH` muda só os campos enviados;
+  - o tom de cada canto vai de −6 a +5, e `songId` é o id do canto em `data/songs.json` (os cantos ainda não estão no banco);
+  - a listagem filtra por `when=upcoming|past|all`, com "hoje" no fuso de Brasília; missa sem data conta como próxima.
 - **Compartilhar com a equipe:**
-  - **Quem compartilha:** o **dono** da missa (quem a criou), **qualquer que seja o papel** (Administrador, Coordenador ou Músico).
-  - **Como:** o botão "Compartilhar" fica no editor (na barra de baixo, só o ícone no celular) e no card de "Minhas Missas". Ele abre um modal com **seleção múltipla e busca sem acento** por nome, e-mail, ministério ou papel. As pessoas escolhidas aparecem como chips removíveis ("Com acesso (N)"), e o botão salva com "Compartilhar com N pessoas".
+  - **Quem compartilha:** o **dono** da missa (quem a criou), **qualquer que seja o papel** (Administrador ou Músico).
+  - **Como:** o botão "Compartilhar" fica no editor (na barra de baixo, só o ícone no celular) e no card de "Minhas Missas". Ele abre um modal com **seleção múltipla e busca sem acento** por nome, e-mail, movimento ou papel. As pessoas escolhidas aparecem como chips removíveis ("Com acesso (N)"), e o botão salva com "Compartilhar com N pessoas".
   - **Quem aparece na lista:** só contas **ativas**, sem o próprio dono. Pendentes e bloqueados não aparecem.
   - **O que a pessoa pode fazer:** vê a missa em "Minhas Missas", **edita os cantos**, abre no Modo Missa e baixa o PDF. **Só o dono** exclui a missa e muda o compartilhamento.
   - **Aviso na tela:** o card e o editor mostram "Compartilhada com N pessoas" (com as iniciais) para o dono e "Compartilhada por {nome}" para quem recebeu.
   - **Sair:** quem recebeu pode escolher "Sair desta missa" (no menu ⋯, com "Desfazer"). A missa continua existindo para o dono.
   - **Duplicar:** a cópia é de quem duplicou e começa **sem compartilhamento**.
+  - **Link de convite** (com a API): é a opção automática, além de escolher as pessoas na lista.
+    - O dono clica em **"Gerar link de convite"** no modal Compartilhar. Aparecem **Copiar link** e, no celular, **Enviar** (abre o compartilhamento do aparelho, como o WhatsApp). O link é `/convite?token=…`.
+    - **Quem abre o link:** se não estiver logado, vai para o login (com o aviso "Você recebeu o convite de uma missa") e volta sozinho. **Já logado, vira convidado na hora** e cai direto no editor da missa.
+    - Quem já era convidado, ou o próprio dono, só é levado à missa.
+    - **O link é sempre o mesmo** até o dono clicar em **"Desativar link"**. Desativado, ele para de funcionar, mas quem já entrou continua convidado. Gerar de novo cria outro link.
+    - **Só o dono** gera ou desativa o link. O token tem 192 bits e fica guardado em texto (não só o hash) para o dono poder copiar de novo; ele só dá acesso a esta missa.
+    - **Conta pendente** não consegue entrar, então precisa abrir o link de novo depois que for ativada.
   - **Missas antigas sem dono** (criadas antes da regra) valem como da pessoa que está usando o aparelho.
-  - **Fase 1:** a lista de pessoas fica salva na própria missa, no `localStorage` (`ownerId` e `sharedWith`), então o compartilhamento só aparece para quem entra **no mesmo aparelho**. **(futuro)** Na API, a pessoa recebe um e-mail avisando e vê a missa em qualquer aparelho; a permissão é conferida no servidor (403 para quem não é dono nem convidado).
+  - **Fase 1:** a lista de pessoas fica salva na própria missa, no `localStorage` (`ownerId` e `sharedWith`), então o compartilhamento só aparece para quem entra **no mesmo aparelho**.
+  - **Na API (já implementado):**
+    - a permissão é conferida no servidor: 403 para quem não é dono nem convidado (**inclusive admin**, porque a missa é pessoal) e 404 se a missa não existe;
+    - `PUT /api/masses/:id/shares { userIds }` substitui a lista, recusa contas não ativas (400 com `invalidUserIds`) e ignora o próprio dono;
+    - quem recebeu sai com `DELETE /api/masses/:id/shares/me`; o dono recebe 403 nessa rota.
+  - **(futuro)** Avisar por e-mail quem recebeu a missa.
 
 ## 8. Modo Missa (`/missa?id=`): modo de apresentação na missa
 - **Objetivo:** tela cheia e visual objetivo, com **letra preta, fundo branco e refrão em negrito**. Não tem capitular nem cores de destaque na letra; o número da estrofe é só negrito.
@@ -163,29 +193,39 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
 - **(futuro)** Funcionar offline (PWA) e mostrar o player de áudio do canto atual.
 
 ## 9. Usuários: papéis e status
-- **Papéis:**
-  - **Administrador:** gerencia usuários e usa tudo.
-  - **Coordenador:** monta e compartilha missas (compartilhar vale para todos os papéis).
-  - **Músico:** usa o repertório, monta e compartilha as próprias missas. É o papel padrão no cadastro.
-- **Status:**
-  - **pendente** (aparece como "Aguardando e-mail"): criou conta ou foi convidado e ainda não confirmou o e-mail. **Não consegue entrar.**
+- **Papéis:** só dois (o papel Coordenador foi removido em 03/10/2026). Ficam na tabela `roles` e se ligam ao usuário por `user_roles`, então uma pessoa pode ter mais de um.
+  - **Administrador** (`admin`): gerencia usuários e usa tudo. Só ele acessa as seções internas de gestão de usuários.
+  - **Músico** (`musico`): usa o repertório, monta e compartilha as próprias missas. É o papel padrão no cadastro.
+- **Autorização no servidor:** as rotas de gestão (`/api/admin/*`) passam pelos middlewares `authenticate` + `requireRole("admin")`. Músico recebe **403**, sem login **401**. Esconder o menu no front é só conforto, não segurança.
+- **Status** (na API: `pending`, `active`, `blocked`):
+  - **pendente**: criou a conta e **aguarda um admin ativar** ("Aguardando ativação"). **Não consegue entrar.** No modo demonstração (sem API), pendente ainda significa "aguardando confirmar o e-mail".
   - **ativo:** consegue entrar.
   - **bloqueado:** não consegue entrar. Na tentativa de login, vê o **motivo** definido pelo admin e a orientação "Procure a coordenação da paróquia".
-- **Contas de demonstração:** admin `admin@psjb.org.br` / `admin123` e músico `musica@psjb.org.br` / `cantos123`.
+- **Contas de demonstração** (modo sem API): admin `admin@psjb.org.br` / `admin123` e músico `musica@psjb.org.br` / `cantos123`.
+- **Conta de teste da API:** `superadmin@psjb.org.br` / `123456`, papéis admin + músico, criada pelo seed (`npm run db:seed -w api`). A senha fura a regra de 8+ caracteres de propósito; em produção o seed exige `SEED_ADMIN_PASSWORD`.
+- **Dados do usuário:** nome, e-mail (é o login), senha, telefone (opcional), foto (opcional) e movimento (opcional).
+- **Movimentos** (substituíram o texto livre "ministério" em 03/10/2026): ficam na tabela `movements` e cada pessoa participa de **no máximo um** (`users.movement_id`).
+  - A lista é pública (`GET /api/movements`) e aparece como seletor no cadastro, no perfil e no admin.
+  - Só admin cria, renomeia ou exclui (`/api/admin/movements`). Os nomes são únicos sem diferenciar maiúsculas.
+  - **Excluir um movimento com pessoas é bloqueado** (409 `MOVEMENT_IN_USE`): primeiro troque o movimento delas.
+  - O seed cria uma lista inicial (Ministério de Música, RCC, Pastoral da Juventude...) que a coordenação deve revisar.
 
 ## 10. Login, cadastro, confirmação e recuperação
 - **`/entrar`:** abas **Entrar** e **Criar conta** (`?aba=criar`).
 - **Mensagens de erro no login:**
   - Credenciais inválidas: genérica ("E-mail ou senha não conferem").
-  - Conta pendente: oferece "Reenviar e-mail de confirmação".
+  - Conta pendente: com a API, "Sua conta ainda não foi ativada. Assim que a coordenação liberar, você consegue entrar." (403 `ACCOUNT_PENDING`). No modo demonstração, oferece "Reenviar e-mail de confirmação".
+  - O status só é revelado para quem acertou a senha.
   - Conta bloqueada: mostra o motivo.
 - **Cadastro:**
-  - Nome (3+ caracteres), e-mail válido, ministério (opcional), senha e confirmação.
+  - Nome (3+ caracteres), e-mail válido, telefone/WhatsApp (opcional, 8–20 dígitos e símbolos), movimento (opcional, da lista), senha e confirmação.
   - A senha precisa de **8 ou mais caracteres, com letras e números**, e há medidor de força.
   - Aceite dos termos e da privacidade (LGPD) é obrigatório.
   - **reCAPTCHA** obrigatório.
-  - A conta nasce **pendente**, com papel músico.
-- **Confirmação de e-mail:**
+  - A conta nasce **pendente**, com papel músico, e **um admin ativa depois** (`PATCH /api/admin/users/:id/activate`). Por enquanto não há e-mail de confirmação.
+  - Depois de enviar, a tela mostra "Conta criada!" explicando que a coordenação vai liberar o acesso.
+  - E-mail já cadastrado: 409 "Já existe uma conta com este e-mail". **(futuro)** Com o serviço de e-mail, a resposta passa a ser sempre a mesma.
+- **Confirmação de e-mail** (modo demonstração; volta com o serviço de e-mail):
   - Tela "Confirme seu e-mail" com reenvio limitado a **1 a cada 60 s**.
   - O link `/confirmar-email?token=` **ativa a conta automaticamente** (pendente → ativo).
   - Token inválido ou usado mostra "Link inválido ou expirado".
@@ -209,8 +249,9 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
   - O login compara usuário e e-mail sem diferenciar maiúsculas e acentos, como no site antigo, e a API aplica `trim` na entrada. Os detalhes estão em `db/postgres/CONVERSAO.md`.
 
 ## 11. Perfil (`/painel/perfil`)
-- **Dados editáveis:** nome, e-mail, paróquia, ministério e instrumento/voz.
+- **Dados editáveis:** nome, e-mail, paróquia, movimento e instrumento/voz.
 - **Troca de senha:** exige a senha atual.
+- **Foto:** JPG, PNG ou WebP de até 2 MB (`PUT /api/me/photo`, campo `photo`). O tipo é conferido pelos bytes do arquivo, não pelo nome. Cada troca gera uma URL nova e apaga a foto anterior. Ainda não há tela para enviar a foto.
 - **Preferências:** tema (claro, escuro ou sistema) e sustenidos/bemóis.
 - **(futuro)** Trocar o e-mail exige confirmar o novo endereço, e o antigo continua valendo até lá.
 
@@ -218,10 +259,10 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
 - **Acesso:** o menu "Usuários" só aparece para admins. Outros papéis veem "Acesso restrito". **(futuro)** A API também recusa com 403, porque esconder o menu não é segurança.
 - **Visão geral:**
   - Resumo clicável: Total, Ativos, Aguardando e-mail e Bloqueados.
-  - Busca por nome, e-mail ou ministério, e filtro por papel.
+  - Busca por nome, e-mail ou movimento, e filtro por papel.
   - A lista mostra primeiro os pendentes, depois os bloqueados e por fim os ativos.
 - **Ações:**
-  - **Editar** nome, e-mail, ministério e papel.
+  - **Editar** nome, e-mail, movimento e papel.
   - **Bloquear** com motivo, com "Desfazer". **Liberar** volta para ativo se o e-mail já foi confirmado, senão para pendente.
   - **Ativar sem confirmação** e **reenviar confirmação**: só para pendentes.
   - **Redefinir senha:** "Enviar link por e-mail" (recomendado) ou "Gerar senha temporária", exibida **uma única vez**. **(futuro)** A senha temporária obriga a troca no próximo login.
@@ -232,7 +273,18 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
   - **(futuro)** Precisa existir sempre pelo menos 1 admin ativo.
 - **(futuro)** Toda ação de admin gera um registro de auditoria (`AuditLog`), e bloquear ou redefinir senha **revoga as sessões ativas** da pessoa.
 
-## 13. Autenticação real (futuro, Fase 3): JWT + dois fatores por e-mail
+## 13. Autenticação JWT
+**Já implementado** (`apps/api`, 03/10/2026):
+- `POST /api/auth/login` com e-mail, senha e "manter conectado". Devolve o **access token JWT de 15 min** (HS256, com `sub` e `roles`) e grava o **refresh token** opaco em cookie `psjb_refresh` **httpOnly + SameSite=Lax** (Secure em produção), com `path=/api/auth`.
+  - "Manter conectado": o cookie vale 30 dias. Sem marcar: cookie de sessão do navegador e 1 dia no servidor.
+- `POST /api/auth/refresh` **rotaciona** o refresh (o antigo deixa de valer). **Reuso** de um token já trocado revoga a família inteira de sessões. A validade é absoluta: rotacionar não estende os 30 dias.
+- `POST /api/auth/logout` revoga a sessão e apaga o cookie.
+- `GET /api/me` devolve os dados da pessoa. Conta bloqueada ou removida depois do login recebe 401.
+- O front guarda o access token **só em memória** e renova pelo cookie quando precisa. O front e a API ficam no mesmo site, porque o Next repassa `/api/*` para a API.
+- Os papéis vão no JWT. Mudar o papel de alguém só passa a valer no próximo refresh (até 15 min).
+- **Senhas:** argon2id. **Rate limit** por IP: login 10, cadastro 5 e refresh 60 a cada 15 min.
+
+**(futuro, Fase 3): dois fatores por e-mail**
 1. `POST /api/auth/login` com e-mail e senha. Pendente recebe 403 `EMAIL_NOT_VERIFIED`, bloqueado recebe 403 `ACCOUNT_BLOCKED` (com o motivo), e credencial errada recebe uma mensagem genérica.
 2. Senha correta: a API envia um **código de 6 dígitos por e-mail** (10 min, uso único, máx. 5 tentativas) e devolve um `challengeId`.
 3. O front mostra "Digite o código enviado para m***@…", com 6 campos, colar funcionando e reenvio após 60 s.
@@ -240,9 +292,7 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
    - **access token JWT de 15 min**, que fica **só em memória** no front e nunca em `localStorage`;
    - **refresh token** opaco em **cookie httpOnly + Secure + SameSite=Lax**, **rotacionado** a cada uso, com validade de 30 dias se "manter conectado" estiver marcado, senão 1 dia. Reuso detectado revoga todas as sessões daquele login.
 5. "Confiar neste dispositivo por 30 dias" dispensa o código naquele aparelho, útil para o tablet da paróquia.
-- **Senhas:** hash com **argon2id**.
-- **Rate limit:** no login, no cadastro, nos reenvios e no 2FA.
-- **Autorização por papel no servidor:** `requireRole('admin')`.
+- **Rate limit** também nos reenvios e no 2FA.
 - **reCAPTCHA:** v3 invisível ou v2 checkbox (Google) ou Cloudflare Turnstile. O token é **validado no servidor** com a chave secreta. Vale para cadastro, recuperação de senha e login depois de 3 falhas.
 - **E-mail transacional:** Resend, SES ou Postmark, com SPF/DKIM/DMARC em `psjb.org.br`. Modelos:
   - Confirme seu e-mail
@@ -269,7 +319,15 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
 - **Dados:** só `apps/web/src/lib/data/` lê os dados. Na Fase 2 ele passa a fazer `fetch` à API **sem mudar as telas**.
 - **Estado do cliente:** o que é por usuário (sessão, missas, preferências) passa pelo `lib/store.ts`. Na Fase 3, essas funções viram chamadas à API com as mesmas assinaturas.
 - **Deploy:** GitHub Pages (export estático). Por isso as rotas com ID usam `?id=`/`?token=`, e todo caminho interno fora do `next/link` usa `BASE_PATH`.
-- **API:** Node + Fastify em `apps/api`. As rotas planejadas estão em `planning.md` §5.2.
+- **API:** Node + Fastify em `apps/api`, com **arquitetura hexagonal**: `routes → controllers → actions → interfaces ← repositories/services`. As actions (casos de uso) só conhecem as interfaces, então banco, hash, JWT e storage podem ser trocados (nos testes, por versões em memória). As rotas estão em `planning.md` §5.2.
+- **Hospedagem:** front e API na **Vercel** (a API vira uma Function), banco **PostgreSQL no Neon** e arquivos no **Vercel Blob**. Localmente: Postgres do `docker-compose` e fotos em `apps/api/uploads/`.
+- **Modo demonstração × API:** sem `API_URL` no build do front (caso do GitHub Pages), tudo continua no `localStorage`. Com `API_URL`:
+  - **login, cadastro e missas usam a API**; perfil e admin ainda leem o `store.ts`, que espelha o usuário vindo da API;
+  - **as missas ficam no `localStorage` como cache:** a tela responde na hora e o Modo Missa abre mesmo com internet ruim. Cada alteração vai para a API numa fila por missa. Se falhar, o editor mostra "Salvo só neste aparelho" e tenta de novo na próxima alteração;
+  - **ao abrir o painel**, as missas são trazidas do servidor e o editor reabre com os dados novos;
+  - **compartilhar é uma ação separada** do salvamento dos cantos (`setMassShares`): uma cópia antiga no editor nunca desfaz o convite de alguém;
+  - **excluir e "Sair desta missa"** só vão para a API depois dos 6,5 s do "Desfazer";
+  - **ao sair da conta**, o cache de missas é apagado, porque o tablet da paróquia é compartilhado.
 - **Cifra na tela e no PDF:** as duas usam a mesma estrutura (`lib/sheet.ts`), então uma mudança na regra de quebra ou do refrão vale para as duas.
 - **Bibliotecas pesadas** (jsPDF) são carregadas sob demanda.
 

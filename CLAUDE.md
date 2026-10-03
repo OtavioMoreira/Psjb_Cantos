@@ -8,11 +8,17 @@ Site de cantos litúrgicos da **Paróquia Catedral São João Batista**, que sub
 - **Manter a documentação em dia:** ao combinar ou mudar uma regra, atualize a skill. Se a mudança afetar escopo, rotas ou API, atualize também o `planning.md`; se afetar telas ou layout, o `ux.md`.
 
 ## Fase atual
-**Fase 1: somente visual.** Não há banco nem API real.
-- **Dados:** JSONs em `data/` (`songs.json`, `categories.json`, `users.json`).
+**Transição da Fase 1 (visual) para a API.** O site publicado no GitHub Pages é a demonstração (sem banco); a API e o banco já existem e são usados quando o front tem `API_URL`.
+- **Dados da demonstração:** JSONs em `data/` (`songs.json`, `categories.json`, `users.json`).
+- **Já com API:** usuários, login, missas (com link de convite), cantos e flags (`apps/api` + Postgres).
+  - O front só usa a API quando o build tem `API_URL`; sem ela (GitHub Pages), continua no modo demonstração.
+  - Com a API, o `store.ts` espelha o usuário (`syncApiUser`) e usa o `localStorage` como cache das missas, enviando cada alteração numa fila por missa.
+  - Compartilhar é `setMassShares`, separado de `saveMass`.
+  - O site público ainda lê os cantos do `data/songs.json`.
 - **Estado do cliente** (sessão, perfil, usuários, missas, preferências): fica em `localStorage`, via `apps/web/src/lib/store.ts`.
 - **E-mails:** são simulados por links na própria tela, como "Abrir link de confirmação".
-- **Fases seguintes:** API e banco, autenticação JWT com 2FA por e-mail, reCAPTCHA no servidor e serviço de e-mail. O plano está em `planning.md` §5.2, §6.6 e §6.9.
+- **Hospedagem futura:** Vercel (front e API), Neon (Postgres) e Vercel Blob (arquivos).
+- **Fases seguintes:** cantos e missas na API, 2FA por e-mail, reCAPTCHA no servidor e serviço de e-mail. O plano está em `planning.md` §5.2, §6.6 e §6.9.
 
 ## Stack e estrutura (npm workspaces)
 ```
@@ -31,22 +37,41 @@ apps/web/             Next.js 16 (App Router, TS strict, Tailwind 4, lucide-reac
   src/lib/search.ts   busca sem acento + filtros (estado na URL)
   src/lib/routes.ts   BASE_PATH e URLs com ?id=
   src/components/     ui/ (Button, Field, Modal, Chip, Toast, Ornament), layout/, song/, mass/, auth/, admin/
-apps/api/             Fastify + TS. Só GET /api/health e GET /api/test por enquanto.
+apps/api/             Fastify + TS, arquitetura hexagonal (detalhes em planning.md §6.1):
+  src/domain/         entidades e erros (User, Role, AppError), sem dependências
+  src/dtos/           schemas Zod de entrada + formato de saída
+  src/interfaces/     portas (repositórios, hasher, tokens, storage); actions só dependem delas
+  src/actions/        casos de uso (auth/, users/, admin/)
+  src/repositories/   Postgres (pg + SQL puro)   src/services/  argon2, jose (JWT), Vercel Blob, disco
+  src/controllers/ · src/routes/ · src/middlewares/ (authenticate, requireRole)
+  src/database/       migrations/*.sql, migrate.ts, seed.ts (superadmin)
+  src/container.ts    liga actions e adaptadores
+  test/               unit/ (regras puras) · http/ (rotas com adaptadores em memória + segurança)
+                      · integration/ (Postgres real, banco *_test) · support/ (fakes e helpers)
+docs/postman/         coleção do Postman da API + ambientes (local, produção) e foto de exemplo
 db/                   dump de produção (*.sql no .gitignore: dados reais, repositório público)
   postgres/           conversão fiel MySQL → PostgreSQL 18: migrar.py, 01-schema.sql (versionado),
                       02-dados.sql (gerado, fora do git), CONVERSAO.md e VERIFICACAO.md (auditoria)
 docker-compose.yml    MySQL 5.7 local (igual à produção 5.7.44, importa o dump na 1ª subida) + PostgreSQL 18
 .github/workflows/deploy-pages.yml   deploy no GitHub Pages
+.github/workflows/tests.yml          testes a cada push/PR (API com Postgres de serviço, Postman via newman, front)
 ```
 
 ## Comandos
 ```bash
 npm install
 npm run dev:web     # http://localhost:3000
-npm run dev:api     # http://localhost:3333/api/test
+npm run dev:api     # http://localhost:3333/api/health
+npm run db:migrate -w api && npm run db:seed -w api   # tabelas + superadmin@psjb.org.br / 123456
+npm run db:import-songs -w api                        # cantos e flags de data/ para o banco (mantém os ids)
+npm test                     # tudo: API (unitários + integração com Postgres) e regras do front
+npm run test:unit -w api     # só os rápidos, sem banco (bom no modo watch: npm run test:watch -w api)
+npm run test:integration -w api   # repositórios e fluxos contra o Postgres (banco psjb_cantos_test, criado sozinho)
+npm run typecheck -w api
+API_URL=http://localhost:3333 npm run dev:web         # front usando a API (sem API_URL = modo demonstração)
 docker compose up -d   # MySQL 5.7 (localhost:3306) e PostgreSQL 18 (localhost:5432): psjb_cantos, psjb/psjb
 python3 db/postgres/migrar.py   # recria o Postgres a partir do MySQL e confere célula a célula
-cd apps/web && npx tsc --noEmit && npx eslint src      # rodar sempre antes de concluir
+cd apps/web && npx tsc --noEmit && npx eslint src test && npm test   # rodar sempre antes de concluir
 GITHUB_PAGES=true NEXT_PUBLIC_BASE_PATH=/Psjb_Cantos npx next build   # simula o build do Pages (gera out/)
 ```
 Se `tsc` reclamar de `PageProps`/`LayoutProps`, rode `npx next typegen` em `apps/web`.
@@ -74,3 +99,12 @@ Se `tsc` reclamar de `PageProps`/`LayoutProps`, rode `npx next typegen` em `apps
 - **Lint do React 19:** proíbe `setState` síncrono dentro de `useEffect` e acesso a `ref` durante o render.
 - **Responsividade:** validar em celular (360–430 px) e tablet (768–1194 px, retrato e paisagem). Sem rolagem horizontal, alvos de toque ≥ 44 px (mínimo 24 px), texto ≥ 12 px. Grids de uma coluna precisam de `grid-cols-1` para não estourar a largura.
 - **Comentários:** curtos, em português, só quando explicam o porquê.
+- **Testes:** Vitest (não Jest, que exige configuração extra para ESM + TS). Rodam no GitHub Actions (`tests.yml`) a cada push e PR.
+  - **Regra nova** → teste na camada certa:
+    - unitário (`test/unit`) para função pura ou schema;
+    - rota com adaptadores em memória (`test/http`) para action ou controller;
+    - integração (`test/integration`) para qualquer SQL novo em `repositories/`.
+  - **Rota nova:** se for pública, precisa entrar na lista `PUBLIC` de `test/http/security.test.ts`. Senão, a matriz de autorização exige 401 sem token e 403 de músico em `/admin`.
+- **API:**
+  - **Rota nova ou alterada** → atualize a coleção `docs/postman/psjb-cantos.postman_collection.json`. O teste `apps/api/test/postman.test.ts` falha se faltar alguma rota. Depois, rode a coleção com o newman contra a API local.
+  - **Regra de permissão** (dono, convidado, papel) fica na **action**, não na rota.

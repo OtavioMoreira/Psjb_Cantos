@@ -1,0 +1,1869 @@
+{
+  "info": {
+    "_postman_id": "03b5405a-8987-5ac1-8cd1-b6f903aebea5",
+    "name": "Cantos PSJB — API",
+    "description": "API do site de cantos da Paróquia Catedral São João Batista (`apps/api`).\n\n**Como usar:** importe também `psjb-local.postman_environment.json`, rode **Autenticação › Login (superadmin)** e siga as pastas na ordem (ou rode a coleção inteira no Runner). Pela linha de comando: `npx newman run docs/postman/psjb-cantos.postman_collection.json -e docs/postman/psjb-local.postman_environment.json --working-dir docs/postman`. Erros vêm sempre como `{ error: { code, message, details } }`.\n\n**Manter atualizado:** toda rota nova da API entra aqui. O teste `apps/api/test/postman.test.ts` falha se faltar alguma.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Saúde",
+      "description": "Conferir se a API está no ar.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Responde `ok`.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Teste",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "test"
+              ]
+            },
+            "description": "Rota de teste: responde uma frase.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Autenticação",
+      "description": "Rode **Login (superadmin)** primeiro: ele guarda o `accessToken` na coleção, e as outras requisições usam esse token. O refresh token fica no cookie `psjb_refresh` (o Postman guarda sozinho).",
+      "item": [
+        {
+          "name": "Login (superadmin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Devolve `accessToken` (15 min) e grava o cookie `psjb_refresh`. Erros: 401 INVALID_CREDENTIALS, 403 ACCOUNT_PENDING, 403 ACCOUNT_BLOCKED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"remember\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Troca o cookie por um access token novo e **rotaciona** o cookie. Reusar um cookie antigo derruba todas as sessões daquele login.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Revoga a sessão do cookie e apaga o cookie. 204.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Movimentos",
+      "description": "Movimentos e pastorais. Cada pessoa participa de no máximo um.",
+      "item": [
+        {
+          "name": "Listar (público)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/movements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "movements"
+              ]
+            },
+            "description": "Usado no cadastro. Guarda o primeiro id em `movementId`.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "const m = pm.response.json().movements; if (m.length) pm.collectionVariables.set('movementId', m[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar (admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/movements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "movements"
+              ]
+            },
+            "description": "Só admin. 409 MOVEMENT_TAKEN se o nome já existe (sem diferenciar maiúsculas).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pastoral do Batismo {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.collectionVariables.set('newMovementId', pm.response.json().movement.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renomear (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/movements/{{newMovementId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "movements",
+                "{{newMovementId}}"
+              ]
+            },
+            "description": "Só admin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pastoral do Batismo e Crisma {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/movements/{{newMovementId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "movements",
+                "{{newMovementId}}"
+              ]
+            },
+            "description": "Só admin. 409 MOVEMENT_IN_USE se houver pessoas no movimento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Usuários",
+      "description": "Cadastro público e dados da própria conta.",
+      "item": [
+        {
+          "name": "Cadastro",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Cria a conta **pendente**, com papel músico. Ela só entra depois que um admin ativar. `phone` e `movementId` são opcionais (use **Movimentos › Listar** para ver os ids). 409 EMAIL_TAKEN se o e-mail já existe.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Músico de Teste\",\n  \"email\": \"{{newUserEmail}}\",\n  \"password\": \"{{newUserPassword}}\",\n  \"phone\": \"(31) 99999-0000\",\n  \"movementId\": \"{{movementId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// E-mail novo a cada execução, para não bater no 409.",
+                  "pm.collectionVariables.set('newUserEmail', `musico+${Date.now()}@exemplo.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.collectionVariables.set('userId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eu (/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "description": "Dados da pessoa logada."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trocar foto",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/photo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "photo"
+              ]
+            },
+            "description": "multipart/form-data com o campo `photo`. Já aponta para `foto-exemplo.png` (nesta pasta); no Postman, escolha o arquivo de novo na aba Body se ele não achar. Em produção vai para o Vercel Blob; local, para `apps/api/uploads/`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": "foto-exemplo.png",
+                  "description": "JPG, PNG ou WebP de até 2 MB"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar pessoas (para compartilhar)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/search?q=&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Nome, e-mail ou movimento. Vazio = todas"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "1 a 50"
+                }
+              ]
+            },
+            "description": "Só contas ativas e sem a própria pessoa. Use os ids em **Missas › Compartilhar**."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin › Usuários",
+      "description": "Só o papel **admin** (músico recebe 403).",
+      "item": [
+        {
+          "name": "Listar usuários",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?status=pending&role=musico&q=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "pending | active | blocked",
+                  "disabled": true
+                },
+                {
+                  "key": "role",
+                  "value": "musico",
+                  "description": "admin | musico",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "nome, e-mail ou movimento",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Pendentes primeiro, depois bloqueados e ativos."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ativar usuário",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{userId}}",
+                "activate"
+              ]
+            },
+            "description": "Libera a conta pendente (ou desbloqueia). `userId` vem do **Cadastro**."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login como a pessoa ativada",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Entra com a conta criada em **Usuários › Cadastro**, já ativada no passo anterior. Guarda o token em `memberToken`, usado nas requisições de convidado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newUserEmail}}\",\n  \"password\": \"{{newUserPassword}}\",\n  \"remember\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('memberToken', j.accessToken);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Repertório (público)",
+      "description": "Cantos ativos e flags, sem login.",
+      "item": [
+        {
+          "name": "Listar cantos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/songs?q=&flags=&page=1&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "songs"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "título, autor, letra ou número (sem acento)"
+                },
+                {
+                  "key": "flags",
+                  "value": "",
+                  "description": "ids de flags separados por vírgula: OU no mesmo grupo, E entre grupos",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50",
+                  "description": "1 a 200"
+                }
+              ]
+            },
+            "description": "Resposta: `{ songs, total, page, pageSize }`. A letra não vem na listagem.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ver canto (por slug ou id)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/songs/001-a-feliz-espera",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "songs",
+                "001-a-feliz-espera"
+              ]
+            },
+            "description": "Aceita o slug (`001-a-feliz-espera`) ou o id (`39`). Traz a letra com cifra e as flags.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar flags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/flags",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "flags"
+              ]
+            },
+            "description": "Em ordem: momento, tempo, ano, tema, outro. Guarda o primeiro id em `flagId` (usado ao criar o canto).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "const f = pm.response.json().flags; if (f.length) pm.collectionVariables.set('flagId', f[0].id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin › Flags",
+      "description": "Etiquetas dos cantos (só admin). Grupos: `momento`, `tempo`, `ano`, `tema`, `outro`. Um canto pode ter várias flags, inclusive do mesmo grupo.",
+      "item": [
+        {
+          "name": "Criar flag",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/flags",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "flags"
+              ]
+            },
+            "description": "`slug` é o identificador (letras, números e hífens; único dentro do grupo). `color` em #RRGGBB, opcional. 409 FLAG_TAKEN se repetir.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"group\": \"outro\",\n  \"slug\": \"teste-{{$timestamp}}\",\n  \"name\": \"Flag de teste\",\n  \"color\": null,\n  \"position\": 99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.collectionVariables.set('newFlagId', pm.response.json().flag.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar flag",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/flags/{{newFlagId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "flags",
+                "{{newFlagId}}"
+              ]
+            },
+            "description": "Manda a flag inteira.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"group\": \"outro\",\n  \"slug\": \"teste-editada-{{$timestamp}}\",\n  \"name\": \"Flag de teste (editada)\",\n  \"color\": \"#2E7D4F\",\n  \"position\": 99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir flag",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/flags/{{newFlagId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "flags",
+                "{{newFlagId}}"
+              ]
+            },
+            "description": "Tira a etiqueta dos cantos (os cantos continuam). 204."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin › Cantos",
+      "description": "CRUD de cantos (só admin). Arquivos: PDF da cifra, PDF da partitura e áudio, até 4 MB cada (limite das Functions da Vercel).",
+      "item": [
+        {
+          "name": "Listar cantos (inclui ocultos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs?q=&page=1&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": ""
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar canto",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs"
+              ]
+            },
+            "description": "Só `title` é obrigatório. Sem `slug`, ele é gerado do número + título (`012-...`). `flagIds`: várias flags. `media` aceita links externos (Audiomack, site antigo). O refrão vai entre `**…**`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": null,\n  \"title\": \"Canto de teste {{$timestamp}}\",\n  \"composer\": \"Autor de Exemplo\",\n  \"key\": \"D\",\n  \"lyrics\": \"D          A\\nSenhor, tende piedade\\n**Cristo, tende piedade**\",\n  \"flagIds\": [{{flagId}}],\n  \"media\": { \"audiomack\": null, \"audio\": null, \"cifraPdf\": null, \"partituraPdf\": null },\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.collectionVariables.set('songId', pm.response.json().song.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ver canto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": "Também mostra cantos ocultos."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar canto (PUT, substitui tudo)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": "O que não vier volta ao padrão (sem flags, sem mídia...). O slug fica o mesmo se não for enviado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Canto de teste (editado)\",\n  \"composer\": \"Autor de Exemplo\",\n  \"key\": \"E\",\n  \"lyrics\": \"E          B\\nSenhor, tende piedade\",\n  \"flagIds\": [{{flagId}}]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar canto (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": "Só os campos enviados mudam; `media` pode vir parcial. Use `{ \"active\": false }` para ocultar do repertório.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"A\",\n  \"media\": {\n    \"audiomack\": \"https://audiomack.com/embed/song/hinariopsjb/exemplo\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar PDF da cifra",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}/files/cifra-pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}",
+                "files",
+                "cifra-pdf"
+              ]
+            },
+            "description": "multipart, campo `file`. O tipo é conferido pelos bytes (precisa ser PDF). Troca e apaga o arquivo anterior.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "cifra-exemplo.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar PDF da partitura",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}/files/partitura-pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}",
+                "files",
+                "partitura-pdf"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "cifra-exemplo.pdf"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar áudio",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}/files/audio",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}",
+                "files",
+                "audio"
+              ]
+            },
+            "description": "MP3, M4A ou OGG.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "audio-exemplo.mp3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remover áudio",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}/files/audio",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}",
+                "files",
+                "audio"
+              ]
+            },
+            "description": "`kind`: cifra-pdf, partitura-pdf ou audio."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir canto",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": "409 SONG_IN_USE se o canto estiver em alguma missa: nesse caso, oculte com `active: false`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Missas",
+      "description": "Monte sua Missa. Dono e convidados veem e editam; **só o dono** exclui e compartilha. Quem não é dono nem convidado recebe 403.",
+      "item": [
+        {
+          "name": "Listar minhas missas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses?when=upcoming&q=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses"
+              ],
+              "query": [
+                {
+                  "key": "when",
+                  "value": "upcoming",
+                  "description": "upcoming | past | all (padrão)"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "busca no nome",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Missas criadas por mim ou compartilhadas comigo. `access` diz se sou `owner` ou `shared`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar missa",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses"
+              ]
+            },
+            "description": "Todos os campos são opcionais. `slots` são os momentos em ordem; `moment: \"extra\"` é canto adicional com nome livre. `transpose` vai de −6 a +5. `songId` é o id do canto em `data/songs.json`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Domingo — Missa das 19h\",\n  \"date\": \"2026-10-11\",\n  \"time\": \"19:00\",\n  \"season\": \"tempo-comum\",\n  \"year\": \"A\",\n  \"slots\": [\n    {\n      \"id\": \"s1\",\n      \"moment\": \"entrada\",\n      \"label\": \"Entrada\",\n      \"items\": [\n        {\n          \"songId\": 77,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s2\",\n      \"moment\": \"ato-penitencial\",\n      \"label\": \"Ato Penitencial\",\n      \"items\": [\n        {\n          \"songId\": 141,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s3\",\n      \"moment\": \"salmo\",\n      \"label\": \"Salmo\",\n      \"items\": [\n        {\n          \"songId\": 214,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s4\",\n      \"moment\": \"comunhao\",\n      \"label\": \"Comunhão\",\n      \"items\": [\n        {\n          \"songId\": 382,\n          \"transpose\": -2\n        }\n      ]\n    },\n    {\n      \"id\": \"s5\",\n      \"moment\": \"extra\",\n      \"label\": \"Ação de graças\",\n      \"items\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.collectionVariables.set('massId', pm.response.json().mass.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ver missa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar missa (PUT, substitui tudo)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}"
+              ]
+            },
+            "description": "Manda a missa inteira. O que não vier volta ao padrão (`slots: []`, `date: null`...). É o que o editor usa no salvamento automático.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Domingo — Missa das 19h (revisada)\",\n  \"date\": \"2026-10-11\",\n  \"time\": \"19:00\",\n  \"season\": \"tempo-comum\",\n  \"year\": \"A\",\n  \"slots\": [\n    {\n      \"id\": \"s1\",\n      \"moment\": \"entrada\",\n      \"label\": \"Entrada\",\n      \"items\": [\n        {\n          \"songId\": 77,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s2\",\n      \"moment\": \"ato-penitencial\",\n      \"label\": \"Ato Penitencial\",\n      \"items\": [\n        {\n          \"songId\": 141,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s3\",\n      \"moment\": \"salmo\",\n      \"label\": \"Salmo\",\n      \"items\": [\n        {\n          \"songId\": 214,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s4\",\n      \"moment\": \"comunhao\",\n      \"label\": \"Comunhão\",\n      \"items\": [\n        {\n          \"songId\": 382,\n          \"transpose\": -2\n        }\n      ]\n    },\n    {\n      \"id\": \"s5\",\n      \"moment\": \"extra\",\n      \"label\": \"Ação de graças\",\n      \"items\": []\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar missa (PATCH, só o que mudou)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}"
+              ]
+            },
+            "description": "Só os campos enviados mudam. Precisa de pelo menos um campo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"time\": \"18:00\",\n  \"slots\": [\n    {\n      \"id\": \"s1\",\n      \"moment\": \"entrada\",\n      \"label\": \"Entrada\",\n      \"items\": [\n        {\n          \"songId\": 77,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s2\",\n      \"moment\": \"ato-penitencial\",\n      \"label\": \"Ato Penitencial\",\n      \"items\": [\n        {\n          \"songId\": 141,\n          \"transpose\": 0\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicar missa",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}/duplicate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}",
+                "duplicate"
+              ]
+            },
+            "description": "A cópia é de quem duplicou: \"Cópia de …\", sem data e sem compartilhamento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.collectionVariables.set('copyMassId', pm.response.json().mass.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compartilhar missa",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}/shares",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}",
+                "shares"
+              ]
+            },
+            "description": "Substitui a lista de convidados (mande `[]` para tirar todos). Só o dono. Só contas **ativas** (400 com `invalidUserIds`); o próprio dono é ignorado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\n    \"{{userId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Convidado: ver missa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}"
+              ]
+            },
+            "description": "Com o token de **Login (pessoa cadastrada)**. `access` = `shared`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Convidado: tentar excluir (403)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}"
+              ]
+            },
+            "description": "Convidado não exclui: deve dar 403.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('convidado não exclui', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Convidado: sair da missa",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}/shares/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}",
+                "shares",
+                "me"
+              ]
+            },
+            "description": "Quem recebeu sai; a missa continua para o dono. O dono recebe 403 aqui.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gerar link de convite",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}/share-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}",
+                "share-link"
+              ]
+            },
+            "description": "Só o dono. Devolve `{ token, path }`; o link completo é o domínio do site + `path` (ex.: `https://…/convite?token=…`). Chamar de novo devolve o **mesmo** link."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.collectionVariables.set('shareToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Convidado: entrar pelo link",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "join"
+              ]
+            },
+            "description": "O que o site faz quando alguém abre o link já logado: a pessoa vira convidada. Se já era (ou é a dona), só devolve a missa. 404 se o link foi desativado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{shareToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desativar link de convite",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}/share-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}",
+                "share-link"
+              ]
+            },
+            "description": "Só o dono. O link para de funcionar; quem já entrou continua convidado. Gerar de novo cria outro token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir missa",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{massId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{massId}}"
+              ]
+            },
+            "description": "Só o dono. 204."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir cópia",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/{{copyMassId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "{{copyMassId}}"
+              ]
+            },
+            "description": "Limpa a cópia criada em **Duplicar missa**."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "memberToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "movementId",
+      "value": ""
+    },
+    {
+      "key": "newMovementId",
+      "value": ""
+    },
+    {
+      "key": "massId",
+      "value": ""
+    },
+    {
+      "key": "copyMassId",
+      "value": ""
+    },
+    {
+      "key": "shareToken",
+      "value": ""
+    },
+    {
+      "key": "flagId",
+      "value": ""
+    },
+    {
+      "key": "newFlagId",
+      "value": ""
+    },
+    {
+      "key": "songId",
+      "value": ""
+    },
+    {
+      "key": "newUserEmail",
+      "value": ""
+    },
+    {
+      "key": "newUserPassword",
+      "value": "senha1234"
+    }
+  ]
+}

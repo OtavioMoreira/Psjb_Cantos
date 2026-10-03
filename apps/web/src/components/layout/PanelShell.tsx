@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Home, ListMusic, LogOut, Plus, ShieldCheck, User } from "lucide-react";
-import { initials, logout, useIsAdmin, useSession, useUser } from "@/lib/store";
+import { initials, logout, syncApiUser, syncMasses, useIsAdmin, useSession, useUser } from "@/lib/store";
+import { api, API_ENABLED, ApiError } from "@/lib/api";
 import { useHydrated } from "@/lib/hooks";
 
 const ADMIN_LINK = { href: "/painel/admin/usuarios", label: "Usuários", short: "Admin", Icon: ShieldCheck };
@@ -27,8 +28,28 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   const links = isAdmin ? [...LINKS, ADMIN_LINK] : LINKS;
 
   useEffect(() => {
-    if (hydrated && !session.loggedIn) router.replace(`/entrar?volta=${encodeURIComponent(pathname)}`);
+    // Leva a query junto (ex.: ?id= do editor), para voltar ao mesmo lugar depois do login.
+    if (hydrated && !session.loggedIn) router.replace(`/entrar?volta=${encodeURIComponent(pathname + window.location.search)}`);
   }, [hydrated, session.loggedIn, pathname, router]);
+
+  // Com a API, confere a sessão no servidor (renova o token pelo cookie) e atualiza os dados da pessoa.
+  useEffect(() => {
+    if (!API_ENABLED || !hydrated || !session.loggedIn) return;
+    let alive = true;
+    api
+      .me()
+      .then((u) => {
+        if (!alive) return;
+        syncApiUser(u);
+        return syncMasses();
+      })
+      .catch((e) => {
+        if (alive && e instanceof ApiError && e.status === 401) logout();
+      });
+    return () => {
+      alive = false;
+    };
+  }, [hydrated, session.loggedIn]);
 
   if (!hydrated || !session.loggedIn) {
     return (
@@ -56,7 +77,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             </span>
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.name}</p>
-              <p className="truncate text-xs text-ink-muted">{isAdmin ? "Administrador" : user.ministry}</p>
+              <p className="truncate text-xs text-ink-muted">{isAdmin ? "Administrador" : user.movement}</p>
             </div>
           </div>
           <nav aria-label="Painel" className="mt-6 space-y-1 border-t border-border pt-4">

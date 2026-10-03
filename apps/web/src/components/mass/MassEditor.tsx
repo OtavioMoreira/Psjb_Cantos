@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Check, Eye, GripVertical, Loader2, Minus, Plus, RotateCcw, Tablet, Trash2, Users, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CloudOff, Eye, GripVertical, Loader2, Minus, Plus, RotateCcw, Tablet, Trash2, Users, X } from "lucide-react";
 import type { Mass, MassSlot, Song } from "@/lib/types";
-import { massAccess, saveMass, uid, usePrefs, useSession, useUsers } from "@/lib/store";
+import { massAccess, saveMass, setMassShares, uid, useMassSyncError, useMasses, usePeopleLookup, usePrefs, useSession } from "@/lib/store";
 import { useSongIndex } from "@/lib/useSongIndex";
 import { SEASON_STYLE, formatNumber, liturgicalSeason, liturgicalYear } from "@/lib/liturgy";
 import { keyLabel, wrapSemitones } from "@/lib/chords";
@@ -32,9 +32,12 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
   const byId = useMemo(() => new Map((songs ?? []).map((s) => [s.id, s])), [songs]);
   const prefs = usePrefs();
   const { userId } = useSession();
-  const users = useUsers();
+  const person = usePeopleLookup();
+  const syncError = useMassSyncError();
   const owner = massAccess(mass, userId) === "dono";
-  const shared = mass.sharedWith ?? [];
+  // Quem tem acesso vem do store (muda pelo modal ou pela sincronização), não da cópia do editor.
+  const live = useMasses().find((m) => m.id === mass.id);
+  const shared = (live ?? mass).sharedWith ?? [];
   const touched = useRef(false);
   const persisted = useRef(!isNew);
 
@@ -108,9 +111,14 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
               <Loader2 size={14} className="animate-spin" /> Salvando…
             </span>
           )}
-          {save === "saved" && (
+          {save === "saved" && !syncError && (
             <span className="flex items-center gap-1.5 text-success">
               <Check size={14} /> Salvo
+            </span>
+          )}
+          {save === "saved" && syncError && (
+            <span className="flex items-center gap-1.5 text-gold-ink" title={syncError}>
+              <CloudOff size={14} /> Salvo só neste aparelho
             </span>
           )}
         </p>
@@ -127,7 +135,7 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
             <>
               <Users size={16} className="shrink-0 text-gold-ink" />
               <span>
-                Compartilhada por <strong className="font-medium text-ink">{users.find((u) => u.id === mass.ownerId)?.name ?? "outra pessoa"}</strong>.
+                Compartilhada por <strong className="font-medium text-ink">{person(mass.ownerId ?? "")?.name ?? "outra pessoa"}</strong>.
                 Você pode editar os cantos.
               </span>
             </>
@@ -349,7 +357,15 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
         </Link>
         <MassPdfButton mass={{ ...mass, name: mass.name.trim() || defaultName(mass.date) }} className="shrink-0 sm:ml-auto" />
         {owner && (
-          <ShareMassButton mass={mass} className="shrink-0" onChange={(sharedWith) => update((m) => ({ ...m, sharedWith }))} />
+          <ShareMassButton
+            mass={live ?? mass}
+            className="shrink-0"
+            onChange={(ids) => {
+              // Missa nova ainda não salva: salva primeiro, para o compartilhamento ter onde ir.
+              if (!live) saveMass({ ...mass, name: mass.name.trim() || defaultName(mass.date) });
+              setMassShares(mass.id, ids);
+            }}
+          />
         )}
         <button
           onClick={() => {

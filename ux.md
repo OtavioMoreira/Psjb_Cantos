@@ -10,7 +10,7 @@
 
 **Público**
 - **Músicos e cantores dos ministérios** (violão, teclado, coral): precisam de cifra legível, transposição e um fluxo rápido no domingo. Usam celular e tablet, muitas vezes com as mãos ocupadas.
-- **Coordenadores de liturgia**: montam a missa da semana e compartilham com a equipe. Usam desktop ou notebook.
+- **Coordenadores de liturgia**: montam a missa da semana e compartilham com a equipe. Usam desktop ou notebook. No sistema, têm o papel músico ou admin.
 - **Fiéis**: buscam a letra ou o áudio para ensaiar. Usam celular.
 
 **Princípios**
@@ -310,7 +310,8 @@ Comportamento:
 │ CRIAR CONTA (?aba=criar)                  │
 │   Nome completo  [___________________]    │
 │   E-mail         [___________________]    │
-│   Ministério (opcional) [____________]    │
+│   Telefone / WhatsApp (opcional) [_____]  │
+│   Movimento (opcional) [Nenhum      ▾]   │
 │   Senha [________ 👁]  ▓▓▓░ Força: Boa    │
 │   Confirmar senha [________ 👁]           │
 │   [✓] Li e aceito os termos (LGPD)        │
@@ -323,14 +324,22 @@ Comportamento:
 - Card de 460px centralizado; no celular, ocupa a largura toda com padding de 24.
 - **Entrar:** valida ao sair do campo. As mensagens de erro, em caixa `danger` com ícone:
   - "E-mail ou senha não conferem. Tente de novo." (genérica)
-  - "Você ainda não confirmou seu e-mail." + [Reenviar e-mail de confirmação]
+  - Com a API: "Sua conta ainda não foi ativada. Assim que a coordenação liberar, você consegue entrar."
+  - No modo demonstração: "Você ainda não confirmou seu e-mail." + [Reenviar e-mail de confirmação]
   - "Seu acesso está bloqueado. Motivo: … Procure a coordenação da paróquia."
-- Ao enviar, o botão mostra spinner e "Entrando…" (600 ms simulados) e depois vai para `?volta=` ou `/painel`.
+- Ao enviar, o botão mostra spinner e "Entrando…" (com a API, o tempo real da chamada; no modo demonstração, 600 ms simulados) e depois vai para `?volta=` ou `/painel`.
+- A caixa de contas mostra as contas de demonstração; com a API, mostra só a conta de teste do seed (`superadmin@psjb.org.br`), e só fora de produção.
 - **Criar conta:**
   - os erros aparecem só depois da primeira tentativa de envio;
   - a senha precisa de 8 ou mais caracteres, com letras e números;
-  - aceite dos termos e reCAPTCHA são obrigatórios.
+  - aceite dos termos e reCAPTCHA são obrigatórios;
+  - com a API, o subtítulo é "Depois do cadastro, a coordenação da paróquia libera o seu acesso." e, ao enviar, o card vira **"Conta criada!"** (ícone de ampulheta, o e-mail cadastrado e [Voltar para o login]). A página volta ao topo, para o card não aparecer cortado no celular.
 - **reCAPTCHA (visual):** imita o widget v2 (304×78, "Não sou um robô"). Ao clicar, mostra um spinner por 0,9 s e depois o ✓. É o único lugar com texto menor que 12px, de propósito, como no widget real.
+
+### 4.4.0 Convite para a missa (`/convite?token=`)
+- **Sem login:** vai para `/entrar?volta=/convite?token=…`. O login mostra, no lugar do subtítulo, a faixa `primary-soft` "Você recebeu o convite de uma missa. Entre na sua conta e ela já abre para você."
+- **Logado:** card com spinner, "Abrindo a missa…" e "Estamos liberando o seu acesso. Já já você cai direto nos cantos.", e em seguida vai ao editor da missa.
+- **Link inválido ou desativado** (ou sem API): ícone de link cortado em vermelho, "Convite indisponível", o motivo e [Ir para Minhas Missas].
 
 ### 4.4.1 Confirme seu e-mail · Confirmação · Recuperar senha
 ```
@@ -379,9 +388,10 @@ Seções em cards empilhados, com largura máxima de 640px:
 │ Nome     [Ana Souza                    ]     │
 │ E-mail   [ana@exemplo.com              ]     │
 │                          [Salvar alterações] │
-├ Paróquia e ministério ───────────────────────┤
+├ Paróquia e movimento ────────────────────────┤
 │ Paróquia   [Catedral São João Batista ▾]     │
-│ Ministério [Música ▾]  Função [Violão ▾]     │
+│ Movimento [Ministério de Música ▾]           │
+│ Instrumento / voz [Violão ▾]                 │
 │ Instrumento/voz padrão → usado no Modo Missa │
 ├ Segurança ───────────────────────────────────┤
 │ Senha atual [____] Nova [____] Confirmar [__]│
@@ -413,21 +423,31 @@ Minhas Missas                         [+ Nova missa]
 **Modal "Compartilhar missa"** (bottom sheet no celular, centralizado no tablet/desktop):
 ```
 Compartilhar missa                                  ✕
-Quem você escolher vê {missa} em Minhas Missas, pode
+Quem tiver acesso vê {missa} em Minhas Missas, pode
 editar os cantos, abrir no Modo Missa e baixar o PDF.
+┌ 🔗 Link de convite (só com a API) ────────────┐
+│ Quem abrir o link e entrar na conta já passa  │
+│ a ter acesso a esta missa.                    │
+│ [https://…/convite?token=…              ]     │
+│ [⧉ Copiar link] [↗ Enviar]  ⊘ Desativar link  │
+└───────────────────────────────────────────────┘
+  (antes de gerar: [🔗 Gerar link de convite])
 Com acesso (2)
 [(MM) Ministério de Música ✕] [(AB) Ana Beatriz Lima ✕]
-[🔍 Buscar por nome, e-mail ou ministério        ]
+[🔍 Buscar por nome, e-mail ou movimento        ]
 ┌──────────────────────────────────────────────┐
 │ ☑ (AB) Ana Beatriz Lima                       │
-│        Coordenador · Equipe de Liturgia · …   │
+│        Músico · Equipe de Liturgia · …        │
 │ ☐ (CE) Carlos Eduardo Souza                   │
 └──────────────────────────────────────────────┘
 Só aparecem pessoas com conta ativa.
 [Demonstração: salvo só neste aparelho…]
                  [Cancelar] [✓ Compartilhar com 2 pessoas]
 ```
-- A busca ignora acento e exige todos os termos. Cada linha é um alvo de 56 px que marca ou desmarca.
+- **Link de convite** (só com a API): bloco em `surface-2` no topo do modal.
+  - "Copiar link" vira "✓ Copiado" por 2 s. "Enviar" só aparece onde existe `navigator.share` (celular), que abre WhatsApp e afins.
+  - "Desativar link" fica em vermelho e avisa no toast: "Link desativado. Quem já entrou continua com acesso."
+- **Busca:** com a API, vai ao servidor (com espera de 250 ms e "Buscando…"); na demonstração, filtra as contas do aparelho. Ignora acento e exige todos os termos. Cada linha é um alvo de 56 px que marca ou desmarca.
 - No celular a lista acompanha a rolagem do modal; do tablet para cima ela tem rolagem própria (máx. 288 px).
 - O botão de salvar fica desabilitado enquanto nada mudou. Ao salvar, o toast diz "Missa compartilhada com N pessoas.".
 - A faixa ▌ usa a cor do tempo litúrgico da data.
@@ -478,6 +498,7 @@ Comportamento:
 - **Tom por missa**: transposição salva no item, sem alterar o canto original.
 - Autosave com debounce de 1s e indicador "Salvando… / Salvo ✓". O nome é obrigatório; se vazio, usa "Missa de dd/mm".
 - Remover um canto mostra toast com "Desfazer".
+- **Salvamento com a API:** "Salvando… / Salvo" como antes; se o envio ao servidor falhar, aparece "☁̸ Salvo só neste aparelho" (`gold-ink`, com o motivo no `title`), e o envio é tentado de novo na próxima alteração.
 
 ### 4.9 Modo Missa (`/missa?id=`): modo de apresentação, foco em tablet
 **Objetivo: bem objetivo.** Tela cheia, **letra preta no fundo branco, refrão em negrito**, sem capitular nem cores de destaque na letra (o número da estrofe é só negrito). O título completo do canto aparece em destaque no topo da letra (sans 1,2× o tamanho da letra), com Nº e autor em cinza logo abaixo.
@@ -566,7 +587,7 @@ Aberto pelo botão **"Baixar PDF"** (editor e cards de Minhas Missas; desabilita
 Usuários                                        [👤+ Convidar usuário]
 ⓘ Demonstração: alterações ficam só neste navegador…
 ┌ 👥 8 Total ┐ ┌ ✓ 5 Ativos ┐ ┌ ⏱ 2 Aguardando e-mail ┐ ┌ ⛔ 1 Bloqueados ┐  (clicáveis = filtro)
-[🔍 Buscar por nome, e-mail ou ministério        ] [Todos os papéis ▾]
+[🔍 Buscar por nome, e-mail ou movimento        ] [Todos os papéis ▾]
 8 usuários
 ┌──────────────────────────────────────────────────────────────────────┐
 │ USUÁRIO                     PAPEL        STATUS             ÚLTIMO   │
@@ -596,7 +617,7 @@ Usuários                                        [👤+ Convidar usuário]
 - **Modais** (no celular, abrem como bottom sheet):
   - **Bloquear:** texto explicativo + campo "Motivo (aparece para a pessoa ao tentar entrar)" + [⛔ Bloquear] em vermelho. O toast oferece "Desfazer".
   - **Redefinir senha:** duas opções grandes, "Enviar link por e-mail (recomendado)" e "Gerar senha temporária". A senha gerada aparece **uma única vez**, com [Copiar].
-  - **Editar:** nome, e-mail (dica: "a API enviará nova confirmação"), ministério e papel, com a descrição de cada papel.
+  - **Editar:** nome, e-mail (dica: "a API enviará nova confirmação"), movimento (seletor) e papel, com a descrição de cada papel.
   - **Convidar:** nome, e-mail e papel; o convidado nasce "Aguardando e-mail".
   - **Excluir:** confirmação que sugere bloquear, por ser reversível; o toast oferece "Desfazer".
 - **Proteções visuais:** na própria linha, com a etiqueta "você", o admin não pode Bloquear nem Excluir (itens desabilitados) e não pode trocar o próprio papel.
@@ -717,7 +738,9 @@ Grids de uma coluna precisam de `grid-cols-1`, senão o conteúdo estoura a larg
 | Wake Lock indisponível | "Seu aparelho pode apagar a tela. Desative o bloqueio automático nas configurações." |
 | Fim do Modo Missa | "Missa concluída. Deus seja louvado!" |
 | Rodapé | "Quem canta reza duas vezes." |
-| Conta pendente | "Você ainda não confirmou seu e-mail." [Reenviar e-mail de confirmação] |
+| Conta pendente (API) | "Sua conta ainda não foi ativada. Assim que a coordenação liberar, você consegue entrar." |
+| Cadastro enviado (API) | "Conta criada! Recebemos o cadastro de …. Agora a coordenação da paróquia precisa liberar o seu acesso." |
+| Conta pendente (demonstração) | "Você ainda não confirmou seu e-mail." [Reenviar e-mail de confirmação] |
 | Conta bloqueada | "Seu acesso está bloqueado. Motivo: … Procure a coordenação da paróquia." |
 | Cadastro enviado | "Confirme seu e-mail. Enviamos um link de confirmação para …" |
 | E-mail confirmado | "E-mail confirmado! Sua conta está ativa." |

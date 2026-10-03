@@ -3,15 +3,25 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, Info, Loader2, MailCheck, ShieldAlert } from "lucide-react";
-import { DEMO_ACCOUNTS, login, resendVerification, signup } from "@/lib/store";
+import { Eye, EyeOff, Hourglass, Info, Loader2, MailCheck, ShieldAlert } from "lucide-react";
+import { DEMO_ACCOUNTS, login, resendVerification, signup, syncApiUser } from "@/lib/store";
+import { api, API_ENABLED, ApiError } from "@/lib/api";
 import { Field } from "@/components/ui/Field";
+import { MovementSelect } from "@/components/user/MovementSelect";
 import { Button } from "@/components/ui/Button";
 import { AuthCard, DemoNote } from "./AuthCard";
 import { Recaptcha } from "./Recaptcha";
 import { PasswordStrength, passwordScore } from "./PasswordStrength";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
+const PHONE_RE = /^[\d\s()+-]{8,20}$/;
+
+/** Com a API: conta de teste criada pelo seed (npm run db:seed -w api). Só aparece fora de produção. */
+const LOGIN_HINTS = API_ENABLED
+  ? process.env.NODE_ENV === "production"
+    ? []
+    : [{ label: "Superadmin (seed)", email: "superadmin@psjb.org.br", password: "123456" }]
+  : DEMO_ACCOUNTS;
 type Tab = "entrar" | "criar";
 
 export function AuthForms() {
@@ -19,6 +29,7 @@ export function AuthForms() {
   const router = useRouter();
   const tab: Tab = params.get("aba") === "criar" ? "criar" : "entrar";
   const [pendingEmail, setPendingEmail] = useState<{ email: string; token: string } | null>(null);
+  const [awaiting, setAwaiting] = useState<string | null>(null);
 
 
   const setTab = (t: Tab) => {
@@ -28,6 +39,17 @@ export function AuthForms() {
     const qs = sp.toString();
     router.replace(qs ? `/entrar?${qs}` : "/entrar", { scroll: false });
   };
+
+  if (awaiting)
+    return (
+      <AwaitingActivation
+        email={awaiting}
+        onBack={() => {
+          setAwaiting(null);
+          setTab("entrar");
+        }}
+      />
+    );
 
   if (pendingEmail)
     return (
@@ -63,7 +85,14 @@ export function AuthForms() {
       {tab === "entrar" ? (
         <LoginForm onPending={(email) => setPendingEmail({ email, token: resendVerification(email) ?? "" })} />
       ) : (
-        <SignupForm onCreated={(email, token) => setPendingEmail({ email, token })} />
+        <SignupForm
+          onCreated={(email, token) => {
+            if (API_ENABLED) setAwaiting(email);
+            else setPendingEmail({ email, token });
+            // O formulário é longo; sem isso, no celular o card de confirmação aparece cortado.
+            window.scrollTo({ top: 0 });
+          }}
+        />
       )}
     </AuthCard>
   );
@@ -90,6 +119,7 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [touched, setTouched] = useState({ email: false, password: false });
   const [error, setError] = useState<{ text: string; pending?: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -103,7 +133,24 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
     if (!EMAIL_RE.test(email) || password.length < 6) return;
     setLoading(true);
     setError(null);
-    // Simula a latência de uma API real.
+    const goBack = () => {
+      const volta = params.get("volta");
+      router.push(volta && volta.startsWith("/") ? volta : "/painel");
+    };
+    if (API_ENABLED) {
+      api
+        .login(email, password, remember)
+        .then((u) => {
+          syncApiUser(u);
+          goBack();
+        })
+        .catch((err) => {
+          setLoading(false);
+          setError(loginErrorText(err));
+        });
+      return;
+    }
+    // Modo demonstração: simula a latência de uma API real.
     setTimeout(() => {
       const r = login(email, password);
       if (r.ok) {
@@ -122,7 +169,13 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
   return (
     <>
       <h1 className="font-serif text-3xl font-semibold">Entrar</h1>
-      <p className="mt-1 text-sm text-ink-muted">Acesse suas missas e preferências.</p>
+      {params.get("volta")?.startsWith("/convite") ? (
+        <p className="mt-2 rounded-[10px] bg-primary-soft px-3 py-2 text-sm text-primary">
+          Você recebeu o convite de uma missa. Entre na sua conta e ela já abre para você.
+        </p>
+      ) : (
+        <p className="mt-1 text-sm text-ink-muted">Acesse suas missas e preferências.</p>
+      )}
       <form onSubmit={submit} noValidate className="mt-6 space-y-4">
         <Field
           label="E-mail"
@@ -145,7 +198,13 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
         />
         <div className="flex items-center justify-between text-sm">
           <label className="flex min-h-11 items-center gap-2">
-            <input type="checkbox" defaultChecked className="h-4 w-4 accent-[var(--primary-solid)]" /> Manter conectado
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 accent-[var(--primary-solid)]"
+            />{" "}
+            Manter conectado
           </label>
           <Link href="/recuperar-senha" className="inline-flex min-h-11 items-center font-medium text-primary hover:underline">
             Esqueci a senha
@@ -174,41 +233,53 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
           )}
         </Button>
       </form>
-      <DemoNote>
-        <div className="flex gap-3">
-          <Info size={18} className="mt-0.5 shrink-0 text-gold-ink" />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">Contas de demonstração</p>
-            <ul className="mt-2 space-y-2">
-              {DEMO_ACCOUNTS.map((a) => (
-                <li key={a.email} className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-ink-muted">
-                    <strong className="text-ink">{a.label}:</strong> <code className="font-mono text-xs text-ink">{a.email}</code> /{" "}
-                    <code className="font-mono text-xs text-ink">{a.password}</code>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail(a.email);
-                      setPassword(a.password);
-                      setError(null);
-                    }}
-                    className="min-h-9 rounded-md px-3 font-semibold text-primary underline underline-offset-2 hover:bg-primary-soft"
-                  >
-                    Usar
-                  </button>
-                </li>
-              ))}
-            </ul>
+      {LOGIN_HINTS.length > 0 && (
+        <DemoNote>
+          <div className="flex gap-3">
+            <Info size={18} className="mt-0.5 shrink-0 text-gold-ink" />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{API_ENABLED ? "Conta de teste" : "Contas de demonstração"}</p>
+              <ul className="mt-2 space-y-2">
+                {LOGIN_HINTS.map((a) => (
+                  <li key={a.email} className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-ink-muted">
+                      <strong className="text-ink">{a.label}:</strong> <code className="font-mono text-xs text-ink">{a.email}</code> /{" "}
+                      <code className="font-mono text-xs text-ink">{a.password}</code>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail(a.email);
+                        setPassword(a.password);
+                        setError(null);
+                      }}
+                      className="min-h-9 rounded-md px-3 font-semibold text-primary underline underline-offset-2 hover:bg-primary-soft"
+                    >
+                      Usar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-        </div>
-      </DemoNote>
+        </DemoNote>
+      )}
     </>
   );
 }
 
+function loginErrorText(err: unknown): { text: string; pending?: boolean } {
+  if (!(err instanceof ApiError)) return { text: "Erro inesperado. Tente de novo." };
+  if (err.code === "ACCOUNT_PENDING") return { text: "Sua conta ainda não foi ativada. Assim que a coordenação liberar, você consegue entrar." };
+  if (err.code === "ACCOUNT_BLOCKED")
+    return { text: `Seu acesso está bloqueado.${err.details?.reason ? ` Motivo: ${err.details.reason}` : ""} Procure a coordenação da paróquia.` };
+  if (err.code === "INVALID_CREDENTIALS") return { text: "E-mail ou senha não conferem. Tente de novo." };
+  return { text: err.message };
+}
+
 function SignupForm({ onCreated }: { onCreated: (email: string, token: string) => void }) {
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "", ministry: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirm: "" });
+  const [movement, setMovement] = useState<{ id: number; name: string } | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [human, setHuman] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -219,6 +290,7 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
   const errors = {
     name: form.name.trim().length < 3 ? "Informe seu nome completo." : undefined,
     email: !EMAIL_RE.test(form.email) ? "Informe um e-mail válido." : undefined,
+    phone: form.phone.trim() && !PHONE_RE.test(form.phone.trim()) ? "Informe um telefone válido, com DDD." : undefined,
     password: passwordScore(form.password) < 2 || form.password.length < 8 ? "Use pelo menos 8 caracteres, com letras e números." : undefined,
     confirm: form.confirm !== form.password || !form.confirm ? "As senhas não conferem." : undefined,
   };
@@ -231,8 +303,20 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
     setError("");
     if (!valid) return;
     setLoading(true);
+    if (API_ENABLED) {
+      const { name, email, phone, password } = form;
+      api
+        .signup({ name, email, phone, password, movementId: movement?.id ?? null })
+        .then((u) => onCreated(u.email, ""))
+        .catch((err) => {
+          setLoading(false);
+          const fields = err instanceof ApiError ? err.details?.fields : undefined;
+          setError(fields ? Object.values(fields).join(" ") : err instanceof ApiError ? err.message : "Erro inesperado. Tente de novo.");
+        });
+      return;
+    }
     setTimeout(() => {
-      const r = signup(form);
+      const r = signup({ ...form, movement: movement?.name ?? "", movementId: movement?.id ?? null });
       setLoading(false);
       if (!r.ok) setError("Já existe uma conta com este e-mail. Tente entrar ou recuperar a senha.");
       else onCreated(form.email.trim().toLowerCase(), r.token);
@@ -242,17 +326,26 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
   return (
     <>
       <h1 className="font-serif text-3xl font-semibold">Criar conta</h1>
-      <p className="mt-1 text-sm text-ink-muted">Enviaremos um link para confirmar seu e-mail. A conta só é ativada depois da confirmação.</p>
+      <p className="mt-1 text-sm text-ink-muted">
+        {API_ENABLED
+          ? "Depois do cadastro, a coordenação da paróquia libera o seu acesso."
+          : "Enviaremos um link para confirmar seu e-mail. A conta só é ativada depois da confirmação."}
+      </p>
       <form onSubmit={submit} noValidate className="mt-6 space-y-4">
         <Field label="Nome completo" name="name" autoComplete="name" value={form.name} onChange={set("name")} error={show("name")} />
         <Field label="E-mail" name="signup-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} error={show("email")} />
         <Field
-          label="Ministério / pastoral (opcional)"
-          name="ministry"
-          value={form.ministry}
-          onChange={set("ministry")}
-          placeholder="Ex.: Ministério de Música — Missa das 10h"
+          label="Telefone / WhatsApp (opcional)"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          value={form.phone}
+          onChange={set("phone")}
+          placeholder="(31) 99999-0000"
+          error={show("phone")}
         />
+        <MovementSelect id="signup-movement" value={movement?.id ?? null} onChange={setMovement} />
         <div>
           <PasswordField label="Senha" name="new-password" autoComplete="new-password" value={form.password} onChange={set("password")} error={show("password")} />
           <PasswordStrength password={form.password} />
@@ -335,6 +428,26 @@ function CheckEmail({ email, token, onBack }: { email: string; token: string; on
           </Link>
         </DemoNote>
       )}
+    </AuthCard>
+  );
+}
+
+function AwaitingActivation({ email, onBack }: { email: string; onBack: () => void }) {
+  return (
+    <AuthCard>
+      <div className="text-center">
+        <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-primary-soft text-primary">
+          <Hourglass size={32} />
+        </span>
+        <h1 className="mt-4 font-serif text-3xl font-semibold">Conta criada!</h1>
+        <p className="mt-2 text-ink-muted">
+          Recebemos o cadastro de <strong className="text-ink">{email}</strong>. Agora a coordenação da paróquia precisa liberar o seu acesso.
+        </p>
+        <p className="mt-2 text-sm text-ink-muted">Assim que a conta for ativada, é só entrar com o seu e-mail e a senha que você criou.</p>
+        <Button variant="secondary" onClick={onBack} className="mt-6 w-full">
+          Voltar para o login
+        </Button>
+      </div>
     </AuthCard>
   );
 }

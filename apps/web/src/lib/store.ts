@@ -4,6 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import usersJson from "@data/users.json";
 import type { Mass, MassSlot, MomentId, User } from "./types";
 import { liturgicalSeason, liturgicalYear, nextSundayIso } from "./liturgy";
+import { api, API_ENABLED, ApiError, type ApiMass, type ApiPerson, type ApiUser } from "./api";
 
 /**
  * Estado do cliente (Fase 1, sem API): sessão ilustrativa, perfil e missas em localStorage.
@@ -100,7 +101,8 @@ const GUEST: User = {
   email: "",
   role: "musico",
   status: "ativo",
-  ministry: "",
+  movement: "",
+  movementId: null,
   parish: "",
   createdAt: "",
   emailVerifiedAt: null,
@@ -136,6 +138,65 @@ export function login(email: string, password: string): LoginResult {
 
 export function logout() {
   sessionStore.write({ userId: null });
+  if (API_ENABLED) {
+    void api.logout();
+    // Aparelho compartilhado (tablet da paróquia): as missas da pessoa não ficam para a próxima.
+    clearMassCache();
+  }
+}
+
+const API_STATUS: Record<ApiUser["status"], User["status"]> = { pending: "pendente", active: "ativo", blocked: "bloqueado" };
+
+/**
+ * Com a API, o usuário que vem do servidor é espelhado na lista local e vira a sessão.
+ * Assim as telas que ainda leem o store (painel, missas, perfil) continuam funcionando.
+ */
+export function syncApiUser(u: ApiUser) {
+  const prev = usersStore.read().find((x) => x.id === u.id);
+  const mirrored: StoredUser = {
+    ...prev,
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    password: "", // a senha só existe na API
+    role: u.roles.includes("admin") ? "admin" : "musico",
+    status: API_STATUS[u.status],
+    movement: u.movement?.name ?? "",
+    movementId: u.movement?.id ?? null,
+    parish: prev?.parish ?? "Paróquia Catedral São João Batista",
+    phone: u.phone,
+    photoUrl: u.photoUrl,
+    createdAt: u.createdAt,
+    emailVerifiedAt: prev?.emailVerifiedAt ?? null,
+    lastLoginAt: u.lastLoginAt,
+    blockedReason: u.blockedReason ?? undefined,
+  };
+  const list = usersStore.read();
+  usersStore.write(prev ? list.map((x) => (x.id === u.id ? mirrored : x)) : [...list, mirrored]);
+  if (sessionStore.read().userId !== u.id) clearMassCache(); // outra pessoa no mesmo aparelho
+  sessionStore.write({ userId: u.id });
+}
+
+/* Pessoas vindas da API (donos e convidados das missas), para mostrar nome e iniciais. */
+
+const peopleStore = createStore<Record<string, ApiPerson>>("psjb:people", {});
+
+function rememberPeople(list: ApiPerson[]) {
+  const cur = peopleStore.read();
+  if (list.every((p) => cur[p.id]?.name === p.name)) return;
+  peopleStore.write({ ...cur, ...Object.fromEntries(list.map((p) => [p.id, { id: p.id, name: p.name, photoUrl: p.photoUrl }])) });
+}
+export { rememberPeople };
+
+/** Nome de uma pessoa pelo id: conta local (demonstração) ou alguém que veio da API. */
+export function usePeopleLookup() {
+  const users = usersStore.useValue();
+  const people = peopleStore.useValue();
+  return useMemo(() => {
+    const byId = new Map<string, { id: string; name: string }>(Object.values(people).map((p) => [p.id, p]));
+    for (const u of users) byId.set(u.id, u);
+    return (id: string) => byId.get(id);
+  }, [users, people]);
 }
 
 export function updateUser(patch: Partial<User>) {
@@ -153,7 +214,7 @@ export function changePassword(current: string, next: string) {
 
 /* Cadastro com confirmação de e-mail — Fase 3: POST /api/auth/signup + e-mail com token */
 
-export function signup(data: { name: string; email: string; password: string; ministry: string }) {
+export function signup(data: { name: string; email: string; password: string; movement: string; movementId: number | null }) {
   if (usersStore.read().some((u) => sameEmail(u.email, data.email))) return { ok: false as const, reason: "existe" as const };
   const t = token();
   const user: StoredUser = {
@@ -163,7 +224,8 @@ export function signup(data: { name: string; email: string; password: string; mi
     password: data.password,
     role: "musico",
     status: "pendente",
-    ministry: data.ministry.trim(),
+    movement: data.movement,
+    movementId: data.movementId,
     parish: "Paróquia Catedral São João Batista",
     createdAt: now(),
     emailVerifiedAt: null,
@@ -210,7 +272,7 @@ export function resetPassword(t: string, password: string) {
 /* Administração — Fase 3: /api/admin/users (somente papel admin) */
 
 export const admin = {
-  update(id: string, patch: Partial<Pick<User, "name" | "email" | "role" | "ministry">>) {
+  update(id: string, patch: Partial<Pick<User, "name" | "email" | "role" | "movement" | "movementId">>) {
     writeUser(id, patch);
   },
   block(id: string, reason: string) {
@@ -246,7 +308,8 @@ export const admin = {
         password: token().slice(0, 10),
         role: data.role,
         status: "pendente",
-        ministry: "",
+        movement: "",
+        movementId: null,
         parish: "Paróquia Catedral São João Batista",
         createdAt: now(),
         emailVerifiedAt: null,
@@ -358,9 +421,11 @@ function seedMasses(): Mass[] {
 
 const massesStore = createStore<Mass[] | null>("psjb:masses", null);
 
+const NO_MASSES: Mass[] = [];
+
 export function useMasses(): Mass[] {
   const v = massesStore.useValue();
-  return v ?? SEED;
+  return v ?? (API_ENABLED ? NO_MASSES : SEED);
 }
 
 /** Missas que a pessoa logada criou ou que foram compartilhadas com ela. */
@@ -384,23 +449,31 @@ export function leaveMass(id: string) {
   if (!m || !userId) return;
   const before = m.sharedWith ?? [];
   massesStore.write(allMasses().map((x) => (x.id === id ? { ...x, sharedWith: before.filter((u) => u !== userId) } : x)));
-  return () => massesStore.write(allMasses().map((x) => (x.id === id ? { ...x, sharedWith: before } : x)));
+  // Na API, sair só vale depois do "Desfazer" sumir: quem saiu não consegue se adicionar de volta.
+  const cancel = later(id, () => api.masses.leave(id));
+  return () => {
+    cancel();
+    massesStore.write(allMasses().map((x) => (x.id === id ? { ...x, sharedWith: before } : x)));
+  };
 }
 const SEED = seedMasses();
 
 function allMasses() {
-  return massesStore.read() ?? SEED;
+  return massesStore.read() ?? (API_ENABLED ? NO_MASSES : SEED);
 }
 
 export function getMass(id: string) {
   return allMasses().find((m) => m.id === id);
 }
 
+/** Com a API, o id é um UUID gerado aqui: o editor salva antes de falar com o servidor. */
+const massId = () => (API_ENABLED ? crypto.randomUUID() : uid());
+
 export function newMass(): Mass {
   const date = nextSundayIso();
   const d = new Date(date + "T12:00:00");
   return {
-    id: uid(),
+    id: massId(),
     name: "",
     date,
     time: "10:00",
@@ -413,9 +486,18 @@ export function newMass(): Mass {
 
 export function saveMass(mass: Mass) {
   const list = allMasses();
-  const next = { ...mass, ownerId: mass.ownerId ?? sessionStore.read().userId ?? undefined, updatedAt: new Date().toISOString() };
   const i = list.findIndex((m) => m.id === mass.id);
+  const next = {
+    ...mass,
+    ownerId: mass.ownerId ?? sessionStore.read().userId ?? undefined,
+    // Compartilhamento e link mudam só por setMassShares/createShareLink: a cópia que o editor
+    // guarda pode estar desatualizada e não pode desfazer o convite de ninguém.
+    sharedWith: i >= 0 ? list[i].sharedWith : mass.sharedWith,
+    shareToken: i >= 0 ? list[i].shareToken : mass.shareToken,
+    updatedAt: new Date().toISOString(),
+  };
   massesStore.write(i >= 0 ? list.map((m) => (m.id === mass.id ? next : m)) : [next, ...list]);
+  if (API_ENABLED) pushMass(next);
   return next;
 }
 
@@ -423,6 +505,8 @@ export function deleteMass(id: string) {
   const list = allMasses();
   const removed = list.find((m) => m.id === id);
   massesStore.write(list.filter((m) => m.id !== id));
+  // Excluir na API só depois do "Desfazer" sumir (o desfazer chama saveMass, que cancela).
+  later(id, () => api.masses.remove(id).then(() => serverMasses.delete(id)));
   return removed;
 }
 
@@ -431,7 +515,7 @@ export function duplicateMass(id: string) {
   if (!m) return;
   const copy: Mass = {
     ...structuredClone(m),
-    id: uid(),
+    id: massId(),
     name: `Cópia de ${m.name || "missa"}`,
     date: "",
     // A cópia é de quem duplicou e começa sem compartilhamento.
@@ -455,3 +539,142 @@ export function addSongToMass(massId: string, moment: MomentId, songId: number) 
 }
 
 export { uid };
+
+/* ---------------- Missas na API ----------------
+ * Com a API ligada, o localStorage vira cache: a tela responde na hora e cada alteração vai
+ * para o servidor numa fila por missa (assim um PUT nunca chega antes do POST que criou a missa).
+ */
+
+/** Missas que já existem no servidor, com a lista de convidados que ele conhece. */
+const serverMasses = new Map<string, string[]>();
+const queues = new Map<string, Promise<unknown>>();
+const timers = new Map<string, ReturnType<typeof setTimeout>>();
+const syncErrorStore = createStore<{ message: string | null }>("psjb:sync", { message: null });
+export const useMassSyncError = () => syncErrorStore.useValue().message;
+
+function enqueue(id: string, task: () => Promise<unknown>) {
+  const run = (queues.get(id) ?? Promise.resolve())
+    .then(task)
+    .then(() => syncErrorStore.read().message && syncErrorStore.write({ message: null }))
+    .catch((err) => {
+      syncErrorStore.write({
+        message: err instanceof ApiError && err.status !== 0 ? err.message : "Sem conexão: a missa ficou salva neste aparelho e vai para o servidor na próxima alteração.",
+      });
+    });
+  queues.set(id, run);
+  return run;
+}
+
+/** Ação na API depois de 6,5 s (o tempo do "Desfazer"). Devolve a função que cancela. */
+function later(id: string, task: () => Promise<unknown>) {
+  if (!API_ENABLED) return () => undefined;
+  clearTimeout(timers.get(id));
+  timers.set(id, setTimeout(() => (timers.delete(id), enqueue(id, task)), 6500));
+  return () => {
+    clearTimeout(timers.get(id));
+    timers.delete(id);
+  };
+}
+
+const toBody = (m: Mass) => ({ name: m.name, date: m.date || null, time: m.time || null, season: m.season, year: m.year, slots: m.slots });
+
+function fromApi(m: ApiMass): Mass {
+  return {
+    id: m.id,
+    name: m.name,
+    date: m.date ?? "",
+    time: m.time ?? "",
+    season: m.season as Mass["season"],
+    year: m.year as Mass["year"],
+    slots: m.slots as Mass["slots"],
+    updatedAt: m.updatedAt,
+    ownerId: m.owner.id,
+    sharedWith: m.sharedWith.map((p) => p.id),
+    shareToken: m.shareToken,
+  };
+}
+
+function fromServer(m: ApiMass) {
+  serverMasses.set(m.id, m.sharedWith.map((p) => p.id));
+  rememberPeople([m.owner, ...m.sharedWith]);
+}
+
+const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+
+function pushMass(m: Mass) {
+  // Salvar de novo uma missa recém-excluída é o "Desfazer": cancela a exclusão.
+  clearTimeout(timers.get(m.id));
+  timers.delete(m.id);
+  enqueue(m.id, async () => {
+    const saved = serverMasses.has(m.id) ? await api.masses.update(m.id, toBody(m)) : await api.masses.create(m.id, toBody(m));
+    fromServer(saved);
+    // Missa criada já com pessoas (ex.: cópia offline): manda o compartilhamento junto.
+    const wanted = m.sharedWith ?? [];
+    if (wanted.length && !sameIds(wanted, serverMasses.get(m.id) ?? [])) fromServer(await api.masses.share(m.id, wanted));
+  });
+}
+
+/** Muda com quem a missa está compartilhada (só o dono). */
+export function setMassShares(id: string, userIds: string[]) {
+  const m = getMass(id);
+  if (!m) return;
+  massesStore.write(allMasses().map((x) => (x.id === id ? { ...x, sharedWith: userIds } : x)));
+  if (API_ENABLED) enqueue(id, async () => fromServer(await api.masses.share(id, userIds)));
+}
+
+/** Muda a cada sincronização com o servidor: o editor reabre com os dados novos. */
+const syncVersionStore = createStore<number>("psjb:masses-sync", 0);
+export const useMassesVersion = syncVersionStore.useValue;
+
+/** Traz do servidor as missas da pessoa (criadas e compartilhadas) e substitui o cache. */
+export async function syncMasses() {
+  if (!API_ENABLED) return;
+  const list = await api.masses.list();
+  serverMasses.clear();
+  list.forEach(fromServer);
+  // Missas criadas aqui e ainda não enviadas (sem conexão) não se perdem.
+  const pending = allMasses().filter((m) => !list.some((x) => x.id === m.id) && queues.has(m.id));
+  massesStore.write([...list.map(fromApi), ...pending]);
+  syncVersionStore.write(syncVersionStore.read() + 1);
+}
+
+/** Busca uma missa que ainda não está no cache (link direto para o editor). */
+export async function fetchMass(id: string) {
+  const m = await api.masses.get(id);
+  fromServer(m);
+  upsertMass(fromApi(m));
+  return m.id;
+}
+
+function upsertMass(m: Mass) {
+  const list = allMasses();
+  massesStore.write(list.some((x) => x.id === m.id) ? list.map((x) => (x.id === m.id ? m : x)) : [m, ...list]);
+}
+
+/** Link de convite: quem abrir e estiver logado vira convidado. Devolve a URL completa. */
+export async function createShareLink(id: string) {
+  await queues.get(id); // a missa precisa existir no servidor
+  const { path } = await api.masses.createLink(id);
+  const token = new URLSearchParams(path.split("?")[1]).get("token");
+  upsertMass({ ...getMass(id)!, shareToken: token });
+  return path;
+}
+
+export async function revokeShareLink(id: string) {
+  await api.masses.revokeLink(id);
+  upsertMass({ ...getMass(id)!, shareToken: null });
+}
+
+/** Entrou pelo link de convite: vira convidado e a missa entra no cache. */
+export async function joinMassByToken(token: string) {
+  const m = await api.masses.join(token);
+  fromServer(m);
+  upsertMass(fromApi(m));
+  return m.id;
+}
+
+function clearMassCache() {
+  serverMasses.clear();
+  massesStore.write(null);
+  peopleStore.write({});
+}

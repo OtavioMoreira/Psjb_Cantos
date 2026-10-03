@@ -33,7 +33,10 @@ function adventStart(year: number) {
   return addDays(christmas, -dow - 21);
 }
 
-export function liturgicalSeason(date: Date): SeasonId {
+export function liturgicalSeason(at: Date): SeasonId {
+  // Compara só o dia: com a hora (o editor usa meio-dia), Pentecostes e o Batismo do Senhor
+  // passavam do limite "<=" e caíam em Tempo Comum.
+  const date = new Date(at.getFullYear(), at.getMonth(), at.getDate());
   const y = date.getFullYear();
   const e = easter(y);
   const ashWednesday = addDays(e, -46);

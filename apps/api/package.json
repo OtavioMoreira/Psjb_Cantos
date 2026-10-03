@@ -4,17 +4,40 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js"
+    "start": "node --env-file-if-exists=.env dist/server.js",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "db:migrate": "tsx --env-file-if-exists=.env src/database/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=.env src/database/seed.ts",
+    "db:import-songs": "tsx --env-file-if-exists=.env src/database/import-songs.ts",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "REQUIRE_TEST_DB=1 vitest run --project integration",
+    "test:watch": "vitest --project unit"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.3.0",
-    "fastify": "^5.12.5"
+    "@fastify/helmet": "^13.1.1",
+    "@fastify/multipart": "^10.1.2",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/static": "^10.1.5",
+    "@node-rs/argon2": "^2.2.1",
+    "@vercel/blob": "^2.8.0",
+    "fastify": "^5.12.5",
+    "jose": "^6.2.12",
+    "pg": "^8.23.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=20.6"
   }
 }

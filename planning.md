@@ -33,7 +33,7 @@
 |---------|--------|------------------------|
 | **Fiel / visitante** | Celular, pouca familiaridade técnica | Achar a letra, ouvir o canto, fonte legível |
 | **Músico** (ministério de música) | Violão ou teclado; celular e tablet | Cifra com transposição, partitura, áudio, Modo Missa, PDF |
-| **Coordenador(a) de liturgia** | Planeja as celebrações da semana | Filtrar por momento, tempo e ano; montar e compartilhar a missa |
+| **Coordenador(a) de liturgia** | Planeja as celebrações da semana (no sistema, tem o papel **músico** ou **admin**; não há papel próprio) | Filtrar por momento, tempo e ano; montar e compartilhar a missa |
 | **Administrador(a)** | Secretaria ou Pascom | Gerenciar usuários (bloquear, liberar, papéis); no futuro, cadastrar cantos |
 
 ---
@@ -97,17 +97,18 @@ interface Song {
   lyrics: string;          // letra + cifra (formato em §3.3)
 }
 
-type UserRole = 'admin' | 'coordenador' | 'musico';
-type UserStatus = 'pendente' | 'ativo' | 'bloqueado'; // pendente = e-mail ainda não confirmado
+type UserRole = 'admin' | 'musico';                   // na API: tabelas roles + user_roles (N:N)
+type UserStatus = 'pendente' | 'ativo' | 'bloqueado'; // pendente = aguardando um admin ativar
 
 interface User {
   id: string; name: string;
   email: string;           // único, minúsculo; é o login
   role: UserRole; status: UserStatus;
-  ministry: string; parish: string; instrument?: string;
+  movement: string; movementId: number | null; parish: string; instrument?: string;  // movimento: tabela movements
   blockedReason?: string;  // mostrado ao usuário bloqueado quando ele tenta entrar
   createdAt: string; emailVerifiedAt: string | null; lastLoginAt: string | null;
-  // Fase 3 (banco): passwordHash (argon2id), updatedAt
+  phone?: string | null; photoUrl?: string | null;
+  // No banco (apps/api, tabela users): password_hash (argon2id), updated_at
 }
 
 interface Mass {
@@ -162,7 +163,7 @@ interface AuditLog {       // ações de admin
 data/
   songs.json        # Song[]: 121 cantos de exemplo
   categories.json   # { moments, seasons, years, themes }
-  users.json        # usuários de demonstração: admin, coordenadores e músicos; ativos, pendentes e bloqueados
+  users.json        # usuários de demonstração (modo sem API): admin e músicos; ativos, pendentes e bloqueados
 ```
 Estado do cliente em `localStorage`:
 
@@ -195,9 +196,10 @@ Estado do cliente em `localStorage`:
 - 🔜 Botões anterior/próximo pela numeração.
 
 ### E3. Acesso: entrar, criar conta, confirmar e-mail, recuperar senha 🟡
-- ✅ `/entrar` com abas **Entrar** e **Criar conta**. As mensagens são distintas para credenciais inválidas, conta **pendente** (com reenvio da confirmação) e conta **bloqueada** (com o motivo).
+- ✅ `/entrar` com abas **Entrar** e **Criar conta**. As mensagens são distintas para credenciais inválidas, conta **pendente** e conta **bloqueada** (com o motivo).
+- ✅ **Com a API** (`API_URL` no build): login e cadastro chamam `POST /api/auth/login` e `POST /api/users`. O cadastro mostra "Conta criada!" e a conta espera um admin ativar. Sem a API (GitHub Pages), tudo continua no modo demonstração.
 - ✅ **Criar conta:**
-  - campos: nome, e-mail, ministério (opcional), senha (8 ou mais caracteres, com letras e números, com medidor de força) e confirmação;
+  - campos: nome, e-mail, telefone (opcional), movimento (opcional, da lista), senha (8 ou mais caracteres, com letras e números, com medidor de força) e confirmação;
   - aceite dos termos (LGPD) e **reCAPTCHA** (visual);
   - a conta nasce **pendente**, com papel músico.
 - ✅ **Confirmar e-mail:** tela "Confirme seu e-mail" com reenvio a cada 60 s. O link `/confirmar-email?token=` ativa a conta automaticamente.
@@ -209,7 +211,7 @@ Estado do cliente em `localStorage`:
   - o cadastro também não revela se o e-mail já existe.
 
 ### E4. Perfil 🟡
-- ✅ Nome, e-mail, paróquia, ministério, instrumento, tema (claro/escuro/sistema) e sustenidos/bemóis.
+- ✅ Nome, e-mail, paróquia, movimento, instrumento, tema (claro/escuro/sistema) e sustenidos/bemóis.
 - ✅ Troca de senha exigindo a atual, com a mesma regra de força do cadastro.
 - 🔜 Trocar o e-mail vai exigir a confirmação do novo endereço.
 
@@ -237,8 +239,10 @@ Estado do cliente em `localStorage`:
   - modal com seleção múltipla e busca de pessoas ativas;
   - quem recebe vê a missa em "Minhas Missas", edita os cantos, abre no Modo Missa e baixa o PDF, e pode "Sair desta missa";
   - só o dono exclui ou muda o compartilhamento.
-  - Fase 1: salvo na missa (`ownerId`, `sharedWith`) no `localStorage`, então só funciona no mesmo aparelho. Falta a API e o e-mail de aviso.
-- 🔜 Missas salvas no servidor e sincronia entre aparelhos.
+  - Fase 1: salvo na missa (`ownerId`, `sharedWith`) no `localStorage`, então só funciona no mesmo aparelho.
+  - ✅ **Com a API:** a busca de pessoas vai ao servidor e o compartilhamento vale em qualquer aparelho. 🔜 E-mail de aviso.
+- ✅ **Link de convite** (com a API): o dono gera, copia ou envia pelo celular (`navigator.share`) e pode desativar. Quem abre `/convite?token=` entra (ou é levado ao login e volta) e vira convidado automaticamente, caindo direto no editor.
+- ✅ **Missas salvas no servidor** (com a API), com o `localStorage` como cache e uma fila de envio por missa. "Salvo só neste aparelho" quando o envio falha.
 
 ### E6. Modo Missa: apresentação no tablet ✅
 - ✅ **Tela cheia automática** no primeiro toque. No iPhone, que não aceita tela cheia pelo navegador, o site é instalado na tela de início (manifest com `display: fullscreen` + `appleWebApp`).
@@ -255,9 +259,18 @@ Estado do cliente em `localStorage`:
 - ✅ Controles somem após 4 s; tela final "Missa concluída. Deus seja louvado!".
 - 🔜 Offline por service worker e player de áudio do canto atual.
 
-### E7. API stub ✅
-- ✅ `apps/api` com Fastify + TypeScript, `GET /api/health` → `ok` e `GET /api/test` → string, `PORT` (3333) e CORS.
-- 🔜 Teste automatizado com `fastify.inject`.
+### E7. API: usuários, papéis e autenticação JWT 🟡
+- ✅ `apps/api` com Fastify + TypeScript em **arquitetura hexagonal** (§6.1).
+- ✅ Banco: tabelas `users`, `roles` (admin, musico), `user_roles` e `sessions`, com migrations em SQL (`npm run db:migrate -w api`) e seed do superadmin (`npm run db:seed -w api`).
+- ✅ Cadastro público (`POST /api/users`), que cria a conta **pendente**; login, refresh rotativo e logout; `GET /api/me`; foto do perfil (`PUT /api/me/photo`).
+- ✅ Gestão só para admin: `GET /api/admin/users` e `PATCH /api/admin/users/:id/activate`, protegidos pelo middleware `requireRole("admin")`.
+- ✅ **Movimentos** (tabela `movements`, um por pessoa em `users.movement_id`) no lugar do "ministério": lista pública e gestão pelo admin. O front usa um seletor no cadastro, no perfil e no admin.
+- ✅ **Missas** (tabelas `masses` e `mass_shares`): todas as rotas de §5.2. Com `API_URL`, o front salva e sincroniza pela API.
+- ✅ **Link de convite** (`masses.share_token`): gerar, desativar e entrar (`POST /api/masses/join`).
+- ✅ **Cantos e flags** (tabelas `songs`, `flags`, `song_flags`): repertório público, CRUD de cantos e flags pelo admin, envio de PDF e áudio (Vercel Blob) e importação do `data/songs.json` (`npm run db:import-songs -w api`).
+- ✅ Coleção do **Postman** em `docs/postman/` (com ambientes local e produção). O teste `postman.test.ts` falha se uma rota não estiver na coleção.
+- ✅ Testes com `fastify.inject` e adaptadores em memória (`npm test -w api`).
+- 🔜 Tela de admin de usuários e perfil lendo da API; demais ações de admin (bloquear, editar, papel, excluir); troca de senha e recuperação; e-mail e 2FA.
 
 ### E8. Administração de usuários (só papel **admin**) 🟡
 - ✅ `/painel/admin/usuarios`: o menu "Usuários" só aparece para admins; os demais veem "Acesso restrito".
@@ -298,6 +311,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | `/cantos/[slug]` | Detalhe do canto (`/cantos/001-a-feliz-espera`) | SSG (`generateStaticParams`) |
 | `/entrar` · `/entrar?aba=criar` | Entrar / criar conta | Client |
 | `/confirmar-email?token=` | Confirma o e-mail e ativa a conta | Client |
+| `/convite?token=` | Link de convite de uma missa: entra (ou vai ao login) e vira convidado | Client (só com a API) |
 | `/recuperar-senha` · `/redefinir-senha?token=` | Recuperação de senha | Client |
 | `/painel` | Visão geral | Client (protegida) |
 | `/painel/perfil` | Meus dados, senha e preferências | Client (protegida) |
@@ -316,25 +330,45 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | GET | `/api/test` | 1 ✅ | string de teste |
 | GET | `/api/songs`, `/api/songs/:slug` | 2 | JSON |
 | GET | `/api/categories` | 2 | JSON |
-| POST | `/api/auth/signup` | 3 | cria usuário **pendente** + e-mail de confirmação (exige reCAPTCHA) |
-| POST | `/api/auth/verify-email` | 3 | `{ token }` → status **ativo** |
-| POST | `/api/auth/resend-verification` | 3 | reenvio (rate limit) |
-| POST | `/api/auth/login` | 3 | e-mail + senha (+ reCAPTCHA após falhas) → envia **código 2FA**; retorna `challengeId` |
-| POST | `/api/auth/login/verify` | 3 | `{ challengeId, code }` → JWT de acesso + refresh token em cookie httpOnly |
-| POST | `/api/auth/refresh` | 3 | rotaciona o refresh token e emite novo JWT |
-| POST | `/api/auth/logout` | 3 | revoga o refresh token |
+| POST | `/api/users` | ✅ | cadastro público `{ name, email, password, phone?, movementId? }` → 201 com a conta **pendente** e papel músico; 409 `EMAIL_TAKEN`; 400 com os campos inválidos |
+| POST | `/api/auth/login` | ✅ | `{ email, password, remember }` → `{ accessToken, expiresIn, user }` + cookie `psjb_refresh`. 401 `INVALID_CREDENTIALS`, 403 `ACCOUNT_PENDING` ou `ACCOUNT_BLOCKED` (com `details.reason`) |
+| POST | `/api/auth/refresh` | ✅ | cookie → novo access token e refresh **rotacionado**; reuso revoga a família |
+| POST | `/api/auth/logout` | ✅ | revoga a sessão e apaga o cookie (204) |
+| GET | `/api/me` | ✅ | `Authorization: Bearer` → `{ user }` |
+| PUT | `/api/me/photo` | ✅ | multipart, campo `photo` (JPG/PNG/WebP, até 2 MB) → `{ user }` com a nova `photoUrl` |
+| GET | `/api/admin/users?status=&role=&q=` | ✅ | listagem (admin): pendentes, depois bloqueados e ativos. 🔜 paginação |
+| PATCH | `/api/admin/users/:id/activate` | ✅ | admin ativa (ou desbloqueia) a conta |
+| GET | `/api/movements` | ✅ | lista pública de movimentos `{ id, name, members }` |
+| POST · PATCH · DELETE | `/api/admin/movements[/:id]` | ✅ | admin cria, renomeia ou exclui `{ name }`. 409 `MOVEMENT_TAKEN` (nome repetido) e `MOVEMENT_IN_USE` (há pessoas no movimento) |
+| GET | `/api/users/search?q=&limit=` | ✅ | logado: pessoas **ativas** para compartilhar (nome, e-mail, movimento), sem a própria pessoa |
+| GET | `/api/masses?when=upcoming\|past\|all&q=` | ✅ | missas que criei ou que foram compartilhadas comigo; `access` = `owner` ou `shared` |
+| POST | `/api/masses` | ✅ | cria `{ name, date, time, season, year, slots }` (tudo opcional) → 201 |
+| GET | `/api/masses/:id` | ✅ | dono ou convidado; 403 para os outros; 404 se não existe |
+| PUT | `/api/masses/:id` | ✅ | substitui a missa inteira (dono ou convidado) |
+| PATCH | `/api/masses/:id` | ✅ | muda só os campos enviados (dono ou convidado) |
+| DELETE | `/api/masses/:id` | ✅ | só o dono → 204 |
+| POST | `/api/masses/:id/duplicate` | ✅ | cópia de quem duplicou: "Cópia de …", sem data e sem compartilhamento → 201 |
+| PUT | `/api/masses/:id/shares` | ✅ | só o dono: `{ userIds }` substitui a lista; só contas ativas (400 `invalidUserIds`) |
+| DELETE | `/api/masses/:id/shares/me` | ✅ | quem recebeu sai da missa → 204 |
+| POST | `/api/masses/:id/share-link` | ✅ | só o dono: gera (ou devolve o mesmo) link de convite → `{ token, path }` |
+| DELETE | `/api/masses/:id/share-link` | ✅ | só o dono: desativa o link (quem entrou continua) → 204 |
+| POST | `/api/masses/join` | ✅ | logado: `{ token }` → vira convidado (ou só recebe a missa, se já tinha acesso). 404 se o link foi desativado |
+| GET | `/api/songs?q=&flags=&page=&pageSize=` | ✅ | público: cantos ativos, sem a letra. `flags` = ids (OU no grupo, E entre grupos); `q` sem acento |
+| GET | `/api/songs/:ref` | ✅ | público: canto por id ou slug, com letra e flags |
+| GET | `/api/flags` | ✅ | público: flags em ordem de grupo (momento, tempo, ano, tema, outro) |
+| GET | `/api/admin/songs` · `/api/admin/songs/:id` | ✅ | admin: inclui cantos ocultos |
+| POST · PUT · PATCH · DELETE | `/api/admin/songs[/:id]` | ✅ | admin: CRUD. `flagIds` (várias), `media` (links), `active`. 409 `SONG_TAKEN` (número ou slug) e `SONG_IN_USE` (está em missa) |
+| PUT · DELETE | `/api/admin/songs/:id/files/:kind` | ✅ | admin: `kind` = `cifra-pdf`, `partitura-pdf` ou `audio`. multipart, campo `file`, até 4 MB |
+| POST · PUT · DELETE | `/api/admin/flags[/:id]` | ✅ | admin: `{ group, slug, name, color?, position? }`. 409 `FLAG_TAKEN` |
+| POST | `/api/auth/login/verify` | 3 | 2FA: `{ challengeId, code }` → só então emite os tokens |
+| POST | `/api/auth/verify-email` · `/resend-verification` | 3 | quando houver serviço de e-mail |
 | POST | `/api/auth/forgot` · `/api/auth/reset` | 3 | recuperação de senha |
-| GET/PATCH | `/api/me` · POST `/api/me/password` | 3 | perfil e troca de senha |
-| GET | `/api/admin/users?status=&role=&q=&page=` | 3 | listagem paginada (admin) |
-| PATCH | `/api/admin/users/:id` | 3 | nome, e-mail, ministério, papel |
-| POST | `/api/admin/users/:id/block` · `/unblock` · `/activate` | 3 | controle de acesso (gera `AuditLog`) |
+| PATCH | `/api/me` · POST `/api/me/password` | 3 | editar perfil e trocar senha |
+| PATCH | `/api/admin/users/:id` | 3 | nome, e-mail, movimento, papel |
+| POST | `/api/admin/users/:id/block` · `/unblock` | 3 | controle de acesso (gera `AuditLog`) |
 | POST | `/api/admin/users/:id/resend-verification` · `/reset-password` | 3 | e-mails de suporte |
 | POST | `/api/admin/users/invite` · DELETE `/api/admin/users/:id` | 3 | convite e exclusão |
-| POST/PUT/DELETE | `/api/songs[/:id]` | 4 | CRUD de cantos (admin) |
-| POST | `/api/uploads` | 4 | URL assinada |
-| CRUD | `/api/masses` (dono ou convidado; excluir só o dono) | 5 | missas |
-| PUT | `/api/masses/:id/shares` `{ userIds }` · DELETE `/api/masses/:id/shares/me` | 5 | compartilhar com a equipe (só o dono, qualquer papel) e sair; envia e-mail de aviso |
-| GET | `/api/users/search?q=` | 5 | busca de pessoas ativas para compartilhar (nome, e-mail, ministério) |
+| POST | `/api/uploads` | 4 | token de upload direto para o Vercel Blob (arquivos acima de 4 MB) |
 
 ---
 
@@ -364,13 +398,29 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 │  │        ├─ liturgy.ts       # calendário litúrgico, cores, datas
 │  │        ├─ search.ts        # busca e filtros
 │  │        └─ routes.ts        # BASE_PATH e URLs com ?id=
-│  └─ api/                      # Fastify + TS
+│  └─ api/                      # Fastify + TS, arquitetura hexagonal
+│     ├─ src/
+│     │  ├─ domain/             # entidades e regras puras (User, Role, AppError)
+│     │  ├─ dtos/               # schemas Zod de entrada + formato de saída (UserDTO)
+│     │  ├─ interfaces/         # portas: UserRepository, SessionRepository, PasswordHasher, TokenService, FileStorage
+│     │  ├─ actions/            # casos de uso: auth/ (login, refresh, logout), users/, admin/
+│     │  ├─ repositories/       # adaptadores Postgres (pg)
+│     │  ├─ services/           # adaptadores: argon2id, JWT (jose), Vercel Blob, disco local
+│     │  ├─ controllers/        # HTTP → action → resposta (cookies, status)
+│     │  ├─ middlewares/        # authenticate, requireRole("admin")
+│     │  ├─ routes/             # mapa de rotas + rate limit
+│     │  ├─ database/           # pool, migrations/*.sql, migrate.ts, seed.ts
+│     │  ├─ container.ts        # monta as actions com os adaptadores (injeção de dependência)
+│     │  └─ server.ts           # entrada local e na Vercel
+│     └─ test/                  # fastify.inject + adaptadores em memória
 ```
 **Por que estas escolhas**
 - **npm workspaces:** nativo, sem ferramenta extra.
 - **Next.js App Router + Server Components:** pouco JS no cliente e HTML estático por canto.
 - **Tailwind:** design tokens centralizados em `globals.css`.
-- **Fastify:** rápido, com validação por schema e TypeScript de primeira classe.
+- **Fastify:** rápido, com validação por schema e TypeScript de primeira classe. Roda na Vercel sem configuração (detecta `src/server.ts`).
+- **Hexagonal na API:** as actions dependem só das interfaces; trocar Postgres local por Neon, disco por Vercel Blob ou o banco por memória nos testes não mexe nas regras.
+- **`pg` + SQL puro** em vez de ORM: poucas tabelas, consultas explícitas e migrations versionadas em `.sql`. Dá para adotar Drizzle depois sem mudar as actions.
 - **`lib/data` e `lib/store.ts` isolados:** na troca por API, as telas não mudam.
 - **Export estático (GitHub Pages):** hospedagem gratuita na Fase 1. Como consequência, não há `revalidate`, Server Actions nem rotas dinâmicas para dados do cliente.
   - Se precisar de SSR ou ISR, migrar para a Vercel, que não exige mudança de código além do `next.config`.
@@ -398,7 +448,9 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 - ✅ `generateMetadata` por canto; `lang="pt-BR"`; painel e Modo Missa com `noindex`.
 - 🔜 `sitemap.xml`, `robots.txt`, JSON-LD `MusicComposition`, redirecionamentos 301 das URLs antigas e domínio próprio (`cantos.psjb.org.br`).
 
-### 6.6 Segurança e autenticação (Fase 3)
+### 6.6 Segurança e autenticação
+
+**Já implementado:** argon2id; login → access JWT de 15 min + refresh rotativo em cookie httpOnly (sem o 2FA ainda); detecção de reuso; papéis no JWT e `requireRole` no servidor; rate limit em login, cadastro e refresh; `@fastify/helmet`; CORS restrito; validação com Zod; respostas de erro no formato `{ error: { code, message, details } }`. O resto desta seção continua planejado para a Fase 3.
 
 **Senhas**
 - Hash com **argon2id**. Política: 8 ou mais caracteres, com letras e números (a mesma da UI); se possível, checar contra listas de senhas vazadas.
@@ -434,7 +486,17 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
   - fluxos de cadastro e admin;
   - auditoria de responsividade;
   - geração do PDF.
-- 🔜 Vitest (chords, sheet, search, liturgy, store), Playwright na CI, validação dos JSONs com Zod (`npm run validate:data`) e `fastify.inject` para a API.
+- ✅ **Testes automatizados (Vitest)**, rodando no GitHub Actions (`.github/workflows/tests.yml`) a cada push e PR:
+
+  | Camada | Onde | O que cobre |
+  |---|---|---|
+  | Unitários da API | `apps/api/test/unit` | domínio (slug, acesso à missa, códigos de erro); JWT (vencido, adulterado, `alg: none`, outro segredo, papéis desconhecidos); argon2id; schemas dos DTOs (senha, tom de −6 a +5, datas, mass assignment, URLs só http/https); storage local (path traversal); identificação de arquivos pelos bytes |
+  | Rotas com adaptadores em memória | `apps/api/test/http` | regras das actions e controllers. **Matriz de autorização automática:** toda rota fora da lista pública dá 401 sem token e toda rota `/admin` dá 403 para músico. Também: tokens forjados, conta bloqueada depois do login, sem vazamento de hash, erro 500 sem detalhes, helmet, CORS, cookie Secure e limite de tentativas em produção, cobertura da coleção do Postman |
+  | Integração (Postgres real) | `apps/api/test/integration` | cada método dos repositórios (SQL, CHECK, UNIQUE, CASCADE, fuso das datas, busca sem acento, filtro por flags, `%`/`_`/aspas como texto) e fluxos HTTP completos com o banco. Banco separado `psjb_cantos_test`; a configuração se recusa a rodar em banco que não termine com `_test` |
+  | Regras do front | `apps/web/test` | calendário litúrgico (tempos, ano A/B/C, Páscoa), acordes e transposição, refrão, busca e filtros na URL |
+  | Postman | `docs/postman` + newman | a coleção inteira contra a API rodando, no CI |
+
+- 🔜 Playwright na CI (fluxos de tela: login, editor, convite, Modo Missa) e validação dos JSONs com Zod (`npm run validate:data`).
 
 ### 6.8 Convenções
 - Código e identificadores em inglês; textos da interface, commits e documentação em **pt-BR**.
@@ -447,11 +509,12 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 ### 6.9 Serviços externos (Fase 3)
 | Serviço | Uso | Opções |
 |---|---|---|
-| Banco de dados | usuários, tokens, sessões, missas, cantos, auditoria | PostgreSQL (Neon, Supabase, RDS) + Prisma/Drizzle |
+| Banco de dados | usuários, tokens, sessões, missas, cantos, auditoria | **PostgreSQL no Neon** (escolhido). Use a string "pooled" (`-pooler`) com `sslmode=require` |
+| Arquivos | fotos de perfil; depois PDFs e MP3 | **Vercel Blob** (escolhido), via `FileStorage`. Limite de 4,5 MB por requisição nas Functions: arquivos grandes (PDF, MP3) devem ir por upload direto do navegador com token do Blob |
 | E-mail transacional | confirmação, código 2FA, redefinição de senha, convite, bloqueio | Resend, Amazon SES, Postmark, Brevo (SPF, DKIM e DMARC em `psjb.org.br`) |
 | reCAPTCHA | cadastro, recuperação, login após falhas | Google reCAPTCHA v3/v2 ou Cloudflare Turnstile |
-| Hospedagem da API | Node/Fastify | Render, Railway, Fly.io, VPS |
-| Hospedagem do front | Next.js | GitHub Pages (atual, estático) ou Vercel |
+| Hospedagem da API | Node/Fastify | **Vercel** (escolhido): projeto com raiz `apps/api`, vira uma Function (Fluid compute) |
+| Hospedagem do front | Next.js | **Vercel** (escolhido), com `API_URL` apontando para a API; o GitHub Pages continua como demonstração estática |
 
 Modelos de e-mail (pt-BR, com o logo):
 - Confirme seu e-mail
@@ -490,21 +553,28 @@ Modelos de e-mail (pt-BR, com o logo):
 - [ ] Endpoints de leitura; `lib/data` passa a consumir a API.
 
 ### Fase 3: Banco e autenticação real
-- [ ] PostgreSQL + ORM, migrações e seeds a partir dos JSONs.
-- [ ] argon2id, **JWT (15 min) + refresh rotativo em cookie httpOnly**, **2FA por código no e-mail** e papéis.
+- ✅ PostgreSQL com migrations em SQL e seed do superadmin. 🔜 Cantos e missas no banco.
+- ✅ argon2id, **JWT (15 min) + refresh rotativo em cookie httpOnly** e papéis (admin, musico) com `requireRole`.
+- [ ] **2FA por código no e-mail**.
+- [ ] Deploy: projetos `apps/web` e `apps/api` na Vercel, banco no Neon (rodar `db:migrate` no deploy) e Blob ligado à API.
 - [ ] Cadastro com **reCAPTCHA no servidor** + **confirmação de e-mail** (pendente → ativo); recuperação de senha; convites.
 - [ ] Serviço de e-mail + modelos (§6.9).
 - [ ] Endpoints de admin de usuários + `AuditLog` (§5.2).
 - [ ] Trocar o `lib/store.ts` (localStorage) pelas chamadas à API, mantendo as telas.
 
 ### Fase 4: Admin de cantos
-- [ ] CRUD de cantos e taxonomias, com editor de cifra, pré-visualização e marcação de refrão.
-- [ ] Upload de PDF e MP3 para storage + CDN.
+- ✅ API: CRUD de cantos e de flags (taxonomia), envio de PDF e áudio para o storage (Vercel Blob) e importação do repertório de exemplo.
+- [ ] Telas de admin de cantos e flags, com editor de cifra, pré-visualização e marcação de refrão.
+- [ ] Site público lendo os cantos da API (`lib/data`), em vez do `data/songs.json`.
+- [ ] Arquivos acima de 4 MB: upload direto do navegador para o Blob (token do cliente), sem passar pela Function.
+- [ ] Migrar os 623 cantos do banco legado (`audios`) para `songs`.
 
 ### Fase 5: Offline e compartilhamento
 - [ ] Service worker: cantos das missas em cache para o Modo Missa sem internet (hoje, o PDF cobre o uso offline).
-- [ ] Missas no servidor; sincronizar computador e tablet.
-- [ ] Compartilhar com a equipe pela API (a tela já existe): permissão no servidor, busca de pessoas e e-mail "Uma missa foi compartilhada com você".
+- ✅ API de missas: CRUD, duplicar, compartilhar, sair e busca de pessoas, com permissão no servidor.
+- [ ] Telas de missa (editor, Minhas Missas, Modo Missa, compartilhar) lendo e salvando pela API; sincronizar computador e tablet.
+- [ ] E-mail "Uma missa foi compartilhada com você".
+- [ ] Controle de concorrência na edição (dois convidados salvando ao mesmo tempo: hoje vale o último).
 
 ---
 
