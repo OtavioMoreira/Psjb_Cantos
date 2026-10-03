@@ -479,6 +479,12 @@ Modelos de e-mail (pt-BR, com o logo):
 - 🔜 SEO (sitemap, JSON-LD), Lighthouse ≥ 95 e **homologação com os músicos em tablet real**.
 
 ### Fase 2: API e migração de dados
+- ✅ Banco legado (MySQL 5.7.44) copiado para MySQL local em Docker e convertido de forma fiel para **PostgreSQL 18** (`db/postgres/`): 10 tabelas, 623 cantos, 45 categorias. Conferência célula a célula e auditoria independente aprovadas (`CONVERSAO.md`, `VERIFICACAO.md`).
+- [ ] Redesenhar o modelo a partir do banco convertido (descartar as tabelas do CMS genérico: `modulos`, `painel_administrativo`, `acessos*`).
+- [ ] Busca sem acento no Postgres: `CREATE EXTENSION unaccent` (ou colação `pt_br_ci_ai`); normalizar NBSP e `\r` do HTML de `audios.descricao`. Hoje `LIKE '%sao%'` não acha "São".
+- [ ] Login na API: `trim` no usuário e no e-mail (o Postgres não ignora espaço no fim como o MySQL) e não usar `ILIKE` nas colunas com `pt_br_ci_ai` (dá erro).
+- [ ] Senhas legadas em **MD5 sem salt**: não reaproveitar; forçar redefinição por e-mail (argon2id) e invalidar `usuarios.token`.
+- [ ] IPs (`acessos`) como `inet`: há IPv6 (`::1`), que não cabe no `varchar(15)` legado.
 - [ ] Script de migração do acervo completo (todas as páginas e categorias → eixos; mídias; refrão pelo negrito).
 - [ ] Revisão das categorias pela equipe de liturgia, incluindo Velas, Preces e os refrões que faltam.
 - [ ] Endpoints de leitura; `lib/data` passa a consumir a API.
@@ -509,6 +515,7 @@ Modelos de e-mail (pt-BR, com o logo):
 |-------|---------|-----------|
 | **Direitos autorais** de letras, cifras, partituras e áudios, agravado pelo **repositório público** no GitHub | Alto (jurídico) | Levantar as licenças; mostrar os créditos; ocultar mídia por canto; canal de remoção; avaliar repositório privado + Vercel |
 | Migração trabalhosa: cifras em texto livre, categorias inconsistentes, refrão ausente em parte dos cantos | Alto (prazo) | Script + revisão humana por lotes; marcação de refrão no editor (Fase 4) |
+| **Dados pessoais e hashes MD5** no banco legado, com repositório público | Alto (LGPD/segurança) | `*.sql` com dados fora do git (só o `01-schema.sql` é versionado); senhas legadas descartadas e redefinidas por e-mail |
 | Dependência do Audiomack | Médio | Priorizar MP3 próprio; Audiomack opcional |
 | Wake Lock e tela cheia sem suporte (iPhone, iOS antigo) | Médio | Instalação na tela de início; aviso; PDF como alternativa |
 | Login ilustrativo confundido com segurança real | Médio | Avisos "Demonstração" na interface; auth real na Fase 3 |
@@ -517,7 +524,7 @@ Modelos de e-mail (pt-BR, com o logo):
 
 ### 8.2 Dúvidas para o cliente
 1. **Direitos autorais:** a paróquia tem autorização para publicar letras, cifras, partituras e áudios? Algum conteúdo deve ficar restrito a usuários logados?
-2. **Migração:** existe um banco de origem (MySQL) do site antigo? Quantos cantos existem? Onde ficam os PDFs e os MP3?
+2. **Migração:** ✅ o banco de origem existe (MySQL 5.7, 623 cantos em 45 categorias) e já foi convertido para PostgreSQL. Falta saber onde ficam os PDFs e os MP3 e o que significa `usuarios.tipo` (1 parece ser administrador).
 3. **Numeração:** a numeração do "Alegres Cantemos" é o identificador oficial?
 4. **Hospedagem e domínio:** continuar no GitHub Pages ou ir para a Vercel ou uma VPS? Manter `cantos.psjb.org.br`? Quem administra o DNS?
 5. **Identidade visual:** logo em SVG e cores oficiais?

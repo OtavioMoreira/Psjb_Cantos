@@ -1,0 +1,55 @@
+# Banco local espelhando a produção (MySQL 5.7.44, Percona) para a Fase 2.
+# Na primeira subida, importa db/psjb_cantos_producao.sql (dump de produção, fora do git).
+# Para reimportar do zero: docker compose down -v && docker compose up -d
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: psjb-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: psjb_cantos
+      MYSQL_USER: psjb
+      MYSQL_PASSWORD: psjb
+      TZ: America/Sao_Paulo
+    # Mesmo sql_mode e charset padrão da produção, para não aceitar aqui o que lá quebra (e vice-versa)
+    command:
+      - --sql-mode=NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+      - --character-set-server=utf8
+      - --collation-server=utf8_general_ci
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - psjb-mysql-data:/var/lib/mysql
+      - ./db/psjb_cantos_producao.sql:/docker-entrypoint-initdb.d/01-producao.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # Destino da migração (Fase 2). O schema e os dados convertidos ficam em db/postgres/.
+  postgres:
+    image: postgres:18
+    container_name: psjb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: psjb_cantos
+      POSTGRES_USER: psjb
+      POSTGRES_PASSWORD: psjb
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale-provider=icu --icu-locale=pt-BR
+      TZ: America/Sao_Paulo
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # No Postgres 18 o volume é montado em /var/lib/postgresql (não mais em .../data)
+      - psjb-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U psjb -d psjb_cantos"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  psjb-mysql-data:
+  psjb-postgres-data:

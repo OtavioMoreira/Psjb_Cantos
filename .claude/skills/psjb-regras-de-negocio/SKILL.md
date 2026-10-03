@@ -204,6 +204,9 @@ A categoria única do site antigo virou **4 eixos independentes**, e um canto po
   Todos são de **uso único** e ficam guardados **só como hash**.
 - **(futuro)** O cadastro também não revela se o e-mail já existe: a resposta é sempre "enviamos um link", e o e-mail enviado avisa "você já tem conta".
 - **Fase 1:** sem serviço de e-mail, a tela mostra uma caixa "Demonstração" com o link que chegaria por e-mail.
+- **(futuro) Contas do site antigo:**
+  - As senhas legadas estão em MD5 sem salt e **não são reaproveitadas**. Quem vier do site antigo define uma senha nova pelo fluxo de recuperação, e os tokens legados são invalidados.
+  - O login compara usuário e e-mail sem diferenciar maiúsculas e acentos, como no site antigo, e a API aplica `trim` na entrada. Os detalhes estão em `db/postgres/CONVERSAO.md`.
 
 ## 11. Perfil (`/painel/perfil`)
 - **Dados editáveis:** nome, e-mail, paróquia, ministério e instrumento/voz.

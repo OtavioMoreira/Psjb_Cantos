@@ -7,3 +7,8 @@ dist
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+
+# Dump do banco de produção (dados reais, repositório público)
+db/**/*.sql
+# DDL da conversão para o Postgres: só estrutura, sem dados
+!db/postgres/01-schema.sql

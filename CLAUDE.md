@@ -32,6 +32,10 @@ apps/web/             Next.js 16 (App Router, TS strict, Tailwind 4, lucide-reac
   src/lib/routes.ts   BASE_PATH e URLs com ?id=
   src/components/     ui/ (Button, Field, Modal, Chip, Toast, Ornament), layout/, song/, mass/, auth/, admin/
 apps/api/             Fastify + TS. Só GET /api/health e GET /api/test por enquanto.
+db/                   dump de produção (*.sql no .gitignore: dados reais, repositório público)
+  postgres/           conversão fiel MySQL → PostgreSQL 18: migrar.py, 01-schema.sql (versionado),
+                      02-dados.sql (gerado, fora do git), CONVERSAO.md e VERIFICACAO.md (auditoria)
+docker-compose.yml    MySQL 5.7 local (igual à produção 5.7.44, importa o dump na 1ª subida) + PostgreSQL 18
 .github/workflows/deploy-pages.yml   deploy no GitHub Pages
 ```
 
@@ -40,6 +44,8 @@ apps/api/             Fastify + TS. Só GET /api/health e GET /api/test por enqu
 npm install
 npm run dev:web     # http://localhost:3000
 npm run dev:api     # http://localhost:3333/api/test
+docker compose up -d   # MySQL 5.7 (localhost:3306) e PostgreSQL 18 (localhost:5432): psjb_cantos, psjb/psjb
+python3 db/postgres/migrar.py   # recria o Postgres a partir do MySQL e confere célula a célula
 cd apps/web && npx tsc --noEmit && npx eslint src      # rodar sempre antes de concluir
 GITHUB_PAGES=true NEXT_PUBLIC_BASE_PATH=/Psjb_Cantos npx next build   # simula o build do Pages (gera out/)
 ```

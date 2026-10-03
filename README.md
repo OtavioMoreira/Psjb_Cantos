@@ -31,6 +31,9 @@ A tela de login tem um botão "Usar" que preenche os dados. Os usuários de exem
 data/                    JSONs de exemplo: songs.json (121 cantos), categories.json, users.json
 apps/web/                Next.js 16 (App Router, TypeScript, Tailwind 4)
 apps/api/                API Node (Fastify); por enquanto só GET /api/health e GET /api/test
+db/                      Dump do banco de produção (*.sql fora do git, pois tem dados reais)
+db/postgres/             Conversão do banco legado para PostgreSQL 18 (script, schema e relatórios)
+docker-compose.yml       MySQL 5.7 local com o dump de produção + PostgreSQL 18
 planning.md              Produto: escopo, modelo de dados, histórias, rotas, API futura, segurança, roadmap
 ux.md                    Design: tokens, wireframes, componentes, responsividade, tom de voz
 CLAUDE.md                Contexto técnico para o Claude Code
@@ -45,6 +48,25 @@ npm install
 npm run dev:web     # http://localhost:3000
 npm run dev:api     # http://localhost:3333/api/test
 ```
+
+### Banco local (MySQL 5.7)
+Espelha a produção (MySQL 5.7.44, com o mesmo `sql_mode` e charset) e serve de base para a Fase 2. Na primeira subida, importa `db/psjb_cantos_producao.sql`. Esse arquivo não fica no repositório: peça o dump a quem administra o banco.
+```bash
+docker compose up -d          # localhost:3306, banco psjb_cantos, usuário psjb / senha psjb (root / root)
+docker compose down -v        # apaga o volume; na próxima subida o dump é reimportado
+MYSQL_PORT=3308 docker compose up -d   # se a 3306 estiver ocupada
+```
+Pontos de atenção do banco legado: há tabelas em `latin1` e em `utf8` (3 bytes), tabelas MyISAM (`usuarios`, `acessos`, `configuracoes`) e `sql_mode` sem STRICT.
+
+### Banco convertido (PostgreSQL 18)
+O mesmo `docker compose up -d` sobe um PostgreSQL 18 (`localhost:5432`, banco `psjb_cantos`, `psjb` / `psjb`, ICU pt-BR). Ele recebe uma cópia **fiel** do legado (mesmas tabelas, colunas e linhas), base para o redesenho da Fase 2.
+```bash
+python3 db/postgres/migrar.py                 # recria o Postgres a partir do MySQL e confere tudo
+python3 db/postgres/migrar.py --so-conferir   # só a conferência origem × destino
+```
+- `db/postgres/CONVERSAO.md`: método, mapeamento de tipos, decisões e problemas do legado.
+- `db/postgres/VERIFICACAO.md`: auditoria independente (aprovado com ressalvas; as ressalvas já estão no `CONVERSAO.md`).
+- Só o `01-schema.sql` é versionado. O `02-dados.sql` é gerado pelo script e tem dados pessoais e hashes de senha, então fica fora do git.
 
 ### Páginas para testar
 | URL | O que é |
