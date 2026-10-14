@@ -40,6 +40,12 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
     if (hydrated && !session.loggedIn) router.replace(`/entrar?volta=${encodeURIComponent(pathname + window.location.search)}`);
   }, [hydrated, session.loggedIn, pathname, router]);
 
+  // Senha temporária (gerada pelo admin): o painel só libera depois que a pessoa cria a própria senha.
+  const mustChange = Boolean(session.loggedIn && user.mustChangePassword);
+  useEffect(() => {
+    if (hydrated && mustChange && pathname !== "/painel/perfil") router.replace("/painel/perfil#seguranca");
+  }, [hydrated, mustChange, pathname, router]);
+
   // Com a API, confere a sessão no servidor (renova o token pelo cookie) e atualiza os dados da pessoa.
   useEffect(() => {
     if (!API_ENABLED || !hydrated || !session.loggedIn) return;

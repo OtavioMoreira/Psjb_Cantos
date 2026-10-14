@@ -164,13 +164,15 @@ function mirror(u: ApiUser): StoredUser {
     status: API_STATUS[u.status],
     movement: u.movement?.name ?? "",
     movementId: u.movement?.id ?? null,
-    parish: prev?.parish ?? "Paróquia Catedral São João Batista",
+    parish: u.parish ?? "",
+    instrument: u.instrument ?? undefined,
     phone: u.phone,
     photoUrl: u.photoUrl,
     createdAt: u.createdAt,
     emailVerifiedAt: prev?.emailVerifiedAt ?? null,
     lastLoginAt: u.lastLoginAt,
     blockedReason: u.blockedReason ?? undefined,
+    mustChangePassword: u.mustChangePassword,
   };
 }
 
@@ -204,17 +206,32 @@ export function usePeopleLookup() {
   }, [users, people]);
 }
 
-export function updateUser(patch: Partial<User>) {
+/** Dados do perfil. Com a API, salva no servidor (o e-mail não muda por aqui: depende da confirmação por e-mail). */
+export async function updateUser(patch: Partial<Pick<User, "name" | "email" | "parish" | "movement" | "movementId" | "instrument" | "phone">>) {
   const { userId } = sessionStore.read();
-  if (userId) writeUser(userId, patch);
+  if (!userId) return;
+  if (!API_ENABLED) return writeUser(userId, patch);
+  const { email: _e, movement: _m, ...rest } = patch; // eslint-disable-line @typescript-eslint/no-unused-vars
+  syncApiUser(await api.updateMe(rest));
 }
 
-export function changePassword(current: string, next: string) {
+/** Troca a senha exigindo a atual. Com a API, as sessões dos outros aparelhos caem. */
+export async function changePassword(current: string, next: string): Promise<{ ok: true } | { ok: false; message: string }> {
   const { userId } = sessionStore.read();
+  if (API_ENABLED) {
+    try {
+      syncApiUser(await api.changePassword(current, next));
+      return { ok: true };
+    } catch (err) {
+      if (!(err instanceof ApiError)) return { ok: false, message: "Não foi possível alterar a senha agora." };
+      const fields = err.details?.fields;
+      return { ok: false, message: fields?.currentPassword ?? fields?.newPassword ?? err.message };
+    }
+  }
   const u = usersStore.read().find((x) => x.id === userId);
-  if (!u || u.password !== current) return false;
-  writeUser(u.id, { password: next });
-  return true;
+  if (!u || u.password !== current) return { ok: false, message: "Senha atual incorreta." };
+  writeUser(u.id, { password: next, mustChangePassword: false });
+  return { ok: true };
 }
 
 /* Cadastro com confirmação de e-mail — Fase 3: POST /api/auth/signup + e-mail com token */
@@ -287,28 +304,39 @@ export async function uploadMyPhoto(file: File) {
   syncApiUser(await api.uploadPhoto(file));
 }
 
+/** Com a API, aplica a resposta do servidor; se falhar, recarrega a lista e repassa o erro para a tela. */
+async function applyAdmin(id: string, call: () => Promise<ApiUser>) {
+  try {
+    writeUser(id, mirror(await call()));
+  } catch (err) {
+    void syncAdminUsers().catch(() => undefined);
+    throw err;
+  }
+}
+
+const ROLES_FOR: Record<User["role"], ApiUser["roles"]> = { admin: ["admin", "musico"], musico: ["musico"] };
+
 export const admin = {
-  update(id: string, patch: Partial<Pick<User, "name" | "email" | "role" | "movement" | "movementId">>) {
-    writeUser(id, patch);
+  async update(id: string, patch: Pick<User, "name" | "email" | "role" | "movement" | "movementId">) {
+    if (!API_ENABLED) return writeUser(id, patch);
+    const cur = usersStore.read().find((x) => x.id === id);
+    // Papel só vai quando muda: assim o admin pode editar os próprios dados sem mexer nos papéis.
+    const roles = cur && cur.role === patch.role ? undefined : ROLES_FOR[patch.role];
+    await applyAdmin(id, () => api.admin.updateUser(id, { name: patch.name, email: patch.email, movementId: patch.movementId, roles }));
   },
-  block(id: string, reason: string) {
-    writeUser(id, { status: "bloqueado", blockedReason: reason.trim() || undefined });
+  async block(id: string, reason: string) {
+    if (!API_ENABLED) return writeUser(id, { status: "bloqueado", blockedReason: reason.trim() || undefined });
+    await applyAdmin(id, () => api.admin.block(id, reason.trim() || null));
   },
-  unblock(id: string) {
+  async unblock(id: string) {
     const u = usersStore.read().find((x) => x.id === id);
-    writeUser(id, { status: u?.emailVerifiedAt ? "ativo" : "pendente", blockedReason: undefined });
+    if (!API_ENABLED) return writeUser(id, { status: u?.emailVerifiedAt ? "ativo" : "pendente", blockedReason: undefined });
+    await applyAdmin(id, () => api.admin.unblock(id));
   },
   activate(id: string) {
     writeUser(id, { status: "ativo", emailVerifiedAt: now(), token: null });
     // Na API, a resposta traz o usuário atualizado; se falhar, volta o que o servidor tem.
-    if (API_ENABLED)
-      return api.admin
-        .activate(id)
-        .then((u) => writeUser(id, mirror(u)))
-        .catch((err) => {
-          void syncAdminUsers();
-          throw err;
-        });
+    if (API_ENABLED) return applyAdmin(id, () => api.admin.activate(id));
   },
   resendVerification(id: string) {
     writeUser(id, { token: token() });
@@ -316,10 +344,15 @@ export const admin = {
   sendResetLink(id: string) {
     writeUser(id, { token: token() });
   },
-  /** Gera uma senha temporária (a pessoa deve trocar no primeiro acesso). */
-  temporaryPassword(id: string) {
+  /** Gera uma senha temporária, mostrada uma única vez. A pessoa troca no próximo acesso. */
+  async temporaryPassword(id: string) {
+    if (API_ENABLED) {
+      const r = await api.admin.resetPassword(id);
+      writeUser(id, mirror(r.user));
+      return r.temporaryPassword;
+    }
     const pwd = Math.random().toString(36).slice(2, 6) + "-" + Math.random().toString(36).slice(2, 6);
-    writeUser(id, { password: pwd });
+    writeUser(id, { password: pwd, mustChangePassword: true });
     return pwd;
   },
   invite(data: { name: string; email: string; role: User["role"] }) {
@@ -344,11 +377,26 @@ export const admin = {
     ]);
     return true;
   },
-  remove(id: string) {
+  /**
+   * Some da lista na hora e devolve o "Desfazer". Com a API, a exclusão só vai para o servidor
+   * depois dos 6,5 s do aviso; se falhar, a pessoa volta para a lista e `onError` avisa.
+   */
+  remove(id: string, onError?: (err: unknown) => void) {
     const list = usersStore.read();
     const removed = list.find((u) => u.id === id);
     usersStore.write(list.filter((u) => u.id !== id));
-    return () => removed && usersStore.write([...usersStore.read(), removed]);
+    const restore = () => removed && !usersStore.read().some((u) => u.id === id) && usersStore.write([...usersStore.read(), removed]);
+    if (!API_ENABLED) return restore;
+    const timer = setTimeout(() => {
+      api.admin.deleteUser(id).catch((err) => {
+        restore();
+        onError?.(err);
+      });
+    }, 6500);
+    return () => {
+      clearTimeout(timer);
+      restore();
+    };
   },
 };
 

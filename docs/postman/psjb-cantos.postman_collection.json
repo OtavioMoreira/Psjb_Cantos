@@ -429,6 +429,43 @@
           ]
         },
         {
+          "name": "Editar meu perfil",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "description": "Só os campos enviados mudam: `name`, `phone`, `movementId`, `parish`, `instrument` (vazio ou null limpa). E-mail, papel e status não são aceitos aqui (400).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parish\": \"Paróquia Catedral São João Batista\",\n  \"instrument\": \"Violão\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Trocar foto",
           "request": {
             "method": "PUT",
@@ -633,6 +670,94 @@
                   "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
                   "const j = pm.response.json();",
                   "if (j.accessToken) pm.collectionVariables.set('memberToken', j.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar usuário",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Só os campos enviados mudam: `name`, `email`, `phone`, `movementId`, `roles` (substitui a lista). O admin não tira o próprio papel de admin (403) e sempre sobra um admin ativo (409 LAST_ADMIN). 409 EMAIL_TAKEN se o e-mail é de outra conta.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Músico de Teste (editado)\",\n  \"movementId\": \"{{movementId}}\",\n  \"roles\": [\n    \"musico\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trocar a própria senha (pessoa ativada)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "password"
+              ]
+            },
+            "description": "Exige a senha atual. Fica em `/auth` para receber o cookie: a sessão deste aparelho continua e as dos outros aparelhos caem. 400 com `fields.currentPassword` se a senha atual não confere.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{newUserPassword}}\",\n  \"newPassword\": \"outraSenha123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{memberToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.collectionVariables.set('newUserPassword', 'outraSenha123');"
                 ]
               }
             }
@@ -1832,6 +1957,145 @@
               ]
             },
             "description": "Limpa a cópia criada em **Duplicar missa**."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin › Usuários (bloquear, senha e excluir)",
+      "description": "Ficam no fim porque derrubam as sessões da pessoa cadastrada. O admin não bloqueia nem exclui a si mesmo (403), e sempre sobra pelo menos um admin ativo (409 LAST_ADMIN).",
+      "item": [
+        {
+          "name": "Bloquear usuário",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}/block",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{userId}}",
+                "block"
+              ]
+            },
+            "description": "`reason` é opcional e aparece para a pessoa ao tentar entrar. As sessões dela caem na hora.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Cadastro duplicado.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Liberar usuário",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}/unblock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{userId}}",
+                "unblock"
+              ]
+            },
+            "description": "Volta para ativo. Se a conta não estava bloqueada, nada muda."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gerar senha temporária",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{userId}}",
+                "reset-password"
+              ]
+            },
+            "description": "Devolve `{ user, temporaryPassword }`. A senha aparece **só nesta resposta**; as sessões da pessoa caem e `mustChangePassword` fica `true` até ela trocar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.test('senha temporária', () => pm.expect(pm.response.json().temporaryPassword).to.match(/^[a-z]{4}-/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Excluir usuário",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "204. As missas da pessoa são apagadas junto, e os convidados perdem o acesso a elas. Para só impedir o acesso, prefira **Bloquear**."
           },
           "event": [
             {

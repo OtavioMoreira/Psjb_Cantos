@@ -98,6 +98,8 @@ items = [  # na ordem em que faz sentido rodar
             ],
             tests=["pm.collectionVariables.set('userId', pm.response.json().user.id);"]),
         req("Eu (/me)", "GET", "/me", desc="Dados da pessoa logada."),
+        req("Editar meu perfil", "PATCH", "/me", {"parish": "Paróquia Catedral São João Batista", "instrument": "Violão"},
+            desc="Só os campos enviados mudam: `name`, `phone`, `movementId`, `parish`, `instrument` (vazio ou null limpa). E-mail, papel e status não são aceitos aqui (400)."),
         req("Trocar foto", "PUT", "/me/photo",
             formdata=[{"key": "photo", "type": "file", "src": "foto-exemplo.png", "description": "JPG, PNG ou WebP de até 2 MB"}],
             desc="multipart/form-data com o campo `photo`. Já aponta para `foto-exemplo.png` (nesta pasta); no Postman, escolha o arquivo de novo na aba Body se ele não achar. Em produção vai para o Vercel Blob; local, para `apps/api/uploads/`."),
@@ -113,6 +115,11 @@ items = [  # na ordem em que faz sentido rodar
         req("Login como a pessoa ativada", "POST", "/auth/login", {"email": "{{newUserEmail}}", "password": "{{newUserPassword}}", "remember": False}, auth="none",
             desc="Entra com a conta criada em **Usuários › Cadastro**, já ativada no passo anterior. Guarda o token em `memberToken`, usado nas requisições de convidado.",
             tests=SAVE_TOKEN("memberToken")),
+        req("Editar usuário", "PATCH", "/admin/users/{{userId}}", {"name": "Músico de Teste (editado)", "movementId": "{{movementId}}", "roles": ["musico"]},
+            desc="Só os campos enviados mudam: `name`, `email`, `phone`, `movementId`, `roles` (substitui a lista). O admin não tira o próprio papel de admin (403) e sempre sobra um admin ativo (409 LAST_ADMIN). 409 EMAIL_TAKEN se o e-mail é de outra conta."),
+        req("Trocar a própria senha (pessoa ativada)", "POST", "/auth/password", {"currentPassword": "{{newUserPassword}}", "newPassword": "outraSenha123"}, auth="{{memberToken}}",
+            desc="Exige a senha atual. Fica em `/auth` para receber o cookie: a sessão deste aparelho continua e as dos outros aparelhos caem. 400 com `fields.currentPassword` se a senha atual não confere.",
+            tests=["pm.collectionVariables.set('newUserPassword', 'outraSenha123');"]),
     ]),
     folder("Repertório (público)", "Cantos ativos e flags, sem login.", [
         req("Listar cantos", "GET", "/songs", auth="none",
@@ -191,6 +198,16 @@ items = [  # na ordem em que faz sentido rodar
             desc="Só o dono. O link para de funcionar; quem já entrou continua convidado. Gerar de novo cria outro token."),
         req("Excluir missa", "DELETE", "/masses/{{massId}}", desc="Só o dono. 204."),
         req("Excluir cópia", "DELETE", "/masses/{{copyMassId}}", desc="Limpa a cópia criada em **Duplicar missa**."),
+    ]),
+    folder("Admin › Usuários (bloquear, senha e excluir)", "Ficam no fim porque derrubam as sessões da pessoa cadastrada. O admin não bloqueia nem exclui a si mesmo (403), e sempre sobra pelo menos um admin ativo (409 LAST_ADMIN).", [
+        req("Bloquear usuário", "POST", "/admin/users/{{userId}}/block", {"reason": "Cadastro duplicado."},
+            desc="`reason` é opcional e aparece para a pessoa ao tentar entrar. As sessões dela caem na hora."),
+        req("Liberar usuário", "POST", "/admin/users/{{userId}}/unblock", desc="Volta para ativo. Se a conta não estava bloqueada, nada muda."),
+        req("Gerar senha temporária", "POST", "/admin/users/{{userId}}/reset-password",
+            desc="Devolve `{ user, temporaryPassword }`. A senha aparece **só nesta resposta**; as sessões da pessoa caem e `mustChangePassword` fica `true` até ela trocar.",
+            tests=["pm.test('senha temporária', () => pm.expect(pm.response.json().temporaryPassword).to.match(/^[a-z]{4}-/));"]),
+        req("Excluir usuário", "DELETE", "/admin/users/{{userId}}",
+            desc="204. As missas da pessoa são apagadas junto, e os convidados perdem o acesso a elas. Para só impedir o acesso, prefira **Bloquear**."),
     ]),
 ]
 

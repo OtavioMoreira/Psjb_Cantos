@@ -30,11 +30,13 @@ export async function routes(app: FastifyInstance, { container }: { container: C
   app.post("/auth/login", strict(10), auth.login);
   app.post("/auth/refresh", strict(60), auth.refresh);
   app.post("/auth/logout", auth.logout);
+  app.post("/auth/password", { preHandler: isAuthenticated, ...strict(10) }, auth.changePassword);
 
   // Cadastro público e dados da própria conta
   app.post("/users", strict(5), users.create);
   app.get("/movements", movements.list);
   app.get("/me", { preHandler: isAuthenticated }, users.me);
+  app.patch("/me", { preHandler: isAuthenticated }, users.updateMe);
   app.put("/me/photo", { preHandler: isAuthenticated }, users.updatePhoto);
 
   // Repertório público (só cantos ativos)
@@ -68,6 +70,11 @@ export async function routes(app: FastifyInstance, { container }: { container: C
     adminScope.addHook("preHandler", requireRole("admin"));
     adminScope.get("/users", admin.list);
     adminScope.patch("/users/:id/activate", admin.activate);
+    adminScope.patch("/users/:id", admin.update);
+    adminScope.post("/users/:id/block", admin.block);
+    adminScope.post("/users/:id/unblock", admin.unblock);
+    adminScope.post("/users/:id/reset-password", admin.resetPassword);
+    adminScope.delete("/users/:id", admin.remove);
     adminScope.post("/movements", movements.create);
     adminScope.patch("/movements/:id", movements.rename);
     adminScope.delete("/movements/:id", movements.remove);

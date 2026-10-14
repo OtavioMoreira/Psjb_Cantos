@@ -22,9 +22,13 @@ export interface ApiUser {
   phone: string | null;
   photoUrl: string | null;
   movement: { id: number; name: string } | null;
+  parish: string | null;
+  instrument: string | null;
   status: ApiStatus;
   blockedReason: string | null;
   roles: ApiRole[];
+  /** Senha temporária gerada pelo admin: precisa trocar antes de usar o painel. */
+  mustChangePassword: boolean;
   lastLoginAt: string | null;
   createdAt: string;
 }
@@ -147,6 +151,13 @@ export const api = {
     const r = await authed<{ users: (ApiPerson & { email: string; movement: string | null })[] }>(`/users/search?q=${encodeURIComponent(q)}&limit=20`);
     return r.users;
   },
+  async updateMe(body: ProfileInput) {
+    return (await authed<{ user: ApiUser }>("/me", { method: "PATCH", body: JSON.stringify(body) })).user;
+  },
+  /** Fica em /auth para o cookie ir junto: a sessão deste aparelho continua e as outras caem. */
+  async changePassword(currentPassword: string, newPassword: string) {
+    return (await authed<{ user: ApiUser }>("/auth/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) })).user;
+  },
   async uploadPhoto(file: File) {
     const body = new FormData();
     body.append("photo", file);
@@ -155,6 +166,13 @@ export const api = {
   admin: {
     users: async () => (await authed<{ users: ApiUser[] }>("/admin/users")).users,
     activate: async (id: string) => (await authed<{ user: ApiUser }>(`/admin/users/${id}/activate`, { method: "PATCH" })).user,
+    updateUser: async (id: string, body: AdminUserInput) =>
+      (await authed<{ user: ApiUser }>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) })).user,
+    block: async (id: string, reason: string | null) =>
+      (await authed<{ user: ApiUser }>(`/admin/users/${id}/block`, { method: "POST", body: JSON.stringify({ reason }) })).user,
+    unblock: async (id: string) => (await authed<{ user: ApiUser }>(`/admin/users/${id}/unblock`, { method: "POST" })).user,
+    resetPassword: (id: string) => authed<{ user: ApiUser; temporaryPassword: string }>(`/admin/users/${id}/reset-password`, { method: "POST" }),
+    deleteUser: (id: string) => authed<void>(`/admin/users/${id}`, { method: "DELETE" }),
     songs: (q: { q?: string; flags?: number[]; page?: number; pageSize?: number } = {}) => {
       const sp = new URLSearchParams();
       if (q.q) sp.set("q", q.q);
@@ -198,6 +216,21 @@ export const api = {
     join: async (token: string) => (await authed<{ mass: ApiMass }>("/masses/join", { method: "POST", body: JSON.stringify({ token }) })).mass,
   },
 };
+
+export interface ProfileInput {
+  name?: string;
+  phone?: string | null;
+  movementId?: number | null;
+  parish?: string | null;
+  instrument?: string | null;
+}
+
+export interface AdminUserInput {
+  name?: string;
+  email?: string;
+  movementId?: number | null;
+  roles?: ApiRole[];
+}
 
 export type SongFileKind = "cifra-pdf" | "partitura-pdf" | "audio";
 

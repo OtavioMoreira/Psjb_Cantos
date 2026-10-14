@@ -19,9 +19,13 @@ export interface User {
   phone: string | null;
   photoUrl: string | null;
   movement: MovementRef | null;
+  parish: string | null;
+  instrument: string | null;
   status: UserStatus;
   blockedReason: string | null;
   roles: Role[];
+  /** Senha temporária gerada pelo admin: a pessoa precisa trocar ao entrar. */
+  mustChangePassword: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

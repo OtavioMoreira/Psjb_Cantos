@@ -6,6 +6,7 @@ export type ErrorCode =
   | "ACCOUNT_PENDING"
   | "ACCOUNT_BLOCKED"
   | "EMAIL_TAKEN"
+  | "LAST_ADMIN"
   | "MOVEMENT_TAKEN"
   | "MOVEMENT_IN_USE"
   | "MASS_EXISTS"
@@ -27,6 +28,7 @@ const STATUS: Record<ErrorCode, number> = {
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   EMAIL_TAKEN: 409,
+  LAST_ADMIN: 409,
   MOVEMENT_TAKEN: 409,
   MOVEMENT_IN_USE: 409,
   MASS_EXISTS: 409,

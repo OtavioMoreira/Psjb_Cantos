@@ -52,8 +52,10 @@ type Dialog =
   | { kind: "delete"; user: User }
   | { kind: "invite" };
 
-/** Com a API, estas ações ainda não têm backend: aparecem desabilitadas. */
-const SOON = API_ENABLED ? "Em breve: ainda não existe na API" : undefined;
+/** Com a API, estas ações dependem do serviço de e-mail, que ainda não existe: aparecem desabilitadas. */
+const SOON = API_ENABLED ? "Em breve: depende do envio de e-mails" : undefined;
+
+const errorText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
 export function UsersAdmin() {
   const users = useUsers();
@@ -119,8 +121,8 @@ export function UsersAdmin() {
         <Info size={18} className="mt-0.5 shrink-0 text-gold-ink" />
         {API_ENABLED ? (
           <p>
-            <strong>Servidor:</strong> a lista e a ativação de contas já usam a API. Editar, bloquear, redefinir senha, convidar e excluir ainda
-            não existem no backend e aparecem desabilitados.
+            <strong>Servidor:</strong> todas as ações já usam a API. Convidar por e-mail e enviar link de redefinição de senha chegam junto com o
+            serviço de e-mail; até lá, use a <strong>senha temporária</strong>.
           </p>
         ) : (
           <p>
@@ -189,9 +191,10 @@ export function UsersAdmin() {
       )}
 
       {/* Tabela (desktop) */}
-      <div className="mt-2 hidden overflow-hidden rounded-[16px] border border-border bg-surface shadow-card lg:block">
+      <div className="mt-2 hidden rounded-[16px] border border-border bg-surface shadow-card lg:block">
         <table className="w-full text-left text-sm">
-          <thead className="bg-surface-2 text-xs uppercase tracking-[0.08em] text-ink-muted">
+          {/* Sem overflow-hidden no contêiner: o menu de ações das últimas linhas seria cortado. */}
+          <thead className="bg-surface-2 text-xs uppercase tracking-[0.08em] text-ink-muted [&_th:first-child]:rounded-tl-[16px] [&_th:last-child]:rounded-tr-[16px]">
             <tr>
               <th className="px-4 py-3 font-semibold">Usuário</th>
               <th className="px-4 py-3 font-semibold">Papel</th>
@@ -299,26 +302,27 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
       </button>
       {menu && (
         <div role="menu" className="animate-fade-in absolute right-0 top-11 z-20 w-64 rounded-[10px] border border-border bg-surface p-1.5 shadow-overlay">
-          <button role="menuitem" disabled={API_ENABLED} title={SOON} className={item} onClick={run(() => open({ kind: "edit", user }))}>
+          <button role="menuitem" className={item} onClick={run(() => open({ kind: "edit", user }))}>
             <Pencil size={16} /> Editar dados e papel
           </button>
-          <button role="menuitem" disabled={API_ENABLED} title={SOON} className={item} onClick={run(() => open({ kind: "password", user }))}>
+          <button role="menuitem" className={item} onClick={run(() => open({ kind: "password", user }))}>
             <KeyRound size={16} /> Redefinir senha
           </button>
           {user.status === "pendente" && (
             <>
-              <button
-                role="menuitem"
-                disabled={API_ENABLED}
-                title={SOON}
-                className={item}
-                onClick={run(() => {
-                  admin.resendVerification(user.id);
-                  toast(`E-mail de confirmação reenviado para ${user.email}.`);
-                })}
-              >
-                <Mail size={16} /> Reenviar confirmação de e-mail
-              </button>
+              {/* Com a API, a conta pendente espera um admin, não a confirmação do e-mail. */}
+              {!API_ENABLED && (
+                <button
+                  role="menuitem"
+                  className={item}
+                  onClick={run(() => {
+                    admin.resendVerification(user.id);
+                    toast(`E-mail de confirmação reenviado para ${user.email}.`);
+                  })}
+                >
+                  <Mail size={16} /> Reenviar confirmação de e-mail
+                </button>
+              )}
               <button
                 role="menuitem"
                 className={item}
@@ -327,7 +331,7 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
                     await admin.activate(user.id);
                     toast(API_ENABLED ? `${user.name} já pode entrar.` : `${user.name} foi ativado(a) manualmente.`);
                   } catch (e) {
-                    toast(e instanceof ApiError ? e.message : "Não foi possível ativar agora.");
+                    toast(errorText(e, "Não foi possível ativar agora."));
                   }
                 })}
               >
@@ -339,22 +343,24 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
           {user.status === "bloqueado" ? (
             <button
               role="menuitem"
-              disabled={API_ENABLED}
-              title={SOON}
               className={item}
-              onClick={run(() => {
-                admin.unblock(user.id);
-                toast(`Acesso de ${user.name} liberado.`);
+              onClick={run(async () => {
+                try {
+                  await admin.unblock(user.id);
+                  toast(`Acesso de ${user.name} liberado.`);
+                } catch (e) {
+                  toast(errorText(e, "Não foi possível liberar agora."));
+                }
               })}
             >
               <ShieldCheck size={16} /> Liberar acesso
             </button>
           ) : (
-            <button role="menuitem" disabled={isMe || API_ENABLED} title={SOON ?? (isMe ? "Você não pode bloquear a si mesmo" : undefined)} className={`${item} text-danger`} onClick={run(() => open({ kind: "block", user }))}>
+            <button role="menuitem" disabled={isMe} title={isMe ? "Você não pode bloquear a si mesmo" : undefined} className={`${item} text-danger`} onClick={run(() => open({ kind: "block", user }))}>
               <Ban size={16} /> Bloquear acesso
             </button>
           )}
-          <button role="menuitem" disabled={isMe || API_ENABLED} title={SOON} className={`${item} text-danger hover:bg-danger/10`} onClick={run(() => open({ kind: "delete", user }))}>
+          <button role="menuitem" disabled={isMe} title={isMe ? "Você não pode excluir a si mesmo" : undefined} className={`${item} text-danger hover:bg-danger/10`} onClick={run(() => open({ kind: "delete", user }))}>
             <Trash2 size={16} /> Excluir usuário
           </button>
         </div>
@@ -365,6 +371,8 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
 
 function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClose: () => void }) {
   const [form, setForm] = useState({ name: user.name, email: user.email, role: user.role, movement: user.movement, movementId: user.movementId });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const valid = form.name.trim().length >= 3 && /^\S+@\S+\.\S+$/.test(form.email);
   return (
     <Modal
@@ -376,11 +384,18 @@ function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClos
             Cancelar
           </Button>
           <Button
-            disabled={!valid}
-            onClick={() => {
-              admin.update(user.id, form);
-              toast("Usuário atualizado.");
-              onClose();
+            disabled={!valid || busy}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                await admin.update(user.id, { ...form, name: form.name.trim(), email: form.email.trim() });
+                toast("Usuário atualizado.");
+                onClose();
+              } catch (e) {
+                setError(errorText(e, "Não foi possível salvar agora."));
+                setBusy(false);
+              }
             }}
           >
             Salvar
@@ -396,7 +411,7 @@ function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClos
           type="email"
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
-          hint="Ao trocar o e-mail, a API enviará uma nova confirmação."
+          hint={API_ENABLED ? "É o login da pessoa. Avise sobre a troca, porque ela vai entrar com o novo e-mail." : "Ao trocar o e-mail, a API enviará uma nova confirmação."}
         />
         <MovementSelect
           id="edit-movement"
@@ -425,6 +440,11 @@ function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClos
             {isMe ? "Você não pode alterar o próprio papel." : "Administrador gerencia usuários; Músico usa o repertório e monta e compartilha missas."}
           </p>
         </div>
+        {error && (
+          <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+            {error}
+          </p>
+        )}
       </div>
     </Modal>
   );
@@ -432,6 +452,7 @@ function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClos
 
 function BlockDialog({ user, onClose }: { user: User; onClose: () => void }) {
   const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
   return (
     <Modal
       title="Bloquear acesso"
@@ -442,12 +463,22 @@ function BlockDialog({ user, onClose }: { user: User; onClose: () => void }) {
             Cancelar
           </Button>
           <button
-            onClick={() => {
-              admin.block(user.id, reason);
-              toast(`${user.name} foi bloqueado(a).`, { label: "Desfazer", onClick: () => admin.unblock(user.id) });
-              onClose();
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await admin.block(user.id, reason);
+                toast(`${user.name} foi bloqueado(a).`, {
+                  label: "Desfazer",
+                  onClick: () => void admin.unblock(user.id).catch((e) => toast(errorText(e, "Não foi possível desfazer."))),
+                });
+                onClose();
+              } catch (e) {
+                toast(errorText(e, "Não foi possível bloquear agora."));
+                setBusy(false);
+              }
             }}
-            className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-danger px-4 text-[15px] font-semibold text-white hover:opacity-90"
+            className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-danger px-4 text-[15px] font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
             <Ban size={18} /> Bloquear
           </button>
@@ -455,8 +486,8 @@ function BlockDialog({ user, onClose }: { user: User; onClose: () => void }) {
       }
     >
       <p>
-        <strong>{user.name}</strong> não poderá mais entrar no site. As missas montadas por essa pessoa continuam salvas. Você pode liberar o acesso
-        depois.
+        <strong>{user.name}</strong> não poderá mais entrar no site{API_ENABLED ? " e sai na hora dos aparelhos em que estava conectado(a)" : ""}. As
+        missas montadas por essa pessoa continuam salvas. Você pode liberar o acesso depois.
       </p>
       <label className="mt-4 block">
         <span className="mb-1.5 block text-sm font-medium">Motivo (aparece para a pessoa ao tentar entrar)</span>
@@ -474,6 +505,7 @@ function BlockDialog({ user, onClose }: { user: User; onClose: () => void }) {
 
 function PasswordDialog({ user, onClose }: { user: User; onClose: () => void }) {
   const [temp, setTemp] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   return (
     <Modal title="Redefinir senha" onClose={onClose} footer={<Button onClick={onClose}>Concluir</Button>}>
       <p className="text-ink-muted">
@@ -481,33 +513,47 @@ function PasswordDialog({ user, onClose }: { user: User; onClose: () => void }) 
       </p>
       <div className="mt-4 space-y-3">
         <button
+          disabled={API_ENABLED}
+          title={SOON}
           onClick={() => {
             admin.sendResetLink(user.id);
             toast(`Link de redefinição enviado para ${user.email}.`);
             onClose();
           }}
-          className="flex w-full items-start gap-3 rounded-[10px] border border-border p-4 text-left hover:border-primary hover:bg-primary-soft"
+          className="flex w-full items-start gap-3 rounded-[10px] border border-border p-4 text-left hover:border-primary hover:bg-primary-soft disabled:pointer-events-none disabled:opacity-50"
         >
           <Mail size={20} className="mt-0.5 shrink-0 text-primary" />
           <span>
-            <span className="block font-semibold">Enviar link por e-mail (recomendado)</span>
+            <span className="block font-semibold">Enviar link por e-mail{API_ENABLED ? " (em breve)" : " (recomendado)"}</span>
             <span className="text-sm text-ink-muted">A pessoa recebe um link válido por 1 hora e escolhe a própria senha.</span>
           </span>
         </button>
         <button
-          onClick={() => setTemp(admin.temporaryPassword(user.id))}
-          className="flex w-full items-start gap-3 rounded-[10px] border border-border p-4 text-left hover:border-primary hover:bg-primary-soft"
+          disabled={busy || temp !== null}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              setTemp(await admin.temporaryPassword(user.id));
+            } catch (e) {
+              toast(errorText(e, "Não foi possível gerar a senha agora."));
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="flex w-full items-start gap-3 rounded-[10px] border border-border p-4 text-left hover:border-primary hover:bg-primary-soft disabled:pointer-events-none disabled:opacity-50"
         >
           <KeyRound size={20} className="mt-0.5 shrink-0 text-primary" />
           <span>
             <span className="block font-semibold">Gerar senha temporária</span>
-            <span className="text-sm text-ink-muted">Para quem não tem acesso ao e-mail. A troca será exigida no próximo login.</span>
+            <span className="text-sm text-ink-muted">
+              Para quem não tem acesso ao e-mail. A troca será exigida no próximo login{API_ENABLED ? ", e a pessoa sai dos aparelhos conectados" : ""}.
+            </span>
           </span>
         </button>
       </div>
       {temp && (
         <div className="mt-4 rounded-[10px] bg-surface-2 p-4">
-          <p className="text-sm text-ink-muted">Senha temporária (mostrada só agora):</p>
+          <p className="text-sm text-ink-muted">Senha temporária (mostrada só agora; passe para a pessoa por um canal seguro):</p>
           <div className="mt-2 flex items-center gap-2">
             <code className="flex-1 rounded-md bg-surface px-3 py-2 font-mono text-lg">{temp}</code>
             <Button
@@ -538,7 +584,7 @@ function DeleteDialog({ user, onClose }: { user: User; onClose: () => void }) {
           </Button>
           <button
             onClick={() => {
-              const undo = admin.remove(user.id);
+              const undo = admin.remove(user.id, (e) => toast(errorText(e, `Não foi possível excluir ${user.name}.`)));
               toast(`${user.name} foi excluído(a).`, { label: "Desfazer", onClick: undo });
               onClose();
             }}
@@ -553,6 +599,11 @@ function DeleteDialog({ user, onClose }: { user: User; onClose: () => void }) {
         Excluir <strong>{user.name}</strong> ({user.email})? Se a intenção é só impedir o acesso, prefira <strong>bloquear</strong>, que pode ser
         desfeito a qualquer momento.
       </p>
+      {API_ENABLED && (
+        <p className="mt-3 text-sm text-ink-muted">
+          As missas criadas por essa pessoa também são apagadas, e quem as recebeu perde o acesso. Missas de outras pessoas não mudam.
+        </p>
+      )}
     </Modal>
   );
 }

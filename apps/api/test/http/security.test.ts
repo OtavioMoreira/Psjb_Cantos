@@ -153,7 +153,7 @@ describe("Cadastro e login", () => {
       (await app.inject({ method: "GET", url: "/api/admin/users", headers: { authorization: `Bearer ${token}` } })).body,
       (await app.inject({ method: "GET", url: "/api/users/search?q=", headers: { authorization: `Bearer ${token}` } })).body,
     ];
-    for (const b of bodies) expect(b).not.toMatch(/password|hashed:|senha1234/i);
+    for (const b of bodies) expect(b).not.toMatch(/"password"|passwordHash|hashed:|senha1234/i);
   });
 });
 

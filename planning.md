@@ -263,7 +263,9 @@ Estado do cliente em `localStorage`:
 - ✅ `apps/api` com Fastify + TypeScript em **arquitetura hexagonal** (§6.1).
 - ✅ Banco: tabelas `users`, `roles` (admin, musico), `user_roles` e `sessions`, com migrations em SQL (`npm run db:migrate -w api`) e seed do superadmin (`npm run db:seed -w api`).
 - ✅ Cadastro público (`POST /api/users`), que cria a conta **pendente**; login, refresh rotativo e logout; `GET /api/me`; foto do perfil (`PUT /api/me/photo`).
-- ✅ Gestão só para admin: `GET /api/admin/users` e `PATCH /api/admin/users/:id/activate`, protegidos pelo middleware `requireRole("admin")`.
+- ✅ Gestão só para admin: listar, ativar, editar (dados e papéis), bloquear/liberar, gerar senha temporária e excluir (`/api/admin/users/*`), protegidos pelo middleware `requireRole("admin")`. O admin não age sobre si mesmo e sempre sobra pelo menos um admin ativo (409 `LAST_ADMIN`).
+- ✅ Perfil: `PATCH /api/me` (nome, telefone, movimento, paróquia, instrumento) e troca de senha (`POST /api/auth/password`, que derruba as sessões dos outros aparelhos). Trocar o e-mail continua com a coordenação até existir o serviço de e-mail.
+- 🔜 Convite por e-mail e link de redefinição de senha (dependem do serviço de e-mail).
 - ✅ **Movimentos** (tabela `movements`, um por pessoa em `users.movement_id`) no lugar do "ministério": lista pública e gestão pelo admin. O front usa um seletor no cadastro, no perfil e no admin.
 - ✅ **Missas** (tabelas `masses` e `mass_shares`): todas as rotas de §5.2. Com `API_URL`, o front salva e sincroniza pela API.
 - ✅ **Link de convite** (`masses.share_token`): gerar, desativar e entrar (`POST /api/masses/join`).
@@ -344,6 +346,12 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | PUT | `/api/me/photo` | ✅ | multipart, campo `photo` (JPG/PNG/WebP, até 2 MB) → `{ user }` com a nova `photoUrl` |
 | GET | `/api/admin/users?status=&role=&q=` | ✅ | listagem (admin): pendentes, depois bloqueados e ativos. 🔜 paginação |
 | PATCH | `/api/admin/users/:id/activate` | ✅ | admin ativa (ou desbloqueia) a conta |
+| PATCH | `/api/me` | ✅ | só os campos enviados: `{ name?, phone?, movementId?, parish?, instrument? }` (vazio ou null limpa). E-mail, papel e status → 400 |
+| POST | `/api/auth/password` | ✅ | `{ currentPassword, newPassword }`. Fica em `/auth` para receber o cookie: a sessão deste aparelho continua e as outras caem. Senha atual errada → 400 com `fields.currentPassword`. Zera `mustChangePassword` |
+| PATCH | `/api/admin/users/:id` | ✅ | admin: `{ name?, email?, phone?, movementId?, roles? }` (`roles` substitui a lista). Tirar o próprio papel de admin → 403; e-mail de outra conta → 409 `EMAIL_TAKEN` |
+| POST | `/api/admin/users/:id/block` · `/unblock` | ✅ | admin: bloquear `{ reason? }` derruba as sessões da pessoa; liberar volta para ativo. Bloquear a si mesmo → 403 |
+| POST | `/api/admin/users/:id/reset-password` | ✅ | admin: gera senha temporária → `{ user, temporaryPassword }` (mostrada uma única vez). Derruba as sessões e marca `mustChangePassword` |
+| DELETE | `/api/admin/users/:id` | ✅ | admin: 204. As missas da pessoa vão junto (CASCADE). Excluir a si mesmo → 403 |
 | GET | `/api/movements` | ✅ | lista pública de movimentos `{ id, name, members }` |
 | POST · PATCH · DELETE | `/api/admin/movements[/:id]` | ✅ | admin cria, renomeia ou exclui `{ name }`. 409 `MOVEMENT_TAKEN` (nome repetido) e `MOVEMENT_IN_USE` (há pessoas no movimento) |
 | GET | `/api/users/search?q=&limit=` | ✅ | logado: pessoas **ativas** para compartilhar (nome, e-mail, movimento), sem a própria pessoa |
@@ -370,11 +378,9 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | POST | `/api/auth/login/verify` | 3 | 2FA: `{ challengeId, code }` → só então emite os tokens |
 | POST | `/api/auth/verify-email` · `/resend-verification` | 3 | quando houver serviço de e-mail |
 | POST | `/api/auth/forgot` · `/api/auth/reset` | 3 | recuperação de senha |
-| PATCH | `/api/me` · POST `/api/me/password` | 3 | editar perfil e trocar senha |
-| PATCH | `/api/admin/users/:id` | 3 | nome, e-mail, movimento, papel |
-| POST | `/api/admin/users/:id/block` · `/unblock` | 3 | controle de acesso (gera `AuditLog`) |
-| POST | `/api/admin/users/:id/resend-verification` · `/reset-password` | 3 | e-mails de suporte |
-| POST | `/api/admin/users/invite` · DELETE `/api/admin/users/:id` | 3 | convite e exclusão |
+| PATCH | `/api/me` (campo `email`) | 3 | trocar o e-mail com confirmação do novo endereço |
+| POST | `/api/admin/users/:id/resend-verification` · link de redefinição | 3 | e-mails de suporte |
+| POST | `/api/admin/users/invite` | 3 | convite por e-mail |
 | POST | `/api/uploads` | 4 | token de upload direto para o Vercel Blob (arquivos acima de 4 MB) |
 
 ---

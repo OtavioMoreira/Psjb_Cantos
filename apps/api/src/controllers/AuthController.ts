@@ -1,6 +1,8 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Container } from "../container.js";
 import { loginSchema, type AuthResultDTO } from "../dtos/auth.dto.js";
+import { changePasswordSchema } from "../dtos/user.dto.js";
+import { requireAuth } from "../middlewares/auth.js";
 import type { IssuedSession } from "../actions/auth/issueSession.js";
 import type { UserDTO } from "../dtos/user.dto.js";
 import { validate } from "../http/validate.js";
@@ -32,6 +34,12 @@ export class AuthController {
     await this.c.actions.logout.execute(req.cookies[REFRESH_COOKIE]);
     reply.clearCookie(REFRESH_COOKIE, { path: COOKIE_PATH });
     return reply.status(204).send();
+  };
+
+  /** Fica em /auth para receber o cookie: a sessão deste aparelho continua e as outras caem. */
+  changePassword = async (req: FastifyRequest): Promise<{ user: UserDTO }> => {
+    const input = validate(changePasswordSchema, req.body);
+    return { user: await this.c.actions.changePassword.execute(requireAuth(req).userId, input, req.cookies[REFRESH_COOKIE]) };
   };
 
   private respond(reply: FastifyReply, result: IssuedSession & { user: UserDTO }): AuthResultDTO {

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { loginSchema } from "../../src/dtos/auth.dto.js";
 import { createMassSchema, massBodySchema, massPatchSchema, shareBodySchema } from "../../src/dtos/mass.dto.js";
 import { flagBodySchema, listSongsQuerySchema, songBodySchema } from "../../src/dtos/song.dto.js";
-import { createUserSchema, listUsersQuerySchema } from "../../src/dtos/user.dto.js";
+import { adminUpdateUserSchema, changePasswordSchema, createUserSchema, listUsersQuerySchema, updateMeSchema } from "../../src/dtos/user.dto.js";
+import { temporaryPassword } from "../../src/actions/admin/AdminUserActions.js";
 import { validate } from "../../src/http/validate.js";
 
 const ok = <T>(r: { success: boolean; data?: T }) => (expect(r.success).toBe(true), r.data as T);
@@ -127,5 +128,49 @@ describe("validate()", () => {
   });
   it("corpo ausente conta como objeto vazio", () => {
     expect(validate(massBodySchema, undefined)).toMatchObject({ slots: [] });
+  });
+});
+
+describe("Perfil (updateMeSchema)", () => {
+  it("campo ausente não muda; vazio ou null limpa", () => {
+    expect(ok(updateMeSchema.safeParse({ name: " Ana Souza " }))).toEqual({ name: "Ana Souza" });
+    expect(ok(updateMeSchema.safeParse({ parish: "", instrument: null, movementId: null }))).toEqual({ parish: null, instrument: null, movementId: null });
+    expect(ok(updateMeSchema.safeParse({}))).toEqual({});
+  });
+  it("recusa e-mail, papel, status e campos desconhecidos (mass assignment)", () => {
+    for (const extra of [{ email: "x@x.com" }, { roles: ["admin"] }, { status: "active" }, { passwordHash: "x" }]) fails(updateMeSchema.safeParse(extra));
+  });
+  it("valida nome, telefone e tamanhos", () => {
+    fails(updateMeSchema.safeParse({ name: "Al" }));
+    fails(updateMeSchema.safeParse({ phone: "abc" }));
+    fails(updateMeSchema.safeParse({ parish: "x".repeat(121) }));
+  });
+});
+
+describe("Troca de senha (changePasswordSchema)", () => {
+  it("a nova senha segue a regra do cadastro", () => {
+    ok(changePasswordSchema.safeParse({ currentPassword: "qualquer", newPassword: "nova12345" }));
+    fails(changePasswordSchema.safeParse({ currentPassword: "qualquer", newPassword: "semnumero" }));
+    fails(changePasswordSchema.safeParse({ currentPassword: "", newPassword: "nova12345" }));
+  });
+});
+
+describe("Admin edita usuário (adminUpdateUserSchema)", () => {
+  it("normaliza e-mail e remove papéis repetidos", () => {
+    expect(ok(adminUpdateUserSchema.safeParse({ email: " Ana@X.com", roles: ["musico", "admin", "musico"] }))).toEqual({ email: "ana@x.com", roles: ["musico", "admin"] });
+  });
+  it("recusa lista de papéis vazia, papel desconhecido, status e senha", () => {
+    for (const body of [{ roles: [] }, { roles: ["coordenador"] }, { status: "active" }, { password: "x" }]) fails(adminUpdateUserSchema.safeParse(body));
+  });
+});
+
+describe("Senha temporária", () => {
+  it("é legível, atende à regra (letras + números) e muda a cada vez", () => {
+    const all = Array.from({ length: 50 }, temporaryPassword);
+    for (const p of all) {
+      expect(p).toMatch(/^[a-km-np-z]{4}-[2-9]{2}[a-km-np-z2-9]{2}$/);
+      ok(changePasswordSchema.safeParse({ currentPassword: "x", newPassword: p }));
+    }
+    expect(new Set(all).size).toBe(50);
   });
 });

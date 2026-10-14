@@ -7,7 +7,9 @@ import type { Movement } from "../../src/domain/movement.js";
 import type { Flag, Song } from "../../src/domain/song.js";
 import type { User, UserWithPassword } from "../../src/domain/user.js";
 import type {
+  AdminUserData,
   CreateUserData,
+  ProfileData,
   FileStorage,
   FlagData,
   FlagRepository,
@@ -41,6 +43,9 @@ export class InMemoryUsers implements UserRepository {
   async findByEmailWithPassword(email: string) {
     return this.rows.find((r) => r.email === email) ?? null;
   }
+  async findByIdWithPassword(id: string) {
+    return this.rows.find((r) => r.id === id) ?? null;
+  }
   async emailExists(email: string) {
     return this.rows.some((r) => r.email === email);
   }
@@ -53,10 +58,13 @@ export class InMemoryUsers implements UserRepository {
       passwordHash: d.passwordHash,
       phone: d.phone,
       photoUrl: null,
-      movement: d.movementId ? { id: d.movementId, name: this.movements?.rows.find((m) => m.id === d.movementId)?.name ?? "" } : null,
+      movement: this.movementRef(d.movementId),
+      parish: null,
+      instrument: null,
       status: d.status,
       blockedReason: null,
       roles: d.roles,
+      mustChangePassword: false,
       lastLoginAt: null,
       createdAt: now,
       updatedAt: now,
@@ -78,6 +86,38 @@ export class InMemoryUsers implements UserRepository {
     if (!u) return null;
     u.photoUrl = photoUrl;
     return this.pub(u);
+  }
+  private movementRef(id: number | null) {
+    return id ? { id, name: this.movements?.rows.find((m) => m.id === id)?.name ?? "" } : null;
+  }
+  async updateProfile(id: string, d: ProfileData) {
+    const u = this.rows.find((r) => r.id === id);
+    if (!u) return null;
+    const { movementId, ...rest } = d;
+    Object.assign(u, Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)));
+    if (movementId !== undefined) u.movement = this.movementRef(movementId);
+    return this.pub(u);
+  }
+  async adminUpdate(id: string, d: AdminUserData) {
+    const u = this.rows.find((r) => r.id === id);
+    if (!u) return null;
+    if (d.email && this.rows.some((r) => r.email === d.email && r.id !== id)) throw new AppError("EMAIL_TAKEN", "Já existe uma conta com este e-mail.");
+    const { movementId, ...rest } = d;
+    Object.assign(u, Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)));
+    if (movementId !== undefined) u.movement = this.movementRef(movementId);
+    return this.pub(u);
+  }
+  async updatePassword(id: string, passwordHash: string, mustChange: boolean) {
+    const u = this.rows.find((r) => r.id === id);
+    if (u) Object.assign(u, { passwordHash, mustChangePassword: mustChange });
+  }
+  async delete(id: string) {
+    const before = this.rows.length;
+    this.rows = this.rows.filter((r) => r.id !== id);
+    return this.rows.length < before;
+  }
+  async countActiveAdmins(excludeId?: string) {
+    return this.rows.filter((r) => r.status === "active" && r.roles.includes("admin") && r.id !== excludeId).length;
   }
   async touchLastLogin(id: string) {
     const u = this.rows.find((r) => r.id === id);
@@ -305,6 +345,9 @@ export class InMemorySessions implements SessionRepository {
   }
   async revokeAllForUser(userId: string) {
     this.rows.filter((r) => r.userId === userId && !r.revokedAt).forEach((r) => (r.revokedAt = new Date()));
+  }
+  async revokeOthers(userId: string, keepFamilyId: string) {
+    this.rows.filter((r) => r.userId === userId && r.familyId !== keepFamilyId && !r.revokedAt).forEach((r) => (r.revokedAt = new Date()));
   }
 }
 

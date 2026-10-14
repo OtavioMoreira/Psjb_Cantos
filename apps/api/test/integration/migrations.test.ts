@@ -14,6 +14,7 @@ describe.skipIf(!dbUrl)("Migrations", () => {
       "003_masses.sql",
       "004_mass_share_link.sql",
       "005_songs_flags.sql",
+      "006_user_profile.sql",
     ]);
   });
 

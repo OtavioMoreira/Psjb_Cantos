@@ -18,14 +18,61 @@ const optionalText = (max: number) =>
     .nullable()
     .transform((v) => (v ? v : null));
 
+const nameSchema = z.string().trim().min(3, "Informe seu nome completo.").max(120);
+const emailSchema = z.string().trim().toLowerCase().pipe(z.email("E-mail inválido.").max(254));
+const phoneSchema = optionalText(20).refine((v) => v === null || /^[\d\s()+-]{8,20}$/.test(v), "Telefone inválido.");
+const movementIdSchema = z.coerce.number().int().positive().optional().nullable().transform((v) => v ?? null);
+
 export const createUserSchema = z.object({
-  name: z.string().trim().min(3, "Informe seu nome completo.").max(120),
-  email: z.string().trim().toLowerCase().pipe(z.email("E-mail inválido.").max(254)),
+  name: nameSchema,
+  email: emailSchema,
   password: passwordSchema,
-  phone: optionalText(20).refine((v) => v === null || /^[\d\s()+-]{8,20}$/.test(v), "Telefone inválido."),
-  movementId: z.coerce.number().int().positive().optional().nullable().transform((v) => v ?? null),
+  phone: phoneSchema,
+  movementId: movementIdSchema,
 });
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+/**
+ * PATCH /api/me: só os campos enviados mudam. O e-mail fica de fora: trocar exige confirmar
+ * o novo endereço, o que depende do serviço de e-mail.
+ */
+export const updateMeSchema = z
+  .object({
+    name: nameSchema,
+    phone: phoneSchema,
+    movementId: movementIdSchema,
+    parish: optionalText(120),
+    instrument: optionalText(60),
+  })
+  .partial()
+  .strict();
+export type UpdateMeInput = z.infer<typeof updateMeSchema>;
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Informe a senha atual.").max(200),
+  newPassword: passwordSchema,
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/** PATCH /api/admin/users/:id: o admin edita nome, e-mail, movimento e papéis. */
+export const adminUpdateUserSchema = z
+  .object({
+    name: nameSchema,
+    email: emailSchema,
+    phone: phoneSchema,
+    movementId: movementIdSchema,
+    roles: z
+      .array(z.enum(ROLES))
+      .min(1, "Escolha pelo menos um papel.")
+      .transform((r) => [...new Set(r)]),
+  })
+  .partial()
+  .strict();
+export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>;
+
+export const blockUserSchema = z.object({
+  reason: optionalText(300),
+});
 
 export const listUsersQuerySchema = z.object({
   status: z.enum(USER_STATUSES).optional(),
@@ -49,9 +96,12 @@ export interface UserDTO {
   phone: string | null;
   photoUrl: string | null;
   movement: User["movement"];
+  parish: string | null;
+  instrument: string | null;
   status: User["status"];
   blockedReason: string | null;
   roles: User["roles"];
+  mustChangePassword: boolean;
   lastLoginAt: string | null;
   createdAt: string;
 }
@@ -64,9 +114,12 @@ export function toUserDTO(u: User): UserDTO {
     phone: u.phone,
     photoUrl: u.photoUrl,
     movement: u.movement,
+    parish: u.parish,
+    instrument: u.instrument,
     status: u.status,
     blockedReason: u.blockedReason,
     roles: u.roles,
+    mustChangePassword: u.mustChangePassword,
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
     createdAt: u.createdAt.toISOString(),
   };

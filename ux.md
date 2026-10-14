@@ -468,7 +468,8 @@ Só aparecem pessoas com conta ativa.
 - **Flags:** um card por grupo, com "＋ Adicionar". Cada linha tem a bolinha de cor, o nome, o identificador, o número de cantos e os botões de editar e excluir (44 px). O modal tem grupo, nome, identificador (gerado do nome), cor (seletor + "Sem cor") e ordem.
 - **Movimentos:** campo + [Adicionar] no topo; lista com o número de pessoas, renomear na própria linha (✓/✕) e excluir desabilitado quando há pessoas.
 - **Publicar no site:** modal que explica que as páginas são geradas de antemão e que a atualização leva alguns minutos. Toast: "Publicação pedida. O site atualiza em alguns minutos."
-- **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Os campos sem backend ficam esmaecidos, com um aviso em `gold-soft` no topo.
+- **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Nome, paróquia, movimento, instrumento e senha salvam no servidor (botão com spinner enquanto salva). O e-mail fica só leitura (fundo `surface-2`), com a dica "É o seu login. Para trocar, peça à coordenação."
+- **Senha temporária:** quem entra com a senha gerada pelo admin é levado a `/painel/perfil#seguranca` (qualquer outra página do painel redireciona para lá). No topo, aviso em `gold-soft` com 🔑 "Você entrou com uma senha temporária…", e o primeiro campo se chama "Senha temporária".
 
 ### 4.8 Montar Missa: editor (`/painel/missas/nova`)
 **Desktop**: coluna de momentos à esquerda (cerca de 60%) e painel seletor à direita (cerca de 40%, sticky).
@@ -627,15 +628,16 @@ Usuários                                        [👤+ Convidar usuário]
 - **Menu ⋯ do usuário:**
   - Editar dados e papel
   - Redefinir senha
-  - (se pendente) Reenviar confirmação de e-mail / Ativar sem confirmação
+  - (se pendente) Reenviar confirmação de e-mail / Ativar sem confirmação; com a API, aparece só Ativar acesso
   - Bloquear acesso (vermelho) ou Liberar acesso
   - Excluir usuário (vermelho)
 - **Modais** (no celular, abrem como bottom sheet):
   - **Bloquear:** texto explicativo + campo "Motivo (aparece para a pessoa ao tentar entrar)" + [⛔ Bloquear] em vermelho. O toast oferece "Desfazer".
-  - **Redefinir senha:** duas opções grandes, "Enviar link por e-mail (recomendado)" e "Gerar senha temporária". A senha gerada aparece **uma única vez**, com [Copiar].
-  - **Editar:** nome, e-mail (dica: "a API enviará nova confirmação"), movimento (seletor) e papel, com a descrição de cada papel.
+  - **Redefinir senha:** duas opções grandes, "Enviar link por e-mail (recomendado)" e "Gerar senha temporária". A senha gerada aparece **uma única vez**, com [Copiar]. Com a API, o link por e-mail aparece desabilitado ("em breve") até existir o serviço de e-mail.
+  - **Editar:** nome, e-mail (com a API, a dica avisa que é o login da pessoa), movimento (seletor) e papel, com a descrição de cada papel. Erro da API aparece dentro do modal.
   - **Convidar:** nome, e-mail e papel; o convidado nasce "Aguardando e-mail".
-  - **Excluir:** confirmação que sugere bloquear, por ser reversível; o toast oferece "Desfazer".
+  - **Excluir:** confirmação que sugere bloquear, por ser reversível; o toast oferece "Desfazer". Com a API, avisa que as missas criadas pela pessoa são apagadas junto, e a exclusão só vai para o servidor depois dos 6,5 s do "Desfazer".
+- **Tabela (desktop):** o contêiner não usa `overflow-hidden`, para o menu ⋯ das últimas linhas não ser cortado; os cantos arredondados ficam no cabeçalho.
 - **Proteções visuais:** na própria linha, com a etiqueta "você", o admin não pode Bloquear nem Excluir (itens desabilitados) e não pode trocar o próprio papel.
 - **Sem permissão:** quem não é admin vê "🛡 Acesso restrito", com [Voltar ao painel].
 

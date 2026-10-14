@@ -14,11 +14,11 @@ Site de cantos litúrgicos da **Paróquia Catedral São João Batista**, que sub
   - O front só usa a API quando o build tem `API_URL`; sem ela (GitHub Pages), continua no modo demonstração.
   - Com a API, o `store.ts` espelha o usuário (`syncApiUser`) e usa o `localStorage` como cache das missas, enviando cada alteração numa fila por missa.
   - Compartilhar é `setMassShares`, separado de `saveMass`.
-  - O site público ainda lê os cantos do `data/songs.json`.
+  - O repertório público lê os cantos do banco (via API) quando há `API_URL`: no build, as páginas ficam estáticas até o "Publicar no site"; no `next dev`, com cache de 1 minuto. Sem `API_URL`, usa o `data/songs.json`.
 - **Estado do cliente** (sessão, perfil, usuários, missas, preferências): fica em `localStorage`, via `apps/web/src/lib/store.ts`.
 - **E-mails:** são simulados por links na própria tela, como "Abrir link de confirmação".
 - **Hospedagem futura:** Vercel (front e API), Neon (Postgres) e Vercel Blob (arquivos).
-- **Fases seguintes:** cantos e missas na API, 2FA por e-mail, reCAPTCHA no servidor e serviço de e-mail. O plano está em `planning.md` §5.2, §6.6 e §6.9.
+- **Fases seguintes:** deploy na Vercel, serviço de e-mail (recuperação de senha, convite, troca de e-mail), 2FA por e-mail e reCAPTCHA no servidor. O plano está em `planning.md` §5.2, §6.6 e §6.9.
 
 ## Stack e estrutura (npm workspaces)
 ```

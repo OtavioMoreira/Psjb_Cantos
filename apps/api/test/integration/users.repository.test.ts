@@ -68,6 +68,71 @@ describe.skipIf(!dbUrl)("PgUserRepository", () => {
   });
 });
 
+describe.skipIf(!dbUrl)("PgUserRepository: perfil e admin", () => {
+  const { repos, factory, pool } = useTestDb();
+
+  it("updateProfile muda só o que foi enviado e limpa com null", async () => {
+    const mv = await repos.movements.create("RCC");
+    const u = await factory.user({ name: "Ana" });
+    expect(await repos.users.updateProfile(u.id, { parish: "Catedral", instrument: "Violão", movementId: mv.id })).toMatchObject({
+      name: "Ana",
+      parish: "Catedral",
+      instrument: "Violão",
+      movement: { id: mv.id, name: "RCC" },
+    });
+    expect(await repos.users.updateProfile(u.id, { name: "Ana Souza", parish: null, movementId: null })).toMatchObject({
+      name: "Ana Souza",
+      parish: null,
+      instrument: "Violão",
+      movement: null,
+    });
+    expect(await repos.users.updateProfile(u.id, {})).toMatchObject({ name: "Ana Souza" });
+    expect(await repos.users.updateProfile("00000000-0000-0000-0000-000000000000", { name: "X" })).toBeNull();
+  });
+
+  it("adminUpdate troca dados e papéis numa transação; e-mail repetido vira EMAIL_TAKEN sem mexer em nada", async () => {
+    await factory.user({ email: "outra@teste.com" });
+    const u = await factory.user({ name: "Ana", email: "ana@teste.com", roles: ["musico"] });
+    expect(await repos.users.adminUpdate(u.id, { name: "Ana Admin", roles: ["admin", "musico"] })).toMatchObject({ name: "Ana Admin", roles: ["admin", "musico"] });
+
+    await expect(repos.users.adminUpdate(u.id, { email: "outra@teste.com", roles: ["musico"] })).rejects.toMatchObject({ code: "EMAIL_TAKEN" });
+    expect(await repos.users.findById(u.id)).toMatchObject({ email: "ana@teste.com", roles: ["admin", "musico"] });
+    expect(await repos.users.adminUpdate("00000000-0000-0000-0000-000000000000", { name: "X" })).toBeNull();
+  });
+
+  it("updatePassword grava o hash e a obrigação de troca", async () => {
+    const u = await factory.user();
+    await repos.users.updatePassword(u.id, "novo-hash", true);
+    expect(await repos.users.findByIdWithPassword(u.id)).toMatchObject({ passwordHash: "novo-hash", mustChangePassword: true });
+    await repos.users.updatePassword(u.id, "outro-hash", false);
+    expect((await repos.users.findById(u.id))?.mustChangePassword).toBe(false);
+  });
+
+  it("countActiveAdmins ignora pendentes, bloqueados e a pessoa excluída da conta", async () => {
+    const a = await factory.user({ roles: ["admin", "musico"] });
+    await factory.user({ roles: ["admin"], status: "pending" });
+    await factory.user({ roles: ["admin"], status: "blocked" });
+    await factory.user({ roles: ["musico"] });
+    expect(await repos.users.countActiveAdmins()).toBe(1);
+    expect(await repos.users.countActiveAdmins(a.id)).toBe(0);
+  });
+
+  it("delete apaga a conta com papéis, sessões e missas (CASCADE); as missas de outros só perdem o convidado", async () => {
+    const dono = await factory.user();
+    const outro = await factory.user();
+    const minha = await repos.masses.create(dono.id, { name: "Minha", date: null, time: null, season: null, year: null, slots: [] });
+    const dele = await repos.masses.create(outro.id, { name: "Dele", date: null, time: null, season: null, year: null, slots: [] });
+    await repos.masses.setShares(dele.id, [dono.id]);
+
+    expect(await repos.users.delete(dono.id)).toBe(true);
+    expect(await repos.users.delete(dono.id)).toBe(false);
+    expect(await repos.masses.findById(minha.id)).toBeNull();
+    expect((await repos.masses.findById(dele.id))?.sharedWith).toEqual([]);
+    const { rows } = await pool.query("SELECT count(*)::int AS n FROM user_roles WHERE user_id = $1", [dono.id]);
+    expect(rows[0].n).toBe(0);
+  });
+});
+
 describe.skipIf(!dbUrl)("PgSessionRepository", () => {
   const { repos, factory, pool } = useTestDb();
   const future = () => new Date(Date.now() + 86_400_000);
@@ -88,6 +153,20 @@ describe.skipIf(!dbUrl)("PgSessionRepository", () => {
 
     await repos.sessions.revokeAllForUser(u.id);
     expect((await repos.sessions.findByTokenHash("c".repeat(64)))?.revokedAt).toBeInstanceOf(Date);
+  });
+
+  it("revokeOthers mantém só a família informada", async () => {
+    const u = await factory.user();
+    const outro = await factory.user();
+    const keep = "55555555-5555-5555-5555-555555555555";
+    await repos.sessions.create({ userId: u.id, familyId: keep, tokenHash: "f".repeat(64), expiresAt: future(), remember: true, userAgent: null });
+    await repos.sessions.create({ userId: u.id, familyId: "66666666-6666-6666-6666-666666666666", tokenHash: "g".repeat(64), expiresAt: future(), remember: true, userAgent: null });
+    await repos.sessions.create({ userId: outro.id, familyId: "77777777-7777-7777-7777-777777777777", tokenHash: "h".repeat(64), expiresAt: future(), remember: true, userAgent: null });
+
+    await repos.sessions.revokeOthers(u.id, keep);
+    expect((await repos.sessions.findByTokenHash("f".repeat(64)))?.revokedAt).toBeNull();
+    expect((await repos.sessions.findByTokenHash("g".repeat(64)))?.revokedAt).toBeInstanceOf(Date);
+    expect((await repos.sessions.findByTokenHash("h".repeat(64)))?.revokedAt).toBeNull(); // outra pessoa intacta
   });
 
   it("token duplicado é recusado pelo banco (UNIQUE)", async () => {

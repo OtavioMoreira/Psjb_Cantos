@@ -26,7 +26,7 @@ Novo site de cantos litúrgicos da **Paróquia Catedral São João Batista**, qu
 | **Admin** | Usuários: bloquear/liberar com motivo, ativar, redefinir senha, papéis, convidar, excluir |
 | **App** | Instalável na tela de início (abre sem as barras do navegador), tema claro/escuro |
 | **Administração** (com a API) | Painel com Usuários (ativar contas), **Cantos** (editor com letra, flags, PDF e áudio), **Flags**, **Movimentos** e "Publicar no site" |
-| **API** | Fastify + PostgreSQL: login JWT, papéis, movimentos, missas com link de convite, cantos com PDF e áudio, flags; coleção do Postman e 265 testes automatizados |
+| **API** | Fastify + PostgreSQL: login JWT, papéis, movimentos, missas com link de convite, cantos com PDF e áudio, flags; coleção do Postman e 307 testes automatizados |
 
 O estado completo do projeto (o que está pronto e o que falta no front e no backend) está em [`docs/ESTADO-DO-PROJETO.md`](docs/ESTADO-DO-PROJETO.md).
 
@@ -135,7 +135,7 @@ docker compose up -d postgres     # os testes de integração usam o banco psjb_
 npm test                          # API (unitários + integração) e regras do front
 npm run test:unit -w api          # só os rápidos, sem banco
 ```
-São 265 testes: regras, segurança (matriz de autorização, JWT, cabeçalhos, limite de tentativas), repositórios contra o Postgres real e as regras do front (calendário, cifra, busca). Sem Postgres, os testes de integração são pulados com um aviso. O GitHub Actions (`.github/workflows/tests.yml`) roda tudo, mais a coleção do Postman, a cada push e PR.
+São 307 testes: regras, segurança (matriz de autorização, JWT, cabeçalhos, limite de tentativas), repositórios contra o Postgres real e as regras do front (calendário, cifra, busca). Sem Postgres, os testes de integração são pulados com um aviso. O GitHub Actions (`.github/workflows/tests.yml`) roda tudo, mais a coleção do Postman, a cada push e PR.
 
 ### Páginas para testar
 | URL | O que é |

@@ -83,6 +83,8 @@ export interface User {
   emailVerifiedAt: string | null;
   lastLoginAt: string | null;
   blockedReason?: string;
+  /** Senha temporária (gerada pelo admin): a pessoa precisa trocar antes de usar o painel. */
+  mustChangePassword?: boolean;
 }
 
 export interface MassItem {

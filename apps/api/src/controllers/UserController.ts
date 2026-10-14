@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Container } from "../container.js";
 import { AppError } from "../domain/errors.js";
-import { createUserSchema, searchUsersQuerySchema, type UserDTO } from "../dtos/user.dto.js";
+import { createUserSchema, searchUsersQuerySchema, updateMeSchema, type UserDTO } from "../dtos/user.dto.js";
 import { validate } from "../http/validate.js";
 import { requireAuth } from "../middlewares/auth.js";
 
@@ -16,6 +16,10 @@ export class UserController {
 
   me = async (req: FastifyRequest): Promise<{ user: UserDTO }> => {
     return { user: await this.c.actions.getMe.execute(requireAuth(req).userId) };
+  };
+
+  updateMe = async (req: FastifyRequest): Promise<{ user: UserDTO }> => {
+    return { user: await this.c.actions.updateMe.execute(requireAuth(req).userId, validate(updateMeSchema, req.body)) };
   };
 
   /** multipart/form-data com o campo "photo". */

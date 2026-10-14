@@ -24,7 +24,7 @@ Estas são as regras combinadas com o cliente. As marcadas **(futuro)** dependem
   - Os marcadores `**` nunca aparecem na tela nem entram na busca.
 - **Recursos ausentes:** a aba correspondente fica desabilitada ("Partitura ainda não disponível").
 - **Dados de exemplo:** os 121 cantos reais em `data/songs.json` foram extraídos da primeira página de 14 categorias do site antigo, e as mídias apontam para os arquivos de lá.
-- **Cantos no banco (API, 03/10/2026):** tabela `songs`, importada do `data/songs.json` por `npm run db:import-songs -w api`, **mantendo os ids** (as missas guardam `songId`). O site público ainda lê o JSON; a API já é a base para o admin de cantos.
+- **Cantos no banco (API, 03/10/2026):** tabela `songs`, importada do `data/songs.json` por `npm run db:import-songs -w api`, **mantendo os ids** (as missas guardam `songId`). Com `API_URL`, o repertório público lê os cantos do banco (via API); sem ela (GitHub Pages), lê o JSON.
   - **Só admin** cria, edita e exclui (`/api/admin/songs`). Campos: número, título, autor, tom, letra com cifra, mídias e flags.
   - **Arquivos:** PDF da cifra, PDF da partitura e áudio (MP3, M4A ou OGG), **até 4 MB cada** (limite das Functions da Vercel). O tipo é conferido pelos bytes. Trocar o arquivo apaga o anterior. Também dá para usar links externos (Audiomack, site antigo).
   - **Slug:** gerado na criação (`NNN-titulo` ou só o título) e **não muda ao trocar o título**, para os links continuarem valendo.
@@ -136,10 +136,10 @@ Os eixos:
     - A cifra usa fonte monoespaçada, com a mesma regra de quebra da tela, e acorde e letra nunca ficam em páginas diferentes.
   - **Rodapé em todas as páginas:** nome da missa, data e "página X / N".
   - **Arquivo:** `missa-<nome>-<aaaa-mm-dd>.pdf`, formato A4.
-- **Onde fica salvo:** no front, ainda no `localStorage` do aparelho. **A API já tem as rotas** (`/api/masses`, ver `planning.md` §5.2), mas as telas ainda não usam:
+- **Onde fica salvo:** com a API, no banco (`/api/masses`, ver `planning.md` §5.2), com cópia no `localStorage` (ver §15); na demonstração, só no `localStorage` do aparelho. Regras da API:
   - os momentos e cantos (`slots`) são salvos **inteiros** num campo JSON, porque o editor salva tudo a cada alteração;
   - `PUT` substitui a missa inteira e `PATCH` muda só os campos enviados;
-  - o tom de cada canto vai de −6 a +5, e `songId` é o id do canto em `data/songs.json` (os cantos ainda não estão no banco);
+  - o tom de cada canto vai de −6 a +5, e `songId` é o id do canto na tabela `songs` (os mesmos ids do `data/songs.json`);
   - a listagem filtra por `when=upcoming|past|all`, com "hoje" no fuso de Brasília; missa sem data conta como próxima.
 - **Compartilhar com a equipe:**
   - **Quem compartilha:** o **dono** da missa (quem a criou), **qualquer que seja o papel** (Administrador ou Músico).
@@ -250,9 +250,10 @@ Os eixos:
 
 ## 11. Perfil (`/painel/perfil`)
 - **Dados editáveis:** nome, e-mail, paróquia, movimento e instrumento/voz.
-- **Troca de senha:** exige a senha atual.
+- **Troca de senha:** exige a senha atual, e a nova precisa ser diferente. Com a API (`POST /api/auth/password`, em `/auth` para receber o cookie), a sessão deste aparelho continua e **as dos outros aparelhos caem**.
 - **Foto:** JPG, PNG ou WebP de até 2 MB (`PUT /api/me/photo`, campo `photo`). O tipo é conferido pelos bytes do arquivo, não pelo nome. Cada troca gera uma URL nova e apaga a foto anterior. No perfil, "Enviar foto" / "Trocar foto" (só com a API); a foto aparece no avatar do cabeçalho e do painel.
-- **Com a API**, nome, e-mail, movimento e senha ficam **só leitura** (com aviso) até existirem `PATCH /api/me` e `POST /api/me/password`.
+- **Com a API** (14/10/2026): nome, telefone, movimento, paróquia e instrumento salvam por `PATCH /api/me` (só os campos enviados; vazio limpa). O **e-mail fica só leitura** ("Para trocar, peça à coordenação"), porque trocar exige confirmar o novo endereço; o admin pode trocar pelo admin de usuários.
+- **Senha temporária:** quem entra com a senha gerada pelo admin (`mustChangePassword`) é levado a Perfil › Segurança e não usa o resto do painel até criar a própria senha. A obrigação é conferida no front; a API zera a marca na troca.
 - **Preferências:** tema (claro, escuro ou sistema) e sustenidos/bemóis.
 - **(futuro)** Trocar o e-mail exige confirmar o novo endereço, e o antigo continua valendo até lá.
 
@@ -266,23 +267,25 @@ Os eixos:
 - **Movimentos:** criar e renomear (nome único); o botão de excluir fica desabilitado quando há pessoas.
 
 ### 12.1 Admin de usuários (`/painel/admin/usuarios`)
-- **Com a API:** a lista vem do servidor e "Ativar acesso" libera contas pendentes. As demais ações ficam desabilitadas até existirem no backend.
-- **Acesso:** o menu "Usuários" só aparece para admins. Outros papéis veem "Acesso restrito". **(futuro)** A API também recusa com 403, porque esconder o menu não é segurança.
+- **Com a API** (14/10/2026): listar, ativar, editar (nome, e-mail, movimento, papel), bloquear/liberar, senha temporária e excluir usam o servidor. **Convidar** e **enviar link de redefinição** ficam desabilitados até existir o serviço de e-mail. "Reenviar confirmação" não aparece (a conta pendente espera um admin, não o e-mail).
+  - Papel no front é um só: Administrador vira `roles: ["admin", "musico"]` e Músico, `["musico"]`. O papel só vai para a API quando muda.
+- **Acesso:** o menu "Usuários" só aparece para admins. Outros papéis veem "Acesso restrito". A API também recusa com 403, porque esconder o menu não é segurança.
 - **Visão geral:**
   - Resumo clicável: Total, Ativos, Aguardando e-mail e Bloqueados.
   - Busca por nome, e-mail ou movimento, e filtro por papel.
   - A lista mostra primeiro os pendentes, depois os bloqueados e por fim os ativos.
 - **Ações:**
   - **Editar** nome, e-mail, movimento e papel.
-  - **Bloquear** com motivo, com "Desfazer". **Liberar** volta para ativo se o e-mail já foi confirmado, senão para pendente.
+  - **Bloquear** com motivo (opcional), com "Desfazer". Com a API, bloquear **derruba as sessões** da pessoa na hora. **Liberar** volta para ativo (na demonstração: ativo se o e-mail já foi confirmado, senão pendente).
   - **Ativar sem confirmação** e **reenviar confirmação**: só para pendentes.
-  - **Redefinir senha:** "Enviar link por e-mail" (recomendado) ou "Gerar senha temporária", exibida **uma única vez**. **(futuro)** A senha temporária obriga a troca no próximo login.
+  - **Redefinir senha:** "Enviar link por e-mail" (recomendado; **(futuro)**, depende do e-mail) ou "Gerar senha temporária", exibida **uma única vez** (formato `abcd-23x4`, sem caracteres ambíguos). A senha temporária **derruba as sessões** e **obriga a troca** no próximo acesso.
   - **Convidar:** nome, e-mail e papel. O convidado nasce pendente e recebe um e-mail para criar a senha.
-  - **Excluir:** pede confirmação, sugere bloquear como alternativa reversível e tem "Desfazer".
+  - **Excluir:** pede confirmação, sugere bloquear como alternativa reversível e tem "Desfazer" (com a API, a exclusão só vai ao servidor depois dos 6,5 s). **As missas criadas pela pessoa são apagadas junto**; quem as recebeu perde o acesso. Missas de outras pessoas só perdem esse convidado. A foto sai do storage.
 - **Proteções:**
-  - O admin **não pode bloquear, excluir nem rebaixar a si mesmo**.
-  - **(futuro)** Precisa existir sempre pelo menos 1 admin ativo.
-- **(futuro)** Toda ação de admin gera um registro de auditoria (`AuditLog`), e bloquear ou redefinir senha **revoga as sessões ativas** da pessoa.
+  - O admin **não pode bloquear, excluir nem rebaixar a si mesmo** (403). Editar os próprios dados pode.
+  - Precisa existir sempre **pelo menos 1 admin ativo** (409 `LAST_ADMIN`). Admin pendente ou bloqueado não conta.
+- **(futuro)** Toda ação de admin gera um registro de auditoria (`AuditLog`).
+- Mudar o papel de alguém só pesa no próximo refresh do token (até 15 min), porque os papéis vão no JWT.
 
 ## 13. Autenticação JWT
 **Já implementado** (`apps/api`, 03/10/2026):

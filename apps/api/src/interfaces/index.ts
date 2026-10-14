@@ -16,6 +16,24 @@ export interface CreateUserData {
   roles: Role[];
 }
 
+/** Campos que a própria pessoa edita no perfil. */
+export interface ProfileData {
+  name?: string;
+  phone?: string | null;
+  movementId?: number | null;
+  parish?: string | null;
+  instrument?: string | null;
+}
+
+/** Campos que o admin edita. `roles` substitui a lista inteira. */
+export interface AdminUserData {
+  name?: string;
+  email?: string;
+  phone?: string | null;
+  movementId?: number | null;
+  roles?: Role[];
+}
+
 export interface UserFilters {
   status?: UserStatus;
   role?: Role;
@@ -25,11 +43,20 @@ export interface UserFilters {
 export interface UserRepository {
   findById(id: string): Promise<User | null>;
   findByEmailWithPassword(email: string): Promise<UserWithPassword | null>;
+  findByIdWithPassword(id: string): Promise<UserWithPassword | null>;
   emailExists(email: string): Promise<boolean>;
   create(data: CreateUserData): Promise<User>;
   list(filters: UserFilters): Promise<User[]>;
   updateStatus(id: string, status: UserStatus, blockedReason?: string | null): Promise<User | null>;
   updatePhoto(id: string, photoUrl: string | null): Promise<User | null>;
+  updateProfile(id: string, data: ProfileData): Promise<User | null>;
+  /** Lança EMAIL_TAKEN se o e-mail já é de outra conta. */
+  adminUpdate(id: string, data: AdminUserData): Promise<User | null>;
+  updatePassword(id: string, passwordHash: string, mustChange: boolean): Promise<void>;
+  /** Apaga a conta; as missas dela vão junto (CASCADE). false se não existia. */
+  delete(id: string): Promise<boolean>;
+  /** Admins ativos, sem contar `excludeId`. Para nunca ficar sem nenhum. */
+  countActiveAdmins(excludeId?: string): Promise<number>;
   touchLastLogin(id: string): Promise<void>;
   /** Dos IDs informados, devolve os que existem e estão ativos. */
   filterActiveIds(ids: string[]): Promise<string[]>;
@@ -149,6 +176,8 @@ export interface SessionRepository {
   rotate(id: string, replacedBy: string): Promise<void>;
   revokeFamily(familyId: string): Promise<void>;
   revokeAllForUser(userId: string): Promise<void>;
+  /** Revoga as outras sessões da pessoa, mantendo a família informada (o aparelho atual). */
+  revokeOthers(userId: string, keepFamilyId: string): Promise<void>;
 }
 
 export interface PasswordHasher {

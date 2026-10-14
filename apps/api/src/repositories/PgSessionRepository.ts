@@ -47,4 +47,11 @@ export class PgSessionRepository implements SessionRepository {
   async revokeAllForUser(userId: string) {
     await this.pool.query("UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [userId]);
   }
+
+  async revokeOthers(userId: string, keepFamilyId: string) {
+    await this.pool.query(
+      "UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND family_id <> $2 AND revoked_at IS NULL",
+      [userId, keepFamilyId],
+    );
+  }
 }

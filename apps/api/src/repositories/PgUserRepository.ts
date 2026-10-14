@@ -1,6 +1,7 @@
+import type { PoolClient } from "pg";
 import { AppError } from "../domain/errors.js";
 import type { Role, User, UserStatus, UserWithPassword } from "../domain/user.js";
-import type { CreateUserData, UserFilters, UserRepository } from "../interfaces/index.js";
+import type { AdminUserData, CreateUserData, ProfileData, UserFilters, UserRepository } from "../interfaces/index.js";
 import type { Pool } from "../database/pool.js";
 
 interface UserRow {
@@ -12,6 +13,9 @@ interface UserRow {
   photo_url: string | null;
   movement_id: number | null;
   movement_name: string | null;
+  parish: string | null;
+  instrument: string | null;
+  must_change_password: boolean;
   status: UserStatus;
   blocked_reason: string | null;
   last_login_at: Date | null;
@@ -38,9 +42,12 @@ function toUser(row: UserRow): User {
     phone: row.phone,
     photoUrl: row.photo_url,
     movement: row.movement_id ? { id: row.movement_id, name: row.movement_name ?? "" } : null,
+    parish: row.parish,
+    instrument: row.instrument,
     status: row.status,
     blockedReason: row.blocked_reason,
     roles: row.roles,
+    mustChangePassword: row.must_change_password,
     lastLoginAt: row.last_login_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -62,6 +69,11 @@ export class PgUserRepository implements UserRepository {
 
   async findByEmailWithPassword(email: string): Promise<UserWithPassword | null> {
     const row = await this.one("u.email = $1", [email]);
+    return row && { ...toUser(row), passwordHash: row.password_hash };
+  }
+
+  async findByIdWithPassword(id: string): Promise<UserWithPassword | null> {
+    const row = await this.one("u.id = $1", [id]);
     return row && { ...toUser(row), passwordHash: row.password_hash };
   }
 
@@ -133,6 +145,77 @@ export class PgUserRepository implements UserRepository {
   async updatePhoto(id: string, photoUrl: string | null) {
     const { rowCount } = await this.pool.query("UPDATE users SET photo_url = $2, updated_at = now() WHERE id = $1", [id, photoUrl]);
     return rowCount ? this.findById(id) : null;
+  }
+
+  async updateProfile(id: string, data: ProfileData) {
+    const found = await this.patch(id, {
+      name: data.name,
+      phone: data.phone,
+      movement_id: data.movementId,
+      parish: data.parish,
+      instrument: data.instrument,
+    });
+    return found ? this.findById(id) : null;
+  }
+
+  async adminUpdate(id: string, data: AdminUserData) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const found = await this.patch(id, { name: data.name, email: data.email, phone: data.phone, movement_id: data.movementId }, client);
+      if (!found) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      if (data.roles) {
+        await client.query("DELETE FROM user_roles WHERE user_id = $1", [id]);
+        await client.query(
+          "INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE name = ANY($2::text[])",
+          [id, data.roles],
+        );
+      }
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      if ((err as { code?: string }).code === "23505") throw new AppError("EMAIL_TAKEN", "Já existe uma conta com este e-mail.");
+      throw err;
+    } finally {
+      client.release();
+    }
+    return this.findById(id);
+  }
+
+  /** UPDATE só das colunas definidas (undefined = não mexe). true se a conta existe. */
+  private async patch(id: string, cols: Record<string, unknown>, db: Pool | PoolClient = this.pool) {
+    const entries = Object.entries(cols).filter(([, v]) => v !== undefined);
+    const sets = entries.map(([c], i) => `${c} = $${i + 2}`);
+    const { rowCount } = await db.query(
+      `UPDATE users SET ${[...sets, "updated_at = now()"].join(", ")} WHERE id = $1`,
+      [id, ...entries.map(([, v]) => v)],
+    );
+    return Boolean(rowCount);
+  }
+
+  async updatePassword(id: string, passwordHash: string, mustChange: boolean) {
+    await this.pool.query(
+      "UPDATE users SET password_hash = $2, must_change_password = $3, updated_at = now() WHERE id = $1",
+      [id, passwordHash, mustChange],
+    );
+  }
+
+  async delete(id: string) {
+    const { rowCount } = await this.pool.query("DELETE FROM users WHERE id = $1", [id]);
+    return Boolean(rowCount);
+  }
+
+  async countActiveAdmins(excludeId?: string) {
+    const { rows } = await this.pool.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM users u
+       JOIN user_roles ur ON ur.user_id = u.id JOIN roles r ON r.id = ur.role_id
+       WHERE r.name = 'admin' AND u.status = 'active' AND ($1::uuid IS NULL OR u.id <> $1)`,
+      [excludeId ?? null],
+    );
+    return rows[0].n;
   }
 
   async touchLastLogin(id: string) {

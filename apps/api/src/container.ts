@@ -1,6 +1,15 @@
 import path from "node:path";
 import { ActivateUserAction } from "./actions/admin/ActivateUserAction.js";
 import { ListUsersAction } from "./actions/admin/ListUsersAction.js";
+import {
+  AdminUpdateUserAction,
+  BlockUserAction,
+  DeleteUserAction,
+  ResetUserPasswordAction,
+  UnblockUserAction,
+} from "./actions/admin/AdminUserActions.js";
+import { ChangePasswordAction } from "./actions/auth/ChangePasswordAction.js";
+import { UpdateMeAction } from "./actions/users/UpdateMeAction.js";
 import { LoginAction } from "./actions/auth/LoginAction.js";
 import { LogoutAction } from "./actions/auth/LogoutAction.js";
 import { RefreshSessionAction } from "./actions/auth/RefreshSessionAction.js";
@@ -86,8 +95,15 @@ export function buildContainer(env: Env, adapters: Adapters) {
       createUser: new CreateUserAction(deps),
       getMe: new GetMeAction(deps),
       updateMyPhoto: new UpdateMyPhotoAction(deps),
+      updateMe: new UpdateMeAction(deps),
+      changePassword: new ChangePasswordAction(deps),
       listUsers: new ListUsersAction(deps),
       activateUser: new ActivateUserAction(deps),
+      adminUpdateUser: new AdminUpdateUserAction(deps),
+      blockUser: new BlockUserAction(deps),
+      unblockUser: new UnblockUserAction(deps),
+      deleteUser: new DeleteUserAction(deps),
+      resetUserPassword: new ResetUserPasswordAction(deps),
       searchUsers: new SearchUsersAction(deps),
       listMovements: new ListMovementsAction(deps),
       createMovement: new CreateMovementAction(deps),
