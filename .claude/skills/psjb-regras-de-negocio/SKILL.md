@@ -20,17 +20,20 @@ Estas são as regras combinadas com o cliente. As marcadas **(futuro)** dependem
 - **Slug:** `NNN-titulo` quando há número (`001-a-feliz-espera`); sem número, só o título (`natal-dia-salmo-097`).
 - **Letra e cifra:** formato "acordes na linha de cima". O tom original é o primeiro acorde da primeira linha de acordes.
 - **Refrão:** a linha de letra do refrão é marcada como `**texto**` no `songs.json` e sempre aparece **em negrito**, tanto na cifra quanto no "Só letra".
-  - A marcação veio do negrito do site antigo: 95 dos 121 cantos têm refrão marcado; os demais não tinham negrito na origem.
+  - A marcação veio do negrito do site antigo: 518 dos 623 cantos têm refrão marcado; os demais não tinham negrito na origem. Conta como refrão a linha de letra com **todas as letras e números** em negrito (a pontuação final às vezes ficava fora). O recuo fica antes dos `**`, para alinhar com os acordes.
   - Os marcadores `**` nunca aparecem na tela nem entram na busca.
 - **Recursos ausentes:** a aba correspondente fica desabilitada ("Partitura ainda não disponível").
-- **Dados de exemplo:** os 121 cantos reais em `data/songs.json` foram extraídos da primeira página de 14 categorias do site antigo, e as mídias apontam para os arquivos de lá.
+- **Repertório (14/10/2026):** `data/songs.json` traz **os 623 cantos do site antigo**, convertidos da tabela `audios` do banco legado por `db/postgres/importar_cantos.py`. As mídias apontam para os arquivos do site antigo (`https://cantos.psjb.org.br/uploads/...`).
+  - Os 121 cantos extraídos antes (primeira página de 14 categorias) mantêm a classificação feita à mão; a letra passou a ser a do conversor, que corrige defeitos da extração antiga (cabeçalho dentro da letra, `<br>` virando linha em branco, linhas de acordes com `°` ou `7+` marcadas como refrão).
+  - **Tom original:** só a tônica e o modo do primeiro acorde (`Bm7` → `Bm`, `C7` → `C`).
+  - **Acordes reconhecidos** também incluem diminuto com `°`/`º` (`D#°`) e sétima maior `7+` (`G7+`), na tela, na transposição e no conversor.
 - **Cantos no banco (API, 03/10/2026):** tabela `songs`, importada do `data/songs.json` por `npm run db:import-songs -w api`, **mantendo os ids** (as missas guardam `songId`). Com `API_URL`, o repertório público lê os cantos do banco (via API); sem ela (GitHub Pages), lê o JSON.
   - **Só admin** cria, edita e exclui (`/api/admin/songs`). Campos: número, título, autor, tom, letra com cifra, mídias e flags.
   - **Arquivos:** PDF da cifra, PDF da partitura e áudio (MP3, M4A ou OGG), **até 4 MB cada** (limite das Functions da Vercel). O tipo é conferido pelos bytes. Trocar o arquivo apaga o anterior. Também dá para usar links externos (Audiomack, site antigo).
   - **Slug:** gerado na criação (`NNN-titulo` ou só o título) e **não muda ao trocar o título**, para os links continuarem valendo.
   - **Canto em uso não é excluído:** se estiver em alguma missa, a API recusa (409 `SONG_IN_USE`). Para tirar do repertório, **oculte** (`active: false`): some do público, mas o admin e as missas continuam vendo.
   - **Missas** só aceitam `songId` que exista no banco (400 com `unknownSongIds`).
-  - As categorias **Velas** e **Preces** não existem no site antigo. Para ilustrar, os cantos do Espírito Santo foram marcados como Velas e os de Paz como Preces. Revisar na migração real.
+  - As categorias **Velas** e **Preces** não existem no site antigo. Nos 121 cantos revisados à mão, alguns do Espírito Santo foram marcados como Velas e alguns de Paz como Preces (e alguns Marianos/Vocacionais como Saída). Nos 502 convertidos, só entra o que a categoria antiga diz. **A equipe de liturgia precisa revisar** esses momentos.
 
 ## 3. Categorias (taxonomia)
 A categoria única do site antigo virou **4 eixos independentes**, e um canto pode ter **vários valores em cada eixo**.
@@ -55,7 +58,9 @@ Os eixos:
 
   A cor aparece só como destaque: faixa de 4 px no card, bolinha ou borda do chip.
 - **Ano litúrgico:** A, B e C. Só importa para Salmos e Aclamações.
-- **Tema:** Espírito Santo, Marianos, Paz, Vocacionais e Missão, e outros vindos do site antigo (Crianças, Família, Santos...).
+- **Tema:** Espírito Santo, Marianos, Paz, Vocacionais e Missão, Crianças, Família, Meditação e Louvor, Movimentos, Palavra, Perdão, Santos, Exéquias, Semana Santa, **Creio** e **Sequências**.
+  - Creio e Sequências seriam momentos, mas a lista de momentos é fechada no editor de missa e no Modo Missa; por isso ficaram como tema. Promover a momento é uma decisão para a equipe de liturgia.
+- **Da categoria antiga para as flags** (conversor): "Abertura - Advento" → Entrada + Advento; "Apresentação das oferendas" → Ofertório; "Comunhão - X" → Comunhão + tempo; "Salmos/Aclamações - ANO B" → Salmo/Aclamação + Ano B, com o **tempo tirado do título** ("Quaresma 2º Dom. - Salmo 115" → Quaresma; Sagrada Família, Mãe de Deus, Epifania e Batismo → Natal; Ascensão e Pentecostes → Páscoa; Santíssima Trindade → Tempo Comum); "Cantos diversos - X" → tema X ("Cantos diversos - Natal" → tempo Natal); "Semana Santa" e "Tríduo Pascal" → Quaresma + tema Semana Santa.
 - **Recursos:** o filtro "tem" aceita cifra, partitura e áudio.
 
 ## 4. Busca e filtros (`/cantos`)

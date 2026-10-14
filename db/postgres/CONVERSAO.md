@@ -183,3 +183,13 @@ Por coluna:
 - **Limites conhecidos do `migrar.py`** (não afetam a carga atual):
   - a checagem de data zerada só barra valores que começam com `0000-00-00`; uma data parcialmente zerada (ex.: `2020-00-15`) passaria;
   - o tratamento dos bytes 0x80–0x9F do cp1252 nunca foi exercitado com dados reais, porque eles não existem no banco.
+
+## Do legado para o site novo: `importar_cantos.py`
+
+A conversão acima é fiel: as tabelas do site antigo continuam como eram. Para o site novo, `db/postgres/importar_cantos.py` lê `audios` + `categorias` do Postgres local e grava os **623 cantos** em `data/songs.json`, no formato do site. Depois, `npm run db:import-songs -w api` carrega o JSON na tabela `songs` (local ou Neon), mantendo os ids (`songs.id` = `audios_id`).
+
+- **Número e título** vêm de `nome` ("034 - A messe"); salmos e aclamações não têm número.
+- **Letra:** cada `<p>` (e cada `<br>`) do HTML vira uma linha; NBSP vira espaço, para os acordes continuarem alinhados. A linha de letra toda em negrito vira refrão (`**…**`). O cabeçalho ("<u>34 A MESSE</u> - Aimé Durval") sai da letra e vira o compositor.
+- **Mídias:** `audio_mp3`, `cifra` e `partitura` viram links para `https://cantos.psjb.org.br/`; `usuario` + `link` viram o embed do Audiomack.
+- **Flags:** pela categoria antiga (regras na skill de regras de negócio, §3).
+- **Conferência:** `python3 db/postgres/importar_cantos.py --conferir` compara o conversor com os 121 cantos revisados antes. Número, slug, título e mídias batem em 121 de 121. As diferenças de letra são defeitos da extração antiga que o conversor corrige.

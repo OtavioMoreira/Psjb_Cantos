@@ -26,7 +26,7 @@ Novo site de cantos litúrgicos da **Paróquia Catedral São João Batista**, qu
 | **Admin** | Usuários: bloquear/liberar com motivo, ativar, redefinir senha, papéis, convidar, excluir |
 | **App** | Instalável na tela de início (abre sem as barras do navegador), tema claro/escuro |
 | **Administração** (com a API) | Painel com Usuários (ativar contas), **Cantos** (editor com letra, flags, PDF e áudio), **Flags**, **Movimentos** e "Publicar no site" |
-| **API** | Fastify + PostgreSQL: login JWT, papéis, movimentos, missas com link de convite, cantos com PDF e áudio, flags; coleção do Postman e 307 testes automatizados |
+| **API** | Fastify + PostgreSQL: login JWT, papéis, movimentos, missas com link de convite, cantos com PDF e áudio, flags; coleção do Postman e 312 testes automatizados |
 
 O estado completo do projeto (o que está pronto e o que falta no front e no backend) está em [`docs/ESTADO-DO-PROJETO.md`](docs/ESTADO-DO-PROJETO.md).
 
@@ -42,7 +42,7 @@ Essas contas valem no **modo demonstração** (GitHub Pages ou sem `API_URL`). C
 
 ## Estrutura
 ```
-data/                    JSONs de exemplo: songs.json (121 cantos), categories.json, users.json
+data/                    JSONs de exemplo: songs.json (os 623 cantos do site antigo), categories.json, users.json
 apps/web/                Next.js 16 (App Router, TypeScript, Tailwind 4)
 apps/api/                API Node (Fastify, arquitetura hexagonal): usuários, JWT, missas, cantos e flags; testes em test/
 db/                      Dump do banco de produção (*.sql fora do git, pois tem dados reais)
@@ -72,7 +72,7 @@ docker compose up -d
 cp apps/api/.env.example apps/api/.env      # opcional: os padrões já apontam para o docker-compose
 npm run db:migrate -w api                   # cria as tabelas (só aplica o que falta)
 npm run db:seed -w api                      # superadmin@psjb.org.br / 123456 (admin + músico) + movimentos iniciais
-npm run db:import-songs -w api              # 121 cantos de data/songs.json + 24 flags de data/categories.json
+npm run db:import-songs -w api              # 623 cantos de data/songs.json + 35 flags de data/categories.json
 npm run dev:api
 npm test -w api                             # testes com fastify.inject e adaptadores em memória
 
@@ -135,7 +135,7 @@ docker compose up -d postgres     # os testes de integração usam o banco psjb_
 npm test                          # API (unitários + integração) e regras do front
 npm run test:unit -w api          # só os rápidos, sem banco
 ```
-São 307 testes: regras, segurança (matriz de autorização, JWT, cabeçalhos, limite de tentativas), repositórios contra o Postgres real e as regras do front (calendário, cifra, busca). Sem Postgres, os testes de integração são pulados com um aviso. O GitHub Actions (`.github/workflows/tests.yml`) roda tudo, mais a coleção do Postman, a cada push e PR.
+São 312 testes: regras, segurança (matriz de autorização, JWT, cabeçalhos, limite de tentativas), repositórios contra o Postgres real e as regras do front (calendário, cifra, busca). Sem Postgres, os testes de integração são pulados com um aviso. O GitHub Actions (`.github/workflows/tests.yml`) roda tudo, mais a coleção do Postman, a cada push e PR.
 
 ### Páginas para testar
 | URL | O que é |

@@ -29,6 +29,17 @@
     { "id": "espirito-santo", "label": "Espírito Santo" },
     { "id": "mariano", "label": "Marianos" },
     { "id": "paz", "label": "Paz" },
-    { "id": "vocacional-missao", "label": "Vocacionais e Missão" }
+    { "id": "vocacional-missao", "label": "Vocacionais e Missão" },
+    { "id": "creio", "label": "Creio" },
+    { "id": "sequencia", "label": "Sequências" },
+    { "id": "semana-santa", "label": "Semana Santa" },
+    { "id": "criancas", "label": "Crianças" },
+    { "id": "familia", "label": "Família" },
+    { "id": "meditacao-louvor", "label": "Meditação e Louvor" },
+    { "id": "movimentos", "label": "Movimentos" },
+    { "id": "palavra", "label": "Palavra" },
+    { "id": "perdao", "label": "Perdão" },
+    { "id": "santos", "label": "Santos" },
+    { "id": "exequias", "label": "Exéquias" }
   ]
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isChordLine, isChordToken, keyLabel, lyricsOnly, parseSheet, transposeChord, transposeLine, wrapSemitones } from "@/lib/chords";
 
 describe("Acordes", () => {
-  it.each(["C", "Am", "F#m", "Bb", "C7", "G/B", "D9", "Dsus4", "E7(9)", "Cmaj7", "Bdim", "(A)"])("%s é acorde", (c) => {
+  it.each(["C", "Am", "F#m", "Bb", "C7", "G/B", "D9", "Dsus4", "E7(9)", "Cmaj7", "Bdim", "(A)", "D#°", "Cº", "G7+", "A7+/E"])("%s é acorde", (c) => {
     expect(isChordToken(c)).toBe(true);
   });
   it.each(["Senhor", "Amor", "Do", "Eu", "a", "Cristo"])("%s não é acorde", (w) => {
@@ -15,6 +15,14 @@ describe("Acordes", () => {
     expect(isChordLine("A feliz espera do Senhor")).toBe(false);
     expect(isChordLine("E a luz brilhou")).toBe(false);
     expect(isChordLine("")).toBe(false);
+    // Cifras do site antigo: diminuto com ° e sétima maior com 7+.
+    expect(isChordLine("      Am       Em     D#°        Em")).toBe(true);
+    expect(isChordLine("Bm7   A9   G7+   F#4  F#")).toBe(true);
+  });
+
+  it("transpõe diminuto e sétima maior sem perder o símbolo", () => {
+    expect(transposeChord("D#°", 1)).toBe("E°");
+    expect(transposeChord("G7+", 2)).toBe("A7+");
   });
 });
 

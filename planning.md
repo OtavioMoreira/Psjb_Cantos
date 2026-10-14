@@ -161,7 +161,7 @@ interface AuditLog {       // ações de admin
 ### 3.4 Arquivos em `data/`
 ```
 data/
-  songs.json        # Song[]: 121 cantos de exemplo
+  songs.json        # Song[]: os 623 cantos do site antigo
   categories.json   # { moments, seasons, years, themes }
   users.json        # usuários de demonstração (modo sem API): admin e músicos; ativos, pendentes e bloqueados
 ```
@@ -581,7 +581,7 @@ Modelos de e-mail (pt-BR, com o logo):
 - ✅ Site público lendo os cantos e as flags da API no build (`lib/data` e `next.config`) quando há `API_URL`; "Publicar no site" gera de novo.
 - [ ] Aviso de "alterações não publicadas" no admin.
 - [ ] Arquivos acima de 4 MB: upload direto do navegador para o Blob (token do cliente), sem passar pela Function.
-- [ ] Migrar os 623 cantos do banco legado (`audios`) para `songs`.
+- ✅ Os 623 cantos do banco legado (`audios`) convertidos para `data/songs.json` (`db/postgres/importar_cantos.py`) e carregados em `songs` (`npm run db:import-songs -w api`), com 11 temas novos. Falta a revisão das flags pela equipe de liturgia.
 
 ### Fase 5: Offline e compartilhamento
 - [ ] Service worker: cantos das missas em cache para o Modo Missa sem internet (hoje, o PDF cobre o uso offline).

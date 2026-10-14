@@ -12,8 +12,9 @@ const SOLFEGE: Record<string, string> = {
   B: "Si",
 };
 
+// °/º = diminuto (D#°) e 7+ = sétima maior (G7+), como nas cifras do site antigo.
 const CHORD_RE =
-  /^\(?[A-G](#|b)?(m|maj|min|dim|aug|sus|add|M)?[0-9]*(\([^)]*\))?([#b+-]?[0-9]+)*(M|maj)?[0-9]*(\/[A-G](#|b)?)?\)?$/;
+  /^\(?[A-G](#|b)?(m|maj|min|dim|aug|sus|add|M)?[°º]?[0-9]*\+?(\([^)]*\))?([#b+-]?[0-9]+)*(M|maj)?[0-9]*(\/[A-G](#|b)?)?\)?$/;
 
 export function isChordToken(token: string) {
   return CHORD_RE.test(token.replace(/[,;.]$/, ""));

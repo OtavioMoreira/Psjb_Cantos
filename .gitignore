@@ -15,3 +15,5 @@ db/**/*.sql
 
 # Fotos enviadas em desenvolvimento (em produção vão para o Vercel Blob)
 apps/api/uploads/
+
+__pycache__/
