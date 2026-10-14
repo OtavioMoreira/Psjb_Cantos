@@ -6,7 +6,8 @@ export class VercelBlobStorage implements FileStorage {
   constructor(private readonly token: string) {}
 
   async put(path: string, data: Buffer, contentType: string) {
-    const blob = await put(path, data, { access: "public", contentType, token: this.token, addRandomSuffix: false });
+    // allowOverwrite: a migração dos arquivos antigos usa nomes fixos e pode rodar de novo.
+    const blob = await put(path, data, { access: "public", contentType, token: this.token, addRandomSuffix: false, allowOverwrite: true });
     return blob.url;
   }
 

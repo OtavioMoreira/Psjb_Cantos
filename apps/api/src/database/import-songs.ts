@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv } from "../config/env.js";
+import { FILE_COLUMNS } from "./legacyFiles.js";
 import { createPool } from "./pool.js";
 
 // Importa o repertório de exemplo (data/songs.json) e a taxonomia (data/categories.json) para o banco.
@@ -29,6 +30,13 @@ interface SongJson {
   themes: string[];
   media: { audio: string | null; audiomack: string | null; cifraPdf: string | null; partituraPdf: string | null };
 }
+
+/**
+ * O JSON ainda tem os links do site antigo. Se o arquivo já foi migrado (npm run db:migrate-files) ou
+ * trocado no admin, o banco aponta para um arquivo nosso ("/songs/"): esse link fica.
+ */
+const keepOwnFile = (column: string) =>
+  `${column} = CASE WHEN songs.${column} LIKE '%/songs/%' AND EXCLUDED.${column} IS NOT NULL THEN songs.${column} ELSE EXCLUDED.${column} END`;
 
 const GROUPS = { moments: "momento", seasons: "tempo", years: "ano", themes: "tema" } as const;
 
@@ -60,8 +68,8 @@ async function main() {
         `INSERT INTO songs (id, number, slug, title, composer, song_key, lyrics, audio_url, audiomack_url, cifra_pdf_url, partitura_pdf_url)
          OVERRIDING SYSTEM VALUE VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          ON CONFLICT (id) DO UPDATE SET number = EXCLUDED.number, slug = EXCLUDED.slug, title = EXCLUDED.title, composer = EXCLUDED.composer,
-           song_key = EXCLUDED.song_key, lyrics = EXCLUDED.lyrics, audio_url = EXCLUDED.audio_url, audiomack_url = EXCLUDED.audiomack_url,
-           cifra_pdf_url = EXCLUDED.cifra_pdf_url, partitura_pdf_url = EXCLUDED.partitura_pdf_url, updated_at = now()`,
+           song_key = EXCLUDED.song_key, lyrics = EXCLUDED.lyrics, audiomack_url = EXCLUDED.audiomack_url,
+           ${FILE_COLUMNS.map(({ column }) => keepOwnFile(column)).join(", ")}, updated_at = now()`,
         [s.id, s.number, s.slug, s.title, s.composer, s.key, s.lyrics, s.media.audio, s.media.audiomack, s.media.cifraPdf, s.media.partituraPdf],
       );
       const ids = (Object.entries(GROUPS) as [keyof typeof GROUPS, string][]).flatMap(([key, group]) =>

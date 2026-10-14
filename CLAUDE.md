@@ -66,6 +66,7 @@ npm run dev:web     # http://localhost:3000
 npm run dev:api     # http://localhost:3333/api/health
 npm run db:migrate -w api && npm run db:seed -w api   # tabelas + superadmin@psjb.org.br / 123456
 npm run db:import-songs -w api                        # cantos e flags de data/ para o banco (mantém os ids)
+npm run db:migrate-files -w api                       # PDFs e MP3 do site antigo → storage (Blob ou uploads/), MP3 a 64 kbps mono
 npm test                     # tudo: API (unitários + integração com Postgres) e regras do front
 npm run test:unit -w api     # só os rápidos, sem banco (bom no modo watch: npm run test:watch -w api)
 npm run test:integration -w api   # repositórios e fluxos contra o Postgres (banco psjb_cantos_test, criado sozinho)

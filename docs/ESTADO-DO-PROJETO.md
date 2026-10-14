@@ -58,17 +58,17 @@ Fastify + TypeScript em **arquitetura hexagonal**: `routes → controllers → a
 **Postman:** `docs/postman/` traz 55 requisições e os ambientes local e produção. A coleção é gerada por `docs/postman/gerar_colecao.py`.
 
 ### 2.3 Qualidade e segurança
-**312 testes automatizados (Vitest), todos passando**, rodando no GitHub Actions a cada push e PR:
+**323 testes automatizados (Vitest), todos passando**, rodando no GitHub Actions a cada push e PR:
 
 | Camada | Testes | O que cobre |
 |---|---:|---|
-| **Unitários da API** (`apps/api/test/unit`) | **66** | domínio (slug, acesso à missa, erros), JWT (vencido, adulterado, `alg: none`, outro segredo), argon2id, schemas (senha, tom, datas, mass assignment, URLs só http/https), storage (path traversal), arquivos identificados pelos bytes |
+| **Unitários da API** (`apps/api/test/unit`) | **77** | domínio (slug, acesso à missa, erros), JWT (vencido, adulterado, `alg: none`, outro segredo), argon2id, schemas (senha, tom, datas, mass assignment, URLs só http/https), storage (path traversal), arquivos identificados pelos bytes, migração dos arquivos do site antigo |
 | **Unitários do front** (`apps/web/test`) | **70** | calendário litúrgico, acordes e transposição, refrão, busca e filtros, conversão API → site, slug |
 | **Rotas com adaptadores em memória** (`apps/api/test/http`) | **130** | regras das actions e controllers; **matriz de autorização** de todas as rotas (401 sem token, 403 de músico no admin); tokens forjados, conta bloqueada, sem vazamento de hash, erro 500 sem detalhes, helmet, CORS, cookie e limite de tentativas em produção; cobertura do Postman |
 | **Integração com Postgres real** (`apps/api/test/integration`) | **46** | todos os métodos dos repositórios (SQL, CHECK, UNIQUE, CASCADE, fuso, busca sem acento, filtros) e fluxos HTTP completos. Banco `psjb_cantos_test`, com trava para nunca rodar em outro |
 | **Postman no CI** | 55 req. | a coleção inteira contra a API rodando |
 
-Ou seja: **136 testes unitários puros** (66 da API + 70 do front), 130 de rotas e 46 de integração.
+Ou seja: **147 testes unitários puros** (77 da API + 70 do front), 130 de rotas e 46 de integração.
 
 **Bugs encontrados pelos testes e já corrigidos:**
 - link de mídia aceitava `javascript:` (risco de XSS);
@@ -104,7 +104,7 @@ Ou seja: **136 testes unitários puros** (66 da API + 70 do front), 130 de rotas
 
 ## 4. O que falta no backend (olhando para o front)
 
-Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo item 20); perfil (`PATCH /api/me`), troca de senha, editar, bloquear/liberar, excluir e senha temporária no admin de usuários (antigos itens 1, 2 e 4 a 7).
+Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo item 20); a migração dos PDFs e MP3 do site antigo para o storage (`npm run db:migrate-files -w api`, MP3 a 64 kbps mono, 518 MB no total, com os erros de cadastro do site antigo corrigidos); perfil (`PATCH /api/me`), troca de senha, editar, bloquear/liberar, excluir e senha temporária no admin de usuários (antigos itens 1, 2 e 4 a 7).
 
 | # | Rota ou recurso | Para qual tela | Detalhes |
 |---|---|---|---|
@@ -123,7 +123,7 @@ Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo 
 | 19 | Limpeza periódica de sessões vencidas (cron) | — | tabela `sessions` cresce com o tempo |
 
 ## 5. Próximos passos sugeridos
-1. **Deploy na Vercel + Neon + Blob**, com o Deploy Hook ligado ao "Publicar no site".
+1. **Deploy na Vercel + Neon + Blob**, com o Deploy Hook ligado ao "Publicar no site". Antes de desligar a HostGator, rodar `npm run db:migrate-files -w api` contra o Neon e o Blob (README, Deploy, passo 4).
 2. **Serviço de e-mail + recuperação de senha + convite + 2FA** (itens 3, 8, 9 e 10), e a troca do próprio e-mail.
 3. **Revisão das flags dos 623 cantos** com a equipe de liturgia (momentos de Velas/Preces/Saída, Creio e Sequências como momento?).
 4. **Testes de tela com Playwright no CI.**

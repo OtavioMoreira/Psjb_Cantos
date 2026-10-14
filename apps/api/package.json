@@ -12,6 +12,7 @@
     "db:migrate": "tsx --env-file-if-exists=.env src/database/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=.env src/database/seed.ts",
     "db:import-songs": "tsx --env-file-if-exists=.env src/database/import-songs.ts",
+    "db:migrate-files": "tsx --env-file-if-exists=.env src/database/migrate-files.ts",
     "test:unit": "vitest run --project unit",
     "test:integration": "REQUIRE_TEST_DB=1 vitest run --project integration",
     "test:watch": "vitest --project unit"

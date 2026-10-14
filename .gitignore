@@ -12,6 +12,8 @@ next-env.d.ts
 db/**/*.sql
 # DDL da conversão para o Postgres: só estrutura, sem dados
 !db/postgres/01-schema.sql
+# Arquivos do site antigo baixados pela migração (backup dos PDFs e MP3 da HostGator)
+db/arquivos-legado/
 
 # Fotos enviadas em desenvolvimento (em produção vão para o Vercel Blob)
 apps/api/uploads/

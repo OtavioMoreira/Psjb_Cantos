@@ -30,6 +30,12 @@ Estas são as regras combinadas com o cliente. As marcadas **(futuro)** dependem
 - **Cantos no banco (API, 03/10/2026):** tabela `songs`, importada do `data/songs.json` por `npm run db:import-songs -w api`, **mantendo os ids** (as missas guardam `songId`). Com `API_URL`, o repertório público lê os cantos do banco (via API); sem ela (GitHub Pages), lê o JSON.
   - **Só admin** cria, edita e exclui (`/api/admin/songs`). Campos: número, título, autor, tom, letra com cifra, mídias e flags.
   - **Arquivos:** PDF da cifra, PDF da partitura e áudio (MP3, M4A ou OGG), **até 4 MB cada** (limite das Functions da Vercel). O tipo é conferido pelos bytes. Trocar o arquivo apaga o anterior. Também dá para usar links externos (Audiomack, site antigo).
+  - **Arquivos do site antigo (14/10/2026):** a HostGator vai ser desligada, então os PDFs e MP3 de `cantos.psjb.org.br/uploads/...` são copiados para o storage da API por `npm run db:migrate-files -w api`, que troca os links em `songs`.
+    - **Plano grátis da Vercel:** o Blob tem 1 GB de espaço e 10 GB de download por mês e trava por 30 dias se estourar. Por isso os **MP3 vão a 64 kbps mono** (17 h de áudio; os originais têm até 256 kbps): os 1.211 arquivos caem de 1,2 GB para **518 MB**. Se o MP3 convertido não ficar menor, fica o original.
+    - **Erros de cadastro do site antigo** são corrigidos pelo tipo real do arquivo (bytes): WMA vira MP3; cifra em Word e partitura em imagem viram PDF; PDF no campo de áudio vai para a cifra (ou a partitura) ou é descartado se for cópia da cifra; MP3 no campo de cifra vai para o áudio.
+    - **Nome no storage:** `songs/<id>/<tipo>-legado.<ext>`, fixo, para rodar de novo sobrescrevendo. Só os links que ainda apontam para o site antigo são processados.
+    - **Backup:** os originais ficam em `db/arquivos-legado/originais/` (fora do git). Com `--origem <pasta>`, lê de um backup do cPanel em vez de baixar.
+    - **Reimportar o `songs.json` não desfaz a migração:** se o banco já aponta para um arquivo nosso (`/songs/`), o link fica.
   - **Slug:** gerado na criação (`NNN-titulo` ou só o título) e **não muda ao trocar o título**, para os links continuarem valendo.
   - **Canto em uso não é excluído:** se estiver em alguma missa, a API recusa (409 `SONG_IN_USE`). Para tirar do repertório, **oculte** (`active: false`): some do público, mas o admin e as missas continuam vendo.
   - **Missas** só aceitam `songId` que exista no banco (400 com `unknownSongIds`).

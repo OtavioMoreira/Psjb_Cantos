@@ -582,6 +582,7 @@ Modelos de e-mail (pt-BR, com o logo):
 - [ ] Aviso de "alterações não publicadas" no admin.
 - [ ] Arquivos acima de 4 MB: upload direto do navegador para o Blob (token do cliente), sem passar pela Function.
 - ✅ Os 623 cantos do banco legado (`audios`) convertidos para `data/songs.json` (`db/postgres/importar_cantos.py`) e carregados em `songs` (`npm run db:import-songs -w api`), com 11 temas novos. Falta a revisão das flags pela equipe de liturgia.
+- ✅ Arquivos do site antigo (PDFs e MP3) copiados para o storage da API por `npm run db:migrate-files -w api`, com os MP3 a 64 kbps mono (518 MB no total) para caber no plano grátis do Blob e os erros de cadastro do site antigo corrigidos. Falta rodar contra o Neon e o Blob de produção antes de desligar a HostGator.
 
 ### Fase 5: Offline e compartilhamento
 - [ ] Service worker: cantos das missas em cache para o Modo Missa sem internet (hoje, o PDF cobre o uso offline).

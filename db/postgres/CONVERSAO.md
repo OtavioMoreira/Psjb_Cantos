@@ -192,4 +192,9 @@ A conversão acima é fiel: as tabelas do site antigo continuam como eram. Para 
 - **Letra:** cada `<p>` (e cada `<br>`) do HTML vira uma linha; NBSP vira espaço, para os acordes continuarem alinhados. A linha de letra toda em negrito vira refrão (`**…**`). O cabeçalho ("<u>34 A MESSE</u> - Aimé Durval") sai da letra e vira o compositor.
 - **Mídias:** `audio_mp3`, `cifra` e `partitura` viram links para `https://cantos.psjb.org.br/`; `usuario` + `link` viram o embed do Audiomack.
 - **Flags:** pela categoria antiga (regras na skill de regras de negócio, §3).
+- **Arquivos:** os links acima deixam de funcionar quando a HostGator for desligada. `npm run db:migrate-files -w api` baixa cada PDF e MP3 para `db/arquivos-legado/originais/` (backup, fora do git, 1,2 GB), converte os MP3 para 64 kbps mono, envia ao storage da API (`songs/<id>/<tipo>-legado.<ext>`) e troca o link em `songs`. Resultado local: 1.211 arquivos, de 1,2 GB para 518 MB. O tipo de cada arquivo vem dos bytes, e os 16 erros de cadastro do site antigo são corrigidos:
+  - **WMA no áudio** (cantos 78 e 199): convertido para MP3;
+  - **cifra em Word** (114, 168, 173, 386, 444) e **partitura em JPG** (427 a 430): convertidas para PDF pelo LibreOffice;
+  - **PDF no campo de áudio**: era cópia da cifra em 237, 261 e 314 (descartado, o áudio fica vazio); no 298, cifra e áudio estavam trocados (invertidos).
+  - Arquivos que falharem ficam com o link antigo e são listados em `db/arquivos-legado/falhas.json`.
 - **Conferência:** `python3 db/postgres/importar_cantos.py --conferir` compara o conversor com os 121 cantos revisados antes. Número, slug, título e mídias batem em 121 de 121. As diferenças de letra são defeitos da extração antiga que o conversor corrige.
