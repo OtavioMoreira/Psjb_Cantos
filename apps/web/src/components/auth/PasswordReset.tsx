@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CircleCheck, KeyRound, Loader2, MailCheck } from "lucide-react";
 import { requestPasswordReset, resetPassword } from "@/lib/store";
+import { api, API_ENABLED, ApiError } from "@/lib/api";
 import { Field } from "@/components/ui/Field";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { AuthCard, DemoNote } from "./AuthCard";
@@ -14,6 +15,7 @@ export function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState<{ token: string | null } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const valid = /^\S+@\S+\.\S+$/.test(email);
 
   if (sent) {
@@ -56,10 +58,23 @@ export function ForgotPassword() {
           e.preventDefault();
           if (!valid) return;
           setLoading(true);
-          setTimeout(() => setSent({ token: requestPasswordReset(email) }), 600);
+          setError("");
+          if (!API_ENABLED) return void setTimeout(() => setSent({ token: requestPasswordReset(email) }), 600);
+          api
+            .forgotPassword(email)
+            .then(() => setSent({ token: null }))
+            .catch((err) => {
+              setError(err instanceof ApiError ? err.message : "Não foi possível enviar. Tente de novo.");
+              setLoading(false);
+            });
         }}
       >
         <Field label="E-mail" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        {error && (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        )}
         <Button type="submit" disabled={!valid || loading} className="h-12 w-full">
           {loading ? <Loader2 size={18} className="animate-spin" /> : "Enviar link"}
         </Button>
@@ -75,11 +90,16 @@ export function ForgotPassword() {
 }
 
 export function ResetPassword() {
-  const token = useSearchParams().get("token") ?? "";
+  const params = useSearchParams();
+  const token = params.get("token") ?? "";
+  // O link do convite usa a mesma tela, com textos de boas-vindas.
+  const invite = params.get("convite") === "1";
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [state, setState] = useState<"form" | "ok" | "invalido">("form");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
 
   if (state !== "form") {
     return (
@@ -88,18 +108,30 @@ export function ResetPassword() {
           {state === "ok" ? (
             <>
               <CircleCheck size={48} className="mx-auto text-success" />
-              <h1 className="mt-4 font-serif text-3xl font-semibold">Senha alterada</h1>
-              <p className="mt-2 text-ink-muted">Pronto! Use a nova senha para entrar.</p>
+              <h1 className="mt-4 font-serif text-3xl font-semibold">{invite ? "Conta pronta!" : "Senha alterada"}</h1>
+              <p className="mt-2 text-ink-muted">{invite ? "Sua senha foi criada. Agora é só entrar." : "Pronto! Use a nova senha para entrar."}</p>
             </>
           ) : (
             <>
               <h1 className="font-serif text-3xl font-semibold">Link inválido ou expirado</h1>
-              <p className="mt-2 text-ink-muted">Peça um novo link de redefinição.</p>
+              <p className="mt-2 text-ink-muted">
+                {invite ? "O convite vale por 7 dias e só pode ser usado uma vez. Peça à coordenação um novo convite." : "Peça um novo link de redefinição."}
+              </p>
             </>
           )}
-          <ButtonLink href={state === "ok" ? "/entrar" : "/recuperar-senha"} className="mt-6 w-full">
-            {state === "ok" ? "Entrar" : "Pedir novo link"}
-          </ButtonLink>
+          {state === "ok" ? (
+            <ButtonLink href={email ? `/entrar?email=${encodeURIComponent(email)}` : "/entrar"} className="mt-6 w-full">
+              Entrar
+            </ButtonLink>
+          ) : invite ? (
+            <ButtonLink href="/entrar" variant="ghost" className="mt-6 w-full">
+              Voltar para o login
+            </ButtonLink>
+          ) : (
+            <ButtonLink href="/recuperar-senha" className="mt-6 w-full">
+              Pedir novo link
+            </ButtonLink>
+          )}
         </div>
       </AuthCard>
     );
@@ -107,7 +139,8 @@ export function ResetPassword() {
 
   return (
     <AuthCard>
-      <h1 className="font-serif text-3xl font-semibold">Criar nova senha</h1>
+      <h1 className="font-serif text-3xl font-semibold">{invite ? "Bem-vindo! Crie sua senha" : "Criar nova senha"}</h1>
+      {invite && <p className="mt-1 text-sm text-ink-muted">Você foi convidado para o Cantos PSJB. Escolha uma senha para entrar.</p>}
       <form
         noValidate
         className="mt-6 space-y-4"
@@ -116,7 +149,19 @@ export function ResetPassword() {
           setError("");
           if (password.length < 8 || passwordScore(password) < 2) return setError("Use pelo menos 8 caracteres, com letras e números.");
           if (password !== confirm) return setError("As senhas não conferem.");
-          setState(resetPassword(token, password) ? "ok" : "invalido");
+          if (!API_ENABLED) return setState(resetPassword(token, password) ? "ok" : "invalido");
+          setLoading(true);
+          api
+            .resetPassword(token, password)
+            .then((r) => {
+              setEmail(r.email);
+              setState("ok");
+            })
+            .catch((err) => {
+              setLoading(false);
+              if (err instanceof ApiError && err.code === "INVALID_TOKEN") return setState("invalido");
+              setError(err instanceof ApiError ? (err.details?.fields?.password ?? err.message) : "Não foi possível salvar. Tente de novo.");
+            });
         }}
       >
         <div>
@@ -129,8 +174,8 @@ export function ResetPassword() {
             {error}
           </p>
         )}
-        <Button type="submit" className="h-12 w-full">
-          Salvar nova senha
+        <Button type="submit" disabled={loading} className="h-12 w-full">
+          {loading ? <Loader2 size={18} className="animate-spin" /> : invite ? "Criar senha" : "Salvar nova senha"}
         </Button>
       </form>
     </AuthCard>

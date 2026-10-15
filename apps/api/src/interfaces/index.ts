@@ -214,3 +214,52 @@ export interface SitePublisher {
 export interface Clock {
   now(): Date;
 }
+
+export type AuthTokenPurpose = "password_reset" | "invite" | "email_change" | "login_code";
+
+export interface AuthToken {
+  id: string;
+  userId: string;
+  purpose: AuthTokenPurpose;
+  data: Record<string, string>;
+  attempts: number;
+  expiresAt: Date;
+  usedAt: Date | null;
+  createdAt: Date;
+}
+
+/** Tokens de uso único enviados por e-mail. Só o hash fica guardado. */
+export interface AuthTokenRepository {
+  create(data: { userId: string; purpose: AuthTokenPurpose; tokenHash: string; expiresAt: Date; data?: Record<string, string> }): Promise<AuthToken>;
+  findById(id: string): Promise<AuthToken | null>;
+  /**
+   * Marca como usado e devolve o token, de forma atômica: dois cliques no mesmo link não passam.
+   * null se não existe, já foi usado, venceu ou não é de um dos propósitos aceitos.
+   */
+  consume(tokenHash: string, purposes: AuthTokenPurpose[], now: Date): Promise<AuthToken | null>;
+  /** Invalida os tokens ainda abertos da pessoa para o propósito (pedir um link novo derruba o anterior). */
+  invalidate(userId: string, purpose: AuthTokenPurpose): Promise<void>;
+  /** Soma uma tentativa errada e devolve o total. */
+  addAttempt(id: string): Promise<number>;
+  /** Quando foi criado o último token do propósito (para limitar reenvios). */
+  lastCreatedAt(userId: string, purpose: AuthTokenPurpose): Promise<Date | null>;
+}
+
+/** "Confiar neste aparelho": dispensa o código do 2FA por 30 dias. */
+export interface TrustedDeviceRepository {
+  create(data: { userId: string; tokenHash: string; expiresAt: Date; userAgent: string | null }): Promise<void>;
+  isTrusted(userId: string, tokenHash: string, now: Date): Promise<boolean>;
+  revokeAllForUser(userId: string): Promise<void>;
+}
+
+export interface EmailMessage {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}
+
+/** Envio de e-mail transacional (Resend em produção; console no desenvolvimento e nos testes). */
+export interface EmailSender {
+  send(message: EmailMessage): Promise<void>;
+}

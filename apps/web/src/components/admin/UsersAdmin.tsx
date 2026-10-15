@@ -52,9 +52,6 @@ type Dialog =
   | { kind: "delete"; user: User }
   | { kind: "invite" };
 
-/** Com a API, estas ações dependem do serviço de e-mail, que ainda não existe: aparecem desabilitadas. */
-const SOON = API_ENABLED ? "Em breve: depende do envio de e-mails" : undefined;
-
 const errorText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
 export function UsersAdmin() {
@@ -112,7 +109,7 @@ export function UsersAdmin() {
           </p>
           <h1 className="font-serif text-[32px] font-semibold text-primary sm:text-[40px]">Usuários</h1>
         </div>
-        <Button onClick={() => setDialog({ kind: "invite" })} disabled={API_ENABLED} title={SOON}>
+        <Button onClick={() => setDialog({ kind: "invite" })}>
           <UserPlus size={18} /> Convidar usuário
         </Button>
       </div>
@@ -121,8 +118,8 @@ export function UsersAdmin() {
         <Info size={18} className="mt-0.5 shrink-0 text-gold-ink" />
         {API_ENABLED ? (
           <p>
-            <strong>Servidor:</strong> todas as ações já usam a API. Convidar por e-mail e enviar link de redefinição de senha chegam junto com o
-            serviço de e-mail; até lá, use a <strong>senha temporária</strong>.
+            <strong>Servidor:</strong> todas as ações usam a API. Convites, links de redefinição de senha e o aviso de conta liberada saem por
+            e-mail.
           </p>
         ) : (
           <p>
@@ -310,8 +307,23 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
           </button>
           {user.status === "pendente" && (
             <>
-              {/* Com a API, a conta pendente espera um admin, não a confirmação do e-mail. */}
-              {!API_ENABLED && (
+              {/* Com a API, a conta pendente espera um admin (ou o convidado criar a senha), não a confirmação do e-mail. */}
+              {API_ENABLED ? (
+                <button
+                  role="menuitem"
+                  className={item}
+                  onClick={run(async () => {
+                    try {
+                      await admin.resendInvite(user.id);
+                      toast(`Convite enviado para ${user.email}.`);
+                    } catch (e) {
+                      toast(errorText(e, "Não foi possível enviar o convite agora."));
+                    }
+                  })}
+                >
+                  <Mail size={16} /> Enviar convite por e-mail
+                </button>
+              ) : (
                 <button
                   role="menuitem"
                   className={item}
@@ -506,6 +518,8 @@ function BlockDialog({ user, onClose }: { user: User; onClose: () => void }) {
 function PasswordDialog({ user, onClose }: { user: User; onClose: () => void }) {
   const [temp, setTemp] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Na API, o link só vai para conta ativa (pendente recebe o convite; bloqueado não entraria).
+  const linkBlocked = API_ENABLED && user.status !== "ativo";
   return (
     <Modal title="Redefinir senha" onClose={onClose} footer={<Button onClick={onClose}>Concluir</Button>}>
       <p className="text-ink-muted">
@@ -513,19 +527,27 @@ function PasswordDialog({ user, onClose }: { user: User; onClose: () => void }) 
       </p>
       <div className="mt-4 space-y-3">
         <button
-          disabled={API_ENABLED}
-          title={SOON}
-          onClick={() => {
-            admin.sendResetLink(user.id);
-            toast(`Link de redefinição enviado para ${user.email}.`);
-            onClose();
+          disabled={busy || linkBlocked}
+          title={linkBlocked ? "Só para contas ativas" : undefined}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await admin.sendResetLink(user.id);
+              toast(`Link de redefinição enviado para ${user.email}.`);
+              onClose();
+            } catch (e) {
+              toast(errorText(e, "Não foi possível enviar o link agora."));
+              setBusy(false);
+            }
           }}
           className="flex w-full items-start gap-3 rounded-[10px] border border-border p-4 text-left hover:border-primary hover:bg-primary-soft disabled:pointer-events-none disabled:opacity-50"
         >
           <Mail size={20} className="mt-0.5 shrink-0 text-primary" />
           <span>
-            <span className="block font-semibold">Enviar link por e-mail{API_ENABLED ? " (em breve)" : " (recomendado)"}</span>
-            <span className="text-sm text-ink-muted">A pessoa recebe um link válido por 1 hora e escolhe a própria senha.</span>
+            <span className="block font-semibold">Enviar link por e-mail (recomendado)</span>
+            <span className="text-sm text-ink-muted">
+              {linkBlocked ? "Só para contas ativas. Para quem ainda não entrou, use “Enviar convite por e-mail”." : "A pessoa recebe um link válido por 1 hora e escolhe a própria senha."}
+            </span>
           </span>
         </button>
         <button
@@ -611,6 +633,7 @@ function DeleteDialog({ user, onClose }: { user: User; onClose: () => void }) {
 function InviteDialog({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({ name: "", email: "", role: "musico" as UserRole });
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const valid = form.name.trim().length >= 3 && /^\S+@\S+\.\S+$/.test(form.email);
   return (
     <Modal
@@ -622,11 +645,20 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
             Cancelar
           </Button>
           <Button
-            disabled={!valid}
-            onClick={() => {
-              if (!admin.invite(form)) return setError("Já existe um usuário com este e-mail.");
-              toast(`Convite enviado para ${form.email}.`);
-              onClose();
+            disabled={!valid || busy}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                if (!(await admin.invite(form))) return setError("Já existe um usuário com este e-mail.");
+                toast(`Convite enviado para ${form.email}.`);
+                onClose();
+              } catch (e) {
+                toast(errorText(e, "Não foi possível enviar o convite agora."));
+                onClose();
+              } finally {
+                setBusy(false);
+              }
             }}
           >
             <Mail size={18} /> Enviar convite
@@ -635,7 +667,9 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
       }
     >
       <p className="mb-4 text-sm text-ink-muted">
-        A pessoa recebe um e-mail para confirmar o endereço e criar a senha. Até lá, aparece como “Aguardando e-mail”.
+        {API_ENABLED
+          ? "A pessoa recebe um e-mail com um link (válido por 7 dias) para criar a senha. Até lá, aparece como “Aguardando ativação”."
+          : "A pessoa recebe um e-mail para confirmar o endereço e criar a senha. Até lá, aparece como “Aguardando e-mail”."}
       </p>
       <div className="space-y-4">
         <Field label="Nome" name="invite-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

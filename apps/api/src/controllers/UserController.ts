@@ -1,7 +1,8 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Container } from "../container.js";
 import { AppError } from "../domain/errors.js";
-import { createUserSchema, searchUsersQuerySchema, updateMeSchema, type UserDTO } from "../dtos/user.dto.js";
+import { confirmEmailSchema } from "../dtos/auth.dto.js";
+import { changeEmailSchema, createUserSchema, searchUsersQuerySchema, updateMeSchema, type UserDTO } from "../dtos/user.dto.js";
 import { validate } from "../http/validate.js";
 import { requireAuth } from "../middlewares/auth.js";
 
@@ -20,6 +21,17 @@ export class UserController {
 
   updateMe = async (req: FastifyRequest): Promise<{ user: UserDTO }> => {
     return { user: await this.c.actions.updateMe.execute(requireAuth(req).userId, validate(updateMeSchema, req.body)) };
+  };
+
+  /** Manda o link de confirmação para o novo endereço. 202: o e-mail só muda depois do clique. */
+  requestEmailChange = async (req: FastifyRequest, reply: FastifyReply) => {
+    await this.c.actions.requestEmailChange.execute(requireAuth(req).userId, validate(changeEmailSchema, req.body));
+    return reply.status(202).send({ ok: true });
+  };
+
+  /** Pública: quem clica no link pode estar em outro aparelho, sem login. O token é a prova. */
+  confirmEmailChange = async (req: FastifyRequest) => {
+    return this.c.actions.confirmEmailChange.execute(validate(confirmEmailSchema, req.body).token);
   };
 
   /** multipart/form-data com o campo "photo". */

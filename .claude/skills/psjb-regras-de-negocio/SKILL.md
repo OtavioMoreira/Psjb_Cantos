@@ -243,30 +243,34 @@ Os eixos:
 - **Recuperar senha:**
   - `/recuperar-senha` responde **sempre a mesma mensagem** e **nunca revela se o e-mail está cadastrado**.
   - `/redefinir-senha?token=` define a nova senha, com a mesma regra de força.
-- **Validade dos tokens (futuro):**
+  - **Com a API (15/10/2026):** `POST /api/auth/forgot` responde sempre 202. **Só conta ativa** recebe o link (pendente e bloqueado não entrariam mesmo). Pedir de novo antes de **60 s** não manda outro e-mail (protege a cota do Resend), e falha no envio também não aparece na resposta.
+  - `POST /api/auth/reset` troca a senha, **derruba todas as sessões** e tira a confiança dos aparelhos do 2FA. Depois, a tela de login já vem com o e-mail preenchido (`/entrar?email=`).
+  - Pedir um link novo invalida o anterior: **só o último link vale**.
+- **Validade dos tokens:**
 
   | Token | Validade |
   |---|---|
-  | Confirmação de e-mail | 24 h |
+  | Confirmação de e-mail (troca de endereço) | 24 h |
   | Redefinição de senha | 1 h |
   | Convite | 7 dias |
   | Código 2FA | 10 min, máx. 5 tentativas |
 
-  Todos são de **uso único** e ficam guardados **só como hash**.
+  Todos são de **uso único** e ficam guardados **só como hash** (tabela `auth_tokens`; o código do 2FA com sal).
 - **(futuro)** O cadastro também não revela se o e-mail já existe: a resposta é sempre "enviamos um link", e o e-mail enviado avisa "você já tem conta".
-- **Fase 1:** sem serviço de e-mail, a tela mostra uma caixa "Demonstração" com o link que chegaria por e-mail.
+- **Demonstração (sem API):** sem serviço de e-mail, a tela mostra uma caixa "Demonstração" com o link que chegaria por e-mail. Com a API e sem `RESEND_API_KEY` (desenvolvimento), o e-mail aparece no terminal da API, com o link ou o código.
 - **(futuro) Contas do site antigo:**
   - As senhas legadas estão em MD5 sem salt e **não são reaproveitadas**. Quem vier do site antigo define uma senha nova pelo fluxo de recuperação, e os tokens legados são invalidados.
   - O login compara usuário e e-mail sem diferenciar maiúsculas e acentos, como no site antigo, e a API aplica `trim` na entrada. Os detalhes estão em `db/postgres/CONVERSAO.md`.
 
 ## 11. Perfil (`/painel/perfil`)
 - **Dados editáveis:** nome, e-mail, paróquia, movimento e instrumento/voz.
+- **Trocar o e-mail (com a API, 15/10/2026):** botão "Trocar e-mail" abre um modal com o novo e-mail e a **senha atual** (`POST /api/me/email`). O link (24 h) vai para o **endereço novo**, e o e-mail só muda quando a pessoa confirma em `/confirmar-email?token=` (`POST /api/auth/confirm-email`, pública: pode abrir em outro aparelho). Até lá, **o antigo continua valendo**. Depois da troca, o endereço antigo recebe o aviso "Seu e-mail foi alterado".
+  - Recusa o mesmo e-mail e um que já é de outra conta (inclusive se alguém pegar o endereço entre o pedido e a confirmação: 409). Um pedido por minuto (429 `TOO_SOON`); só o último link vale.
 - **Troca de senha:** exige a senha atual, e a nova precisa ser diferente. Com a API (`POST /api/auth/password`, em `/auth` para receber o cookie), a sessão deste aparelho continua e **as dos outros aparelhos caem**.
 - **Foto:** JPG, PNG ou WebP de até 2 MB (`PUT /api/me/photo`, campo `photo`). O tipo é conferido pelos bytes do arquivo, não pelo nome. Cada troca gera uma URL nova e apaga a foto anterior. No perfil, "Enviar foto" / "Trocar foto" (só com a API); a foto aparece no avatar do cabeçalho e do painel.
-- **Com a API** (14/10/2026): nome, telefone, movimento, paróquia e instrumento salvam por `PATCH /api/me` (só os campos enviados; vazio limpa). O **e-mail fica só leitura** ("Para trocar, peça à coordenação"), porque trocar exige confirmar o novo endereço; o admin pode trocar pelo admin de usuários.
+- **Com a API** (14/10/2026): nome, telefone, movimento, paróquia e instrumento salvam por `PATCH /api/me` (só os campos enviados; vazio limpa). O campo de e-mail fica só leitura; a troca é pelo botão "Trocar e-mail" (acima). O admin também pode trocar pelo admin de usuários, sem confirmação.
 - **Senha temporária:** quem entra com a senha gerada pelo admin (`mustChangePassword`) é levado a Perfil › Segurança e não usa o resto do painel até criar a própria senha. A obrigação é conferida no front; a API zera a marca na troca.
 - **Preferências:** tema (claro, escuro ou sistema) e sustenidos/bemóis.
-- **(futuro)** Trocar o e-mail exige confirmar o novo endereço, e o antigo continua valendo até lá.
 
 ## 12. Administração (só papel admin)
 - **`/painel/admin`** reúne Usuários, Cantos, Flags e Movimentos. Cantos, flags e movimentos só existem com a API; na demonstração, a tela avisa "Disponível na versão com servidor".
@@ -278,7 +282,9 @@ Os eixos:
 - **Movimentos:** criar e renomear (nome único); o botão de excluir fica desabilitado quando há pessoas.
 
 ### 12.1 Admin de usuários (`/painel/admin/usuarios`)
-- **Com a API** (14/10/2026): listar, ativar, editar (nome, e-mail, movimento, papel), bloquear/liberar, senha temporária e excluir usam o servidor. **Convidar** e **enviar link de redefinição** ficam desabilitados até existir o serviço de e-mail. "Reenviar confirmação" não aparece (a conta pendente espera um admin, não o e-mail).
+- **Com a API** (14/10/2026): listar, ativar, editar (nome, e-mail, movimento, papel), bloquear/liberar, senha temporária e excluir usam o servidor. **Convidar**, **enviar convite de novo** e **enviar link de redefinição** mandam e-mail de verdade (15/10/2026). "Reenviar confirmação" não aparece (a conta pendente espera um admin, não o e-mail).
+  - **Ativar** uma conta pendente manda o aviso "Sua conta foi liberada" com o link para entrar. Falha no aviso não desfaz a ativação.
+  - Nas ações do admin, se o e-mail não sair a tela avisa (502 `EMAIL_FAILED`), para tentar de novo ou usar a senha temporária.
   - Papel no front é um só: Administrador vira `roles: ["admin", "musico"]` e Músico, `["musico"]`. O papel só vai para a API quando muda.
 - **Acesso:** o menu "Usuários" só aparece para admins. Outros papéis veem "Acesso restrito". A API também recusa com 403, porque esconder o menu não é segurança.
 - **Visão geral:**
@@ -289,8 +295,9 @@ Os eixos:
   - **Editar** nome, e-mail, movimento e papel.
   - **Bloquear** com motivo (opcional), com "Desfazer". Com a API, bloquear **derruba as sessões** da pessoa na hora. **Liberar** volta para ativo (na demonstração: ativo se o e-mail já foi confirmado, senão pendente).
   - **Ativar sem confirmação** e **reenviar confirmação**: só para pendentes.
-  - **Redefinir senha:** "Enviar link por e-mail" (recomendado; **(futuro)**, depende do e-mail) ou "Gerar senha temporária", exibida **uma única vez** (formato `abcd-23x4`, sem caracteres ambíguos). A senha temporária **derruba as sessões** e **obriga a troca** no próximo acesso.
-  - **Convidar:** nome, e-mail e papel. O convidado nasce pendente e recebe um e-mail para criar a senha.
+  - **Redefinir senha:** "Enviar link por e-mail" (recomendado; com a API, só para conta ativa: `POST /api/admin/users/:id/reset-link`) ou "Gerar senha temporária", exibida **uma única vez** (formato `abcd-23x4`, sem caracteres ambíguos). A senha temporária **derruba as sessões**, tira a confiança dos aparelhos do 2FA e **obriga a troca** no próximo acesso.
+  - **Convidar:** nome, e-mail e papel (`POST /api/admin/users/invite`). O convidado nasce **pendente, sem senha utilizável**, e recebe um e-mail ("{admin} convidou você") com o link de 7 dias para **criar a senha** (`/redefinir-senha?token=…&convite=1`, com textos de boas-vindas). Ao criar a senha, a conta fica **ativa**, sem precisar de outra liberação.
+  - **Enviar convite por e-mail** (menu de quem está pendente; `POST /api/admin/users/:id/invite`): manda um convite novo e o anterior deixa de valer. Também serve para a conta pendente que veio do cadastro: criar a senha pelo link equivale a liberar o acesso.
   - **Excluir:** pede confirmação, sugere bloquear como alternativa reversível e tem "Desfazer" (com a API, a exclusão só vai ao servidor depois dos 6,5 s). **As missas criadas pela pessoa são apagadas junto**; quem as recebeu perde o acesso. Missas de outras pessoas só perdem esse convidado. A foto sai do storage.
 - **Proteções:**
   - O admin **não pode bloquear, excluir nem rebaixar a si mesmo** (403). Editar os próprios dados pode.
@@ -309,23 +316,21 @@ Os eixos:
 - Os papéis vão no JWT. Mudar o papel de alguém só passa a valer no próximo refresh (até 15 min).
 - **Senhas:** argon2id. **Rate limit** por IP: login 10, cadastro 5 e refresh 60 a cada 15 min.
 
-**(futuro, Fase 3): dois fatores por e-mail**
-1. `POST /api/auth/login` com e-mail e senha. Pendente recebe 403 `EMAIL_NOT_VERIFIED`, bloqueado recebe 403 `ACCOUNT_BLOCKED` (com o motivo), e credencial errada recebe uma mensagem genérica.
-2. Senha correta: a API envia um **código de 6 dígitos por e-mail** (10 min, uso único, máx. 5 tentativas) e devolve um `challengeId`.
-3. O front mostra "Digite o código enviado para m***@…", com 6 campos, colar funcionando e reenvio após 60 s.
-4. `POST /api/auth/login/verify` com o código correto emite:
-   - **access token JWT de 15 min**, que fica **só em memória** no front e nunca em `localStorage`;
-   - **refresh token** opaco em **cookie httpOnly + Secure + SameSite=Lax**, **rotacionado** a cada uso, com validade de 30 dias se "manter conectado" estiver marcado, senão 1 dia. Reuso detectado revoga todas as sessões daquele login.
-5. "Confiar neste dispositivo por 30 dias" dispensa o código naquele aparelho, útil para o tablet da paróquia.
-- **Rate limit** também nos reenvios e no 2FA.
+**Dois fatores por e-mail (implementado em 15/10/2026)**
+- **Quando vale:** ligado por padrão **só em produção** (`LOGIN_2FA`; `false` desliga, `true` liga fora de produção). Vale para todos os papéis.
+1. `POST /api/auth/login` com e-mail e senha. Pendente recebe 403 `ACCOUNT_PENDING`, bloqueado recebe 403 `ACCOUNT_BLOCKED` (com o motivo), e credencial errada recebe uma mensagem genérica. **Nenhum código sai antes de a senha conferir e a conta estar ativa.**
+2. Senha correta, aparelho não confiável: a API envia um **código de 6 dígitos por e-mail** (10 min, uso único, máx. 5 tentativas) e responde `{ twoFactor: true, challengeId, emailHint: "m***@gmail.com", expiresIn }`, sem sessão nem cookie.
+3. O front mostra "Confirme que é você", com 6 campos (colar o código ou a sugestão do teclado do celular preenche todos), **envio automático ao completar**, "Reenviar código em N s" (60 s; o código novo substitui o anterior) e "← Voltar".
+4. `POST /api/auth/login/verify` com o código correto emite a sessão igual ao login comum (access token em memória, refresh em cookie, "manter conectado" escolhido na primeira etapa). Código errado: 400 `INVALID_CODE` com as tentativas restantes; na 5ª, o desafio morre (`INVALID_TOKEN`) e é preciso entrar de novo com a senha. A conta é conferida de novo nessa etapa (bloqueada no meio do caminho não entra).
+5. **"Confiar neste aparelho por 30 dias"** vem **marcado** (o tablet da paróquia e o celular de cada um só pedem o código no primeiro acesso, o que também poupa a cota de e-mails). Grava o cookie `psjb_device` (httpOnly, `path=/api/auth`, 30 dias; só o hash fica na tabela `trusted_devices`). O cookie só vale para a pessoa que o criou.
+   - **Trocar a senha**, redefinir pelo link ou receber senha temporária do admin **tira a confiança de todos os aparelhos**.
+- **Rate limit** por IP: verify 20 e resend 10 a cada 15 min, além das 5 tentativas por código.
 - **reCAPTCHA:** v3 invisível ou v2 checkbox (Google) ou Cloudflare Turnstile. O token é **validado no servidor** com a chave secreta. Vale para cadastro, recuperação de senha e login depois de 3 falhas.
-- **E-mail transacional:** Resend, SES ou Postmark, com SPF/DKIM/DMARC em `psjb.org.br`. Modelos:
-  - Confirme seu e-mail
-  - Seu código de acesso
-  - Redefinir senha
-  - Você foi convidado
-  - Acesso bloqueado ou liberado
-  - E-mail alterado
+- **E-mail transacional (15/10/2026): Resend**, escolhido pelo plano grátis (3.000/mês, **100/dia**), pela integração com a Vercel (Marketplace, região `sa-east-1`) e pela API simples. Precisa de SPF/DKIM/DMARC em `psjb.org.br`.
+  - Porta `EmailSender` na API: `ResendEmailSender` (com `RESEND_API_KEY`) ou `ConsoleEmailSender` (sem a chave: imprime no terminal). **Em produção a chave é obrigatória** (a API não sobe sem ela). Remetente em `EMAIL_FROM`; links montados com `APP_URL`.
+  - Modelos (`apps/api/src/emails/templates.ts`, HTML com estilos inline + texto puro, nome escapado): Redefinir senha · Você foi convidado · Confirme seu novo e-mail · Seu e-mail foi alterado · Seu código de acesso · Sua conta foi liberada.
+  - Rotas que não podem revelar se a conta existe (`forgot`) engolem a falha de envio; nas outras, a falha vira 502 `EMAIL_FAILED`.
+  - **(futuro)** "Acesso bloqueado" e "Uma missa foi compartilhada com você".
 - **LGPD:** consentimento no cadastro e exportação ou exclusão dos dados a pedido.
 
 ## 14. Regras de UX e acessibilidade

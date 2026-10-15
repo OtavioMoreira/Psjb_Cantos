@@ -19,14 +19,27 @@ const schema = z.object({
   PUBLIC_URL: z.string().default("http://localhost:3333"),
   /** Deploy Hook da Vercel do projeto do front: "Publicar no site" dispara um novo build. */
   SITE_DEPLOY_HOOK_URL: z.url().optional(),
+  /** Endereço do site (com o basePath, se houver), usado nos links dos e-mails. */
+  APP_URL: z.url().default("http://localhost:3000").transform((u) => u.replace(/\/+$/, "")),
+  /** Com a chave, os e-mails saem pelo Resend; sem ela, só aparecem no log da API. */
+  RESEND_API_KEY: z.string().optional(),
+  /** Remetente. Sem domínio verificado no Resend, só funciona o de teste (onboarding@resend.dev). */
+  EMAIL_FROM: z.string().default("Cantos PSJB <onboarding@resend.dev>"),
+  /** Login em duas etapas (código por e-mail). Ligado por padrão só em produção. */
+  LOGIN_2FA: z.enum(["true", "false"]).optional(),
 });
 
-export type Env = z.infer<typeof schema>;
+export type Env = z.infer<typeof schema> & { loginTwoFactor: boolean };
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const env = schema.parse(source);
+  const parsed = schema.parse(source);
+  const env = { ...parsed, loginTwoFactor: (parsed.LOGIN_2FA ?? (parsed.NODE_ENV === "production" ? "true" : "false")) === "true" };
   if (env.NODE_ENV === "production" && env.JWT_SECRET.startsWith("dev-only")) {
     throw new Error("Defina JWT_SECRET em produção.");
+  }
+  // Sem e-mail em produção, recuperação de senha, convite e 2FA ficariam mudos.
+  if (env.NODE_ENV === "production" && !env.RESEND_API_KEY) {
+    throw new Error("Defina RESEND_API_KEY em produção.");
   }
   return env;
 }

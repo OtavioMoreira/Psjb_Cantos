@@ -291,7 +291,7 @@ export function resetPassword(t: string, password: string) {
   return true;
 }
 
-/* Administração — com a API: listar e ativar; o resto ainda é só da demonstração. */
+/* Administração — com a API, tudo vai para o servidor; sem ela, fica no localStorage (demonstração). */
 
 /** Admin: traz todas as contas do servidor (substitui a lista local). */
 export async function syncAdminUsers() {
@@ -341,8 +341,14 @@ export const admin = {
   resendVerification(id: string) {
     writeUser(id, { token: token() });
   },
-  sendResetLink(id: string) {
+  /** Com a API, o e-mail sai de verdade; um erro (EMAIL_FAILED) chega na tela. */
+  async sendResetLink(id: string) {
+    if (API_ENABLED) return void (await api.admin.sendResetLink(id));
     writeUser(id, { token: token() });
+  },
+  /** Só com a API: manda um convite novo para a conta pendente. */
+  async resendInvite(id: string) {
+    await api.admin.resendInvite(id);
   },
   /** Gera uma senha temporária, mostrada uma única vez. A pessoa troca no próximo acesso. */
   async temporaryPassword(id: string) {
@@ -355,7 +361,20 @@ export const admin = {
     writeUser(id, { password: pwd, mustChangePassword: true });
     return pwd;
   },
-  invite(data: { name: string; email: string; role: User["role"] }) {
+  /** false = e-mail já cadastrado. Com a API, outros erros (ex.: EMAIL_FAILED) chegam na tela. */
+  async invite(data: { name: string; email: string; role: User["role"] }) {
+    if (API_ENABLED) {
+      try {
+        const u = await api.admin.invite({ name: data.name.trim(), email: data.email.trim(), roles: ROLES_FOR[data.role] });
+        usersStore.write([...usersStore.read(), mirror(u)]);
+        return true;
+      } catch (err) {
+        if (err instanceof ApiError && err.code === "EMAIL_TAKEN") return false;
+        // O convite pode ter sido criado mesmo com o e-mail falhando: traz a lista do servidor.
+        void syncAdminUsers().catch(() => undefined);
+        throw err;
+      }
+    }
     if (usersStore.read().some((u) => sameEmail(u.email, data.email))) return false;
     usersStore.write([
       ...usersStore.read(),

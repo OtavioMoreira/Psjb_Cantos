@@ -2,11 +2,12 @@ import { randomInt } from "node:crypto";
 import { AppError } from "../../domain/errors.js";
 import { hasRole, type User } from "../../domain/user.js";
 import { toUserDTO, type AdminUpdateUserInput, type UserDTO } from "../../dtos/user.dto.js";
-import type { FileStorage, MovementRepository, PasswordHasher, SessionRepository, UserRepository } from "../../interfaces/index.js";
+import type { FileStorage, MovementRepository, PasswordHasher, SessionRepository, TrustedDeviceRepository, UserRepository } from "../../interfaces/index.js";
 
 interface Deps {
   users: UserRepository;
   sessions: SessionRepository;
+  trustedDevices: TrustedDeviceRepository;
   movements: MovementRepository;
   hasher: PasswordHasher;
   storage: FileStorage;
@@ -109,6 +110,7 @@ export class ResetUserPasswordAction {
     const password = temporaryPassword();
     await this.deps.users.updatePassword(id, await this.deps.hasher.hash(password), true);
     await this.deps.sessions.revokeAllForUser(id);
+    await this.deps.trustedDevices.revokeAllForUser(id);
     return { user: toUserDTO({ ...target, mustChangePassword: true }), temporaryPassword: password };
   }
 }

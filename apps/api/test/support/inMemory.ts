@@ -7,6 +7,12 @@ import type { Movement } from "../../src/domain/movement.js";
 import type { Flag, Song } from "../../src/domain/song.js";
 import type { User, UserWithPassword } from "../../src/domain/user.js";
 import type {
+  AuthToken,
+  AuthTokenPurpose,
+  AuthTokenRepository,
+  EmailMessage,
+  EmailSender,
+  TrustedDeviceRepository,
   AdminUserData,
   CreateUserData,
   ProfileData,
@@ -351,6 +357,67 @@ export class InMemorySessions implements SessionRepository {
   }
 }
 
+export class InMemoryAuthTokens implements AuthTokenRepository {
+  rows: (AuthToken & { tokenHash: string })[] = [];
+
+  async create(d: Parameters<AuthTokenRepository["create"]>[0]) {
+    const t = { id: randomUUID(), userId: d.userId, purpose: d.purpose, tokenHash: d.tokenHash, data: d.data ?? {}, attempts: 0, expiresAt: d.expiresAt, usedAt: null, createdAt: new Date() };
+    this.rows.push(t);
+    return { ...t };
+  }
+  async findById(id: string) {
+    const t = this.rows.find((r) => r.id === id);
+    return t ? { ...t } : null;
+  }
+  async consume(hash: string, purposes: AuthTokenPurpose[], now: Date) {
+    const t = this.rows.find((r) => r.tokenHash === hash && purposes.includes(r.purpose) && !r.usedAt && r.expiresAt > now);
+    if (!t) return null;
+    t.usedAt = now;
+    return { ...t };
+  }
+  async invalidate(userId: string, purpose: AuthTokenPurpose) {
+    this.rows.filter((r) => r.userId === userId && r.purpose === purpose && !r.usedAt).forEach((r) => (r.usedAt = new Date()));
+  }
+  async addAttempt(id: string) {
+    const t = this.rows.find((r) => r.id === id);
+    return t ? ++t.attempts : Number.POSITIVE_INFINITY;
+  }
+  async lastCreatedAt(userId: string, purpose: AuthTokenPurpose) {
+    const times = this.rows.filter((r) => r.userId === userId && r.purpose === purpose).map((r) => r.createdAt.getTime());
+    return times.length ? new Date(Math.max(...times)) : null;
+  }
+}
+
+export class InMemoryTrustedDevices implements TrustedDeviceRepository {
+  rows: { userId: string; tokenHash: string; expiresAt: Date }[] = [];
+  async create(d: Parameters<TrustedDeviceRepository["create"]>[0]) {
+    this.rows.push({ userId: d.userId, tokenHash: d.tokenHash, expiresAt: d.expiresAt });
+  }
+  async isTrusted(userId: string, tokenHash: string, now: Date) {
+    return this.rows.some((r) => r.userId === userId && r.tokenHash === tokenHash && r.expiresAt > now);
+  }
+  async revokeAllForUser(userId: string) {
+    this.rows = this.rows.filter((r) => r.userId !== userId);
+  }
+}
+
+/** Caixa de saída falsa: guarda os e-mails para o teste ler o link ou o código. */
+export class MemoryEmail implements EmailSender {
+  sent: EmailMessage[] = [];
+  fail = false;
+  async send(m: EmailMessage) {
+    if (this.fail) throw new Error("falha simulada");
+    this.sent.push(m);
+  }
+  last(to?: string) {
+    return [...this.sent].reverse().find((m) => !to || m.to === to);
+  }
+  /** Primeiro link com ?token= do último e-mail (para a pessoa). */
+  token(to?: string) {
+    return this.last(to)?.text.match(/token=([\w-]+)/)?.[1];
+  }
+}
+
 /** Hash falso e rápido: os testes não precisam do custo do argon2. */
 export const fakeHasher: PasswordHasher = {
   hash: async (p) => `hashed:${p}`,
@@ -386,6 +453,9 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
   const adapters: Adapters & {
     users: InMemoryUsers;
     sessions: InMemorySessions;
+    authTokens: InMemoryAuthTokens;
+    trustedDevices: InMemoryTrustedDevices;
+    email: MemoryEmail;
     movements: InMemoryMovements;
     masses: InMemoryMasses;
     songs: InMemorySongs;
@@ -395,6 +465,9 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
   } = {
     users,
     sessions: new InMemorySessions(),
+    authTokens: new InMemoryAuthTokens(),
+    trustedDevices: new InMemoryTrustedDevices(),
+    email: new MemoryEmail(),
     movements,
     masses: new InMemoryMasses(users),
     songs: new InMemorySongs(flags),

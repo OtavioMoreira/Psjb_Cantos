@@ -8,9 +8,13 @@ import {
   ResetUserPasswordAction,
   UnblockUserAction,
 } from "./actions/admin/AdminUserActions.js";
+import { InviteUserAction, ResendInviteAction, SendResetLinkAction } from "./actions/admin/AdminEmailActions.js";
 import { ChangePasswordAction } from "./actions/auth/ChangePasswordAction.js";
+import { RequestPasswordResetAction, ResetPasswordAction } from "./actions/auth/PasswordResetActions.js";
+import { ConfirmEmailChangeAction, RequestEmailChangeAction } from "./actions/users/ChangeEmailActions.js";
 import { UpdateMeAction } from "./actions/users/UpdateMeAction.js";
 import { LoginAction } from "./actions/auth/LoginAction.js";
+import { ResendLoginCodeAction, VerifyLoginCodeAction } from "./actions/auth/TwoFactorActions.js";
 import { LogoutAction } from "./actions/auth/LogoutAction.js";
 import { RefreshSessionAction } from "./actions/auth/RefreshSessionAction.js";
 import { CreateUserAction } from "./actions/users/CreateUserAction.js";
@@ -44,7 +48,9 @@ import { CreateMovementAction, DeleteMovementAction, ListMovementsAction, Rename
 import type { Env } from "./config/env.js";
 import { createPool, type Pool } from "./database/pool.js";
 import type {
+  AuthTokenRepository,
   Clock,
+  EmailSender,
   FileStorage,
   FlagRepository,
   MassRepository,
@@ -54,8 +60,13 @@ import type {
   SitePublisher,
   SongRepository,
   TokenService,
+  TrustedDeviceRepository,
   UserRepository,
 } from "./interfaces/index.js";
+import { PgAuthTokenRepository } from "./repositories/PgAuthTokenRepository.js";
+import { PgTrustedDeviceRepository } from "./repositories/PgTrustedDeviceRepository.js";
+import { ConsoleEmailSender } from "./services/ConsoleEmailSender.js";
+import { ResendEmailSender } from "./services/ResendEmailSender.js";
 import { PgFlagRepository } from "./repositories/PgFlagRepository.js";
 import { PgSongRepository } from "./repositories/PgSongRepository.js";
 import { PgMassRepository } from "./repositories/PgMassRepository.js";
@@ -71,6 +82,9 @@ import { VercelBlobStorage } from "./services/VercelBlobStorage.js";
 export interface Adapters {
   users: UserRepository;
   sessions: SessionRepository;
+  authTokens: AuthTokenRepository;
+  trustedDevices: TrustedDeviceRepository;
+  email: EmailSender;
   movements: MovementRepository;
   masses: MassRepository;
   songs: SongRepository;
@@ -84,19 +98,25 @@ export interface Adapters {
 
 export function buildContainer(env: Env, adapters: Adapters) {
   const ttl = { shortDays: env.REFRESH_TTL_SHORT_DAYS, longDays: env.REFRESH_TTL_LONG_DAYS };
-  const deps = { ...adapters, ttl };
+  const deps = { ...adapters, ttl, appUrl: env.APP_URL, twoFactor: env.loginTwoFactor };
   return {
     env,
     tokens: adapters.tokens,
     actions: {
       login: new LoginAction(deps),
+      verifyLoginCode: new VerifyLoginCodeAction(deps),
+      resendLoginCode: new ResendLoginCodeAction(deps),
       refresh: new RefreshSessionAction(deps),
       logout: new LogoutAction(deps),
       createUser: new CreateUserAction(deps),
       getMe: new GetMeAction(deps),
       updateMyPhoto: new UpdateMyPhotoAction(deps),
       updateMe: new UpdateMeAction(deps),
+      requestEmailChange: new RequestEmailChangeAction(deps),
+      confirmEmailChange: new ConfirmEmailChangeAction(deps),
       changePassword: new ChangePasswordAction(deps),
+      requestPasswordReset: new RequestPasswordResetAction(deps),
+      resetPassword: new ResetPasswordAction(deps),
       listUsers: new ListUsersAction(deps),
       activateUser: new ActivateUserAction(deps),
       adminUpdateUser: new AdminUpdateUserAction(deps),
@@ -104,6 +124,9 @@ export function buildContainer(env: Env, adapters: Adapters) {
       unblockUser: new UnblockUserAction(deps),
       deleteUser: new DeleteUserAction(deps),
       resetUserPassword: new ResetUserPasswordAction(deps),
+      inviteUser: new InviteUserAction(deps),
+      resendInvite: new ResendInviteAction(deps),
+      sendResetLink: new SendResetLinkAction(deps),
       searchUsers: new SearchUsersAction(deps),
       listMovements: new ListMovementsAction(deps),
       createMovement: new CreateMovementAction(deps),
@@ -147,6 +170,9 @@ export function createAdapters(env: Env): Adapters & { pool: Pool } {
     pool,
     users: new PgUserRepository(pool),
     sessions: new PgSessionRepository(pool),
+    authTokens: new PgAuthTokenRepository(pool),
+    trustedDevices: new PgTrustedDeviceRepository(pool),
+    email: env.RESEND_API_KEY ? new ResendEmailSender(env.RESEND_API_KEY, env.EMAIL_FROM) : new ConsoleEmailSender(),
     movements: new PgMovementRepository(pool),
     masses: new PgMassRepository(pool),
     songs: new PgSongRepository(pool),

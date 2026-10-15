@@ -204,16 +204,14 @@ Estado do cliente em `localStorage`:
   - a conta nasce **pendente**, com papel músico.
 - ✅ **Confirmar e-mail:** tela "Confirme seu e-mail" com reenvio a cada 60 s. O link `/confirmar-email?token=` ativa a conta automaticamente.
 - ✅ **Recuperar senha:** `/recuperar-senha` sempre dá a mesma resposta (não revela se o e-mail existe), e `/redefinir-senha?token=` define a nova senha.
-- 🟡 Os e-mails são simulados por um link "Demonstração" na tela.
-- 🔜 **Fase 3:**
-  - envio real dos e-mails e tokens de uso único com validade (§6.6);
-  - **2FA por código enviado ao e-mail** (§6.6);
-  - o cadastro também não revela se o e-mail já existe.
+- 🟡 Na demonstração, os e-mails são simulados por um link "Demonstração" na tela.
+- ✅ **Com a API (15/10/2026):** recuperação de senha real (`/auth/forgot` e `/auth/reset`), e-mails pelo Resend, tokens de uso único com validade (§6.6) e **2FA por código enviado ao e-mail**, com "confiar neste aparelho por 30 dias" (§6.6).
+- 🔜 O cadastro também não revela se o e-mail já existe; reCAPTCHA no servidor.
 
 ### E4. Perfil 🟡
 - ✅ Nome, e-mail, paróquia, movimento, instrumento, tema (claro/escuro/sistema) e sustenidos/bemóis.
 - ✅ Troca de senha exigindo a atual, com a mesma regra de força do cadastro.
-- 🔜 Trocar o e-mail vai exigir a confirmação do novo endereço.
+- ✅ **Trocar o e-mail** (com a API): pede a senha, manda o link para o endereço novo e só troca depois da confirmação; o antigo recebe um aviso.
 
 ### E5. Monte sua Missa ✅ (salva no aparelho)
 - ✅ Os 10 momentos padrão, na ordem: Velas, Entrada, Ato Penitencial, Glória, Salmo, Aclamação, Preces da Comunidade, Ofertório, Comunhão e Saída.
@@ -264,20 +262,20 @@ Estado do cliente em `localStorage`:
 - ✅ Banco: tabelas `users`, `roles` (admin, musico), `user_roles` e `sessions`, com migrations em SQL (`npm run db:migrate -w api`) e seed do superadmin (`npm run db:seed -w api`).
 - ✅ Cadastro público (`POST /api/users`), que cria a conta **pendente**; login, refresh rotativo e logout; `GET /api/me`; foto do perfil (`PUT /api/me/photo`).
 - ✅ Gestão só para admin: listar, ativar, editar (dados e papéis), bloquear/liberar, gerar senha temporária e excluir (`/api/admin/users/*`), protegidos pelo middleware `requireRole("admin")`. O admin não age sobre si mesmo e sempre sobra pelo menos um admin ativo (409 `LAST_ADMIN`).
-- ✅ Perfil: `PATCH /api/me` (nome, telefone, movimento, paróquia, instrumento) e troca de senha (`POST /api/auth/password`, que derruba as sessões dos outros aparelhos). Trocar o e-mail continua com a coordenação até existir o serviço de e-mail.
-- 🔜 Convite por e-mail e link de redefinição de senha (dependem do serviço de e-mail).
+- ✅ Perfil: `PATCH /api/me` (nome, telefone, movimento, paróquia, instrumento) e troca de senha (`POST /api/auth/password`, que derruba as sessões dos outros aparelhos). Troca do e-mail com confirmação do novo endereço (`POST /api/me/email` + `POST /api/auth/confirm-email`).
+- ✅ **E-mail (Resend)**: recuperação de senha, convite (`/api/admin/users/invite`, reenvio), link de redefinição pelo admin, aviso de conta liberada e **2FA** (`/auth/login/verify`, `/auth/login/resend`, aparelho confiável). Migration `007_auth_tokens.sql` (`auth_tokens`, `trusted_devices`).
 - ✅ **Movimentos** (tabela `movements`, um por pessoa em `users.movement_id`) no lugar do "ministério": lista pública e gestão pelo admin. O front usa um seletor no cadastro, no perfil e no admin.
 - ✅ **Missas** (tabelas `masses` e `mass_shares`): todas as rotas de §5.2. Com `API_URL`, o front salva e sincroniza pela API.
 - ✅ **Link de convite** (`masses.share_token`): gerar, desativar e entrar (`POST /api/masses/join`).
 - ✅ **Cantos e flags** (tabelas `songs`, `flags`, `song_flags`): repertório público, CRUD de cantos e flags pelo admin, envio de PDF e áudio (Vercel Blob) e importação do `data/songs.json` (`npm run db:import-songs -w api`).
 - ✅ Coleção do **Postman** em `docs/postman/` (com ambientes local e produção). O teste `postman.test.ts` falha se uma rota não estiver na coleção.
 - ✅ Testes com `fastify.inject` e adaptadores em memória (`npm test -w api`).
-- 🔜 Tela de admin de usuários e perfil lendo da API; demais ações de admin (bloquear, editar, papel, excluir); troca de senha e recuperação; e-mail e 2FA.
+- ✅ Tela de admin de usuários e perfil lendo da API, com todas as ações; troca de senha, recuperação, e-mail e 2FA.
 
 ### E8. Administração (só papel **admin**) 🟡
 - ✅ **`/painel/admin`**: painel com atalhos e contagens para Usuários, Cantos, Flags e Movimentos. Na barra lateral, as quatro seções aparecem abaixo de "Administração".
 - ✅ **Com a API:**
-  - **Usuários:** a lista vem do servidor e "Ativar acesso" usa a API. Editar, bloquear, senha, convite e exclusão ficam desabilitados até existirem no backend (ver `docs/ESTADO-DO-PROJETO.md` §4).
+  - **Usuários:** todas as ações usam a API, inclusive convite, reenvio de convite e link de redefinição por e-mail.
   - **Cantos** (`/painel/admin/cantos` e `/editar?id=`): busca; editor com letra e pré-visualização, flags agrupadas, PDFs, áudio, Audiomack, visibilidade e exclusão.
   - **Flags** (`/painel/admin/flags`) e **Movimentos** (`/painel/admin/movimentos`).
   - **"Publicar no site"** (`POST /api/admin/site/publish` → Deploy Hook da Vercel): gera as páginas estáticas de novo.
@@ -290,11 +288,8 @@ Estado do cliente em `localStorage`:
   - **redefinir senha** por link ou senha temporária exibida uma vez;
   - **convidar** e excluir (sugere bloquear).
 - ✅ Proteções: o admin não pode bloquear, excluir nem rebaixar a si mesmo.
-- 🔜 **Fase 3:**
-  - `AuditLog` para as ações de admin;
-  - bloquear ou redefinir senha revoga as sessões ativas;
-  - a senha temporária obriga a troca no próximo login;
-  - sempre haver pelo menos 1 admin ativo.
+- ✅ Com a API: bloquear ou redefinir senha revoga as sessões ativas; a senha temporária obriga a troca no próximo login; sempre há pelo menos 1 admin ativo.
+- 🔜 `AuditLog` para as ações de admin.
 
 ### E9. Responsividade (celular e tablet são o uso principal) ✅
 - ✅ Auditoria automática em 9 aparelhos (Android 360px, iPhone SE, iPhone 14, Pixel 7, iPad Mini e iPad Pro 11" em retrato e paisagem, Galaxy Tab S4), cobrindo todas as páginas:
@@ -339,13 +334,22 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | GET | `/api/songs`, `/api/songs/:slug` | 2 | JSON |
 | GET | `/api/categories` | 2 | JSON |
 | POST | `/api/users` | ✅ | cadastro público `{ name, email, password, phone?, movementId? }` → 201 com a conta **pendente** e papel músico; 409 `EMAIL_TAKEN`; 400 com os campos inválidos |
-| POST | `/api/auth/login` | ✅ | `{ email, password, remember }` → `{ accessToken, expiresIn, user }` + cookie `psjb_refresh`. 401 `INVALID_CREDENTIALS`, 403 `ACCOUNT_PENDING` ou `ACCOUNT_BLOCKED` (com `details.reason`) |
+| POST | `/api/auth/login` | ✅ | `{ email, password, remember }` → `{ accessToken, expiresIn, user }` + cookie `psjb_refresh`. 401 `INVALID_CREDENTIALS`, 403 `ACCOUNT_PENDING` ou `ACCOUNT_BLOCKED` (com `details.reason`). Com o 2FA ligado e sem o cookie `psjb_device` válido → `{ twoFactor: true, challengeId, emailHint, expiresIn }` e o código vai por e-mail (502 `EMAIL_FAILED` se não sair) |
+| POST | `/api/auth/login/verify` | ✅ | 2FA: `{ challengeId, code, trustDevice }` → sessão (igual ao login). `trustDevice` grava o cookie `psjb_device` (30 dias). 400 `INVALID_CODE` (com `attemptsLeft`) ou `INVALID_TOKEN` (vencido, usado ou 5 tentativas) |
+| POST | `/api/auth/login/resend` | ✅ | 2FA: `{ challengeId }` → código novo e `challengeId` novo. 429 `TOO_SOON` (com `retryAfter`) antes de 60 s |
+| POST | `/api/auth/forgot` | ✅ | `{ email }` → sempre 202 (não revela se a conta existe). Só conta ativa recebe o link (1 h); no máximo 1 por minuto |
+| POST | `/api/auth/reset` | ✅ | `{ token, password }` → `{ email }`. Link de redefinição ou de convite (ativa a conta pendente). Derruba as sessões e os aparelhos confiáveis. 400 `INVALID_TOKEN` |
+| POST | `/api/me/email` | ✅ | logado: `{ email, password }` → 202 e link (24 h) para o novo endereço. 400 com `fields`, 429 `TOO_SOON`, 502 `EMAIL_FAILED` |
+| POST | `/api/auth/confirm-email` | ✅ | público: `{ token }` → `{ email }` (o novo) e aviso ao endereço antigo. 409 `EMAIL_TAKEN` se outra conta pegou o endereço |
 | POST | `/api/auth/refresh` | ✅ | cookie → novo access token e refresh **rotacionado**; reuso revoga a família |
 | POST | `/api/auth/logout` | ✅ | revoga a sessão e apaga o cookie (204) |
 | GET | `/api/me` | ✅ | `Authorization: Bearer` → `{ user }` |
 | PUT | `/api/me/photo` | ✅ | multipart, campo `photo` (JPG/PNG/WebP, até 2 MB) → `{ user }` com a nova `photoUrl` |
 | GET | `/api/admin/users?status=&role=&q=` | ✅ | listagem (admin): pendentes, depois bloqueados e ativos. 🔜 paginação |
-| PATCH | `/api/admin/users/:id/activate` | ✅ | admin ativa (ou desbloqueia) a conta |
+| PATCH | `/api/admin/users/:id/activate` | ✅ | admin ativa (ou desbloqueia) a conta. Pendente → ativo manda o e-mail "Sua conta foi liberada" |
+| POST | `/api/admin/users/invite` | ✅ | admin: `{ name, email, roles?, movementId? }` → 201 com a conta pendente e o convite (link de 7 dias para criar a senha). 409 `EMAIL_TAKEN`; 502 `EMAIL_FAILED` (a conta fica criada) |
+| POST | `/api/admin/users/:id/invite` | ✅ | admin: reenvia o convite (só conta pendente) → 202 |
+| POST | `/api/admin/users/:id/reset-link` | ✅ | admin: manda o link de redefinição (só conta ativa) → 202; 502 `EMAIL_FAILED` |
 | PATCH | `/api/me` | ✅ | só os campos enviados: `{ name?, phone?, movementId?, parish?, instrument? }` (vazio ou null limpa). E-mail, papel e status → 400 |
 | POST | `/api/auth/password` | ✅ | `{ currentPassword, newPassword }`. Fica em `/auth` para receber o cookie: a sessão deste aparelho continua e as outras caem. Senha atual errada → 400 com `fields.currentPassword`. Zera `mustChangePassword` |
 | PATCH | `/api/admin/users/:id` | ✅ | admin: `{ name?, email?, phone?, movementId?, roles? }` (`roles` substitui a lista). Tirar o próprio papel de admin → 403; e-mail de outra conta → 409 `EMAIL_TAKEN` |
@@ -375,12 +379,6 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | PUT · DELETE | `/api/admin/songs/:id/files/:kind` | ✅ | admin: `kind` = `cifra-pdf`, `partitura-pdf` ou `audio`. multipart, campo `file`, até 4 MB |
 | POST · PUT · DELETE | `/api/admin/flags[/:id]` | ✅ | admin: `{ group, slug, name, color?, position? }`. 409 `FLAG_TAKEN` |
 | POST | `/api/admin/site/publish` | ✅ | admin: pede um novo build do site (Deploy Hook em `SITE_DEPLOY_HOOK_URL`) → 202; sem hook → 501 `NOT_CONFIGURED` |
-| POST | `/api/auth/login/verify` | 3 | 2FA: `{ challengeId, code }` → só então emite os tokens |
-| POST | `/api/auth/verify-email` · `/resend-verification` | 3 | quando houver serviço de e-mail |
-| POST | `/api/auth/forgot` · `/api/auth/reset` | 3 | recuperação de senha |
-| PATCH | `/api/me` (campo `email`) | 3 | trocar o e-mail com confirmação do novo endereço |
-| POST | `/api/admin/users/:id/resend-verification` · link de redefinição | 3 | e-mails de suporte |
-| POST | `/api/admin/users/invite` | 3 | convite por e-mail |
 | POST | `/api/uploads` | 4 | token de upload direto para o Vercel Blob (arquivos acima de 4 MB) |
 
 ---
@@ -463,23 +461,23 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 
 ### 6.6 Segurança e autenticação
 
-**Já implementado:** argon2id; login → access JWT de 15 min + refresh rotativo em cookie httpOnly (sem o 2FA ainda); detecção de reuso; papéis no JWT e `requireRole` no servidor; rate limit em login, cadastro e refresh; `@fastify/helmet`; CORS restrito; validação com Zod; respostas de erro no formato `{ error: { code, message, details } }`. O resto desta seção continua planejado para a Fase 3.
+**Já implementado:** argon2id; login → access JWT de 15 min + refresh rotativo em cookie httpOnly; **2FA por e-mail** com aparelho confiável (15/10/2026, ligado por padrão em produção, `LOGIN_2FA`); detecção de reuso; papéis no JWT e `requireRole` no servidor; rate limit em login, 2FA, recuperação, cadastro e refresh; tokens de e-mail de uso único guardados como hash (`auth_tokens`); `@fastify/helmet`; CORS restrito; validação com Zod; respostas de erro no formato `{ error: { code, message, details } }`. Faltam reCAPTCHA, `AuditLog` e a parte de LGPD.
 
 **Senhas**
 - Hash com **argon2id**. Política: 8 ou mais caracteres, com letras e números (a mesma da UI); se possível, checar contra listas de senhas vazadas.
 
 **Login com JWT + dois fatores por e-mail**
 1. `POST /api/auth/login` com e-mail e senha.
-   - **Pendente** → 403 `EMAIL_NOT_VERIFIED`.
+   - **Pendente** → 403 `ACCOUNT_PENDING`.
    - **Bloqueado** → 403 `ACCOUNT_BLOCKED`, com o motivo.
    - Credenciais erradas → mensagem genérica.
-2. Senha correta → **código de 6 dígitos** aleatório. O servidor guarda só o hash (`AuthToken 'login_otp'`), com validade de **10 min** e no máximo **5 tentativas**, envia o código por e-mail e devolve o `challengeId`.
+2. Senha correta → **código de 6 dígitos** aleatório. O servidor guarda só o hash com sal (`auth_tokens`, propósito `login_code`), com validade de **10 min** e no máximo **5 tentativas**, envia o código por e-mail e devolve o `challengeId`.
 3. O front mostra "Digite o código enviado para m***@…": 6 campos, colar funciona, reenvio após 60 s.
 4. `POST /api/auth/login/verify` → a API emite:
    - **JWT de acesso de 15 min** (`sub`, `role`, `exp`, `jti`), que fica **só em memória** no front, nunca em `localStorage`;
    - **refresh token** opaco em **cookie httpOnly + Secure + SameSite=Lax**, com 30 dias se "manter conectado" estiver marcado ou 1 dia se não, guardado como hash e **rotacionado** a cada uso. Reuso detectado → revoga toda a família de sessões.
-5. "Confiar neste dispositivo por 30 dias" dispensa o código naquele aparelho, útil para o tablet da paróquia.
-- Bloquear, redefinir senha ou trocar o e-mail **revoga todas as sessões**.
+5. "Confiar neste dispositivo por 30 dias" (marcado por padrão) dispensa o código naquele aparelho, útil para o tablet da paróquia. Cookie `psjb_device` httpOnly, hash em `trusted_devices`.
+- Bloquear ou redefinir a senha **revoga todas as sessões**; trocar a senha revoga as dos outros aparelhos. Trocar ou redefinir a senha tira a confiança de todos os aparelhos.
 - A autorização por papel acontece **no servidor** (`requireRole('admin')`).
 
 **reCAPTCHA**
@@ -524,18 +522,18 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 |---|---|---|
 | Banco de dados | usuários, tokens, sessões, missas, cantos, auditoria | **PostgreSQL no Neon** (escolhido). Use a string "pooled" (`-pooler`) com `sslmode=require` |
 | Arquivos | fotos de perfil; depois PDFs e MP3 | **Vercel Blob** (escolhido), via `FileStorage`. Limite de 4,5 MB por requisição nas Functions: arquivos grandes (PDF, MP3) devem ir por upload direto do navegador com token do Blob |
-| E-mail transacional | confirmação, código 2FA, redefinição de senha, convite, bloqueio | Resend, Amazon SES, Postmark, Brevo (SPF, DKIM e DMARC em `psjb.org.br`) |
+| E-mail transacional | código 2FA, redefinição de senha, convite, troca de e-mail, conta liberada | **Resend** (escolhido em 15/10/2026: grátis até 3.000/mês e 100/dia, instalado pelo Marketplace da Vercel), via `EmailSender`. SPF, DKIM e DMARC em `psjb.org.br` |
 | reCAPTCHA | cadastro, recuperação, login após falhas | Google reCAPTCHA v3/v2 ou Cloudflare Turnstile |
 | Hospedagem da API | Node/Fastify | **Vercel** (escolhido): projeto com raiz `apps/api`, vira uma Function (Fluid compute) |
 | Hospedagem do front | Next.js | **Vercel** (escolhido), com `API_URL` apontando para a API; o GitHub Pages continua como demonstração estática |
 
-Modelos de e-mail (pt-BR, com o logo):
-- Confirme seu e-mail
-- Seu código de acesso (6 dígitos, 10 min)
-- Redefinir senha
-- Você foi convidado
-- Seu acesso foi bloqueado/liberado
-- Seu e-mail foi alterado
+Modelos de e-mail (pt-BR; `apps/api/src/emails/templates.ts`):
+- ✅ Seu código de acesso (6 dígitos, 10 min)
+- ✅ Redefinir senha
+- ✅ Você foi convidado
+- ✅ Confirme seu novo e-mail · Seu e-mail foi alterado
+- ✅ Sua conta foi liberada
+- 🔜 Seu acesso foi bloqueado · Uma missa foi compartilhada com você
 
 ---
 
@@ -568,10 +566,11 @@ Modelos de e-mail (pt-BR, com o logo):
 ### Fase 3: Banco e autenticação real
 - ✅ PostgreSQL com migrations em SQL e seed do superadmin. 🔜 Cantos e missas no banco.
 - ✅ argon2id, **JWT (15 min) + refresh rotativo em cookie httpOnly** e papéis (admin, musico) com `requireRole`.
-- [ ] **2FA por código no e-mail**.
+- ✅ **2FA por código no e-mail**, com aparelho confiável por 30 dias.
 - [ ] Deploy: projetos `apps/web` e `apps/api` na Vercel, banco no Neon (rodar `db:migrate` no deploy) e Blob ligado à API.
-- [ ] Cadastro com **reCAPTCHA no servidor** + **confirmação de e-mail** (pendente → ativo); recuperação de senha; convites.
-- [ ] Serviço de e-mail + modelos (§6.9).
+- ✅ Recuperação de senha, convites e troca de e-mail com confirmação.
+- [ ] Cadastro com **reCAPTCHA no servidor** (o cadastro continua esperando a ativação pelo admin).
+- ✅ Serviço de e-mail (**Resend**) + modelos (§6.9). Falta configurar SPF/DKIM/DMARC em `psjb.org.br` no deploy.
 - [ ] Endpoints de admin de usuários + `AuditLog` (§5.2).
 - [ ] Trocar o `lib/store.ts` (localStorage) pelas chamadas à API, mantendo as telas.
 

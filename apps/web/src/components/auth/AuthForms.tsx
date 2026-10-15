@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Hourglass, Info, Loader2, MailCheck, ShieldAlert } from "lucide-react";
 import { DEMO_ACCOUNTS, login, resendVerification, signup, syncApiUser } from "@/lib/store";
-import { api, API_ENABLED, ApiError } from "@/lib/api";
+import { api, API_ENABLED, ApiError, type ApiUser, type LoginChallenge } from "@/lib/api";
+import { LoginCode } from "./LoginCode";
 import { Field } from "@/components/ui/Field";
 import { MovementSelect } from "@/components/user/MovementSelect";
 import { Button } from "@/components/ui/Button";
@@ -117,15 +118,23 @@ function PasswordField(props: React.ComponentProps<typeof Field>) {
 function LoginForm({ onPending }: { onPending: (email: string) => void }) {
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("");
+  // Vem preenchido depois de criar a senha pelo link do e-mail.
+  const [email, setEmail] = useState(() => params.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [touched, setTouched] = useState({ email: false, password: false });
   const [error, setError] = useState<{ text: string; pending?: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [challenge, setChallenge] = useState<LoginChallenge | null>(null);
 
   const emailErr = touched.email && !EMAIL_RE.test(email) ? "Informe um e-mail válido." : undefined;
   const passErr = touched.password && password.length < 6 ? "Use pelo menos 6 caracteres." : undefined;
+
+  const enter = (u: ApiUser) => {
+    syncApiUser(u);
+    const volta = params.get("volta");
+    router.push(volta && volta.startsWith("/") ? volta : "/painel");
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,16 +142,15 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
     if (!EMAIL_RE.test(email) || password.length < 6) return;
     setLoading(true);
     setError(null);
-    const goBack = () => {
-      const volta = params.get("volta");
-      router.push(volta && volta.startsWith("/") ? volta : "/painel");
-    };
     if (API_ENABLED) {
       api
         .login(email, password, remember)
-        .then((u) => {
-          syncApiUser(u);
-          goBack();
+        .then((r) => {
+          if ("challenge" in r) {
+            setLoading(false);
+            return setChallenge(r.challenge);
+          }
+          enter(r.user);
         })
         .catch((err) => {
           setLoading(false);
@@ -165,6 +173,18 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
       else setError({ text: "E-mail ou senha não conferem. Tente de novo." });
     }, 600);
   };
+
+  if (challenge)
+    return (
+      <LoginCode
+        challenge={challenge}
+        onDone={enter}
+        onBack={() => {
+          setChallenge(null);
+          setPassword("");
+        }}
+      />
+    );
 
   return (
     <>

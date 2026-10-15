@@ -28,15 +28,21 @@ export async function routes(app: FastifyInstance, { container }: { container: C
 
   // Sessão
   app.post("/auth/login", strict(10), auth.login);
+  app.post("/auth/login/verify", strict(20), auth.verifyCode);
+  app.post("/auth/login/resend", strict(10), auth.resendCode);
   app.post("/auth/refresh", strict(60), auth.refresh);
   app.post("/auth/logout", auth.logout);
   app.post("/auth/password", { preHandler: isAuthenticated, ...strict(10) }, auth.changePassword);
+  app.post("/auth/forgot", strict(5), auth.forgot);
+  app.post("/auth/reset", strict(10), auth.reset);
+  app.post("/auth/confirm-email", strict(10), users.confirmEmailChange);
 
   // Cadastro público e dados da própria conta
   app.post("/users", strict(5), users.create);
   app.get("/movements", movements.list);
   app.get("/me", { preHandler: isAuthenticated }, users.me);
   app.patch("/me", { preHandler: isAuthenticated }, users.updateMe);
+  app.post("/me/email", { preHandler: isAuthenticated, ...strict(10) }, users.requestEmailChange);
   app.put("/me/photo", { preHandler: isAuthenticated }, users.updatePhoto);
 
   // Repertório público (só cantos ativos)
@@ -69,6 +75,9 @@ export async function routes(app: FastifyInstance, { container }: { container: C
     adminScope.addHook("preHandler", isAuthenticated);
     adminScope.addHook("preHandler", requireRole("admin"));
     adminScope.get("/users", admin.list);
+    adminScope.post("/users/invite", strict(30), admin.invite);
+    adminScope.post("/users/:id/invite", strict(30), admin.resendInvite);
+    adminScope.post("/users/:id/reset-link", strict(30), admin.sendResetLink);
     adminScope.patch("/users/:id/activate", admin.activate);
     adminScope.patch("/users/:id", admin.update);
     adminScope.post("/users/:id/block", admin.block);

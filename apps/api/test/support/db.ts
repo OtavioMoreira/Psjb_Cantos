@@ -1,5 +1,7 @@
 import { afterAll, beforeEach, inject } from "vitest";
 import { createPool, type Pool } from "../../src/database/pool.js";
+import { PgAuthTokenRepository } from "../../src/repositories/PgAuthTokenRepository.js";
+import { PgTrustedDeviceRepository } from "../../src/repositories/PgTrustedDeviceRepository.js";
 import { PgFlagRepository } from "../../src/repositories/PgFlagRepository.js";
 import { PgMassRepository } from "../../src/repositories/PgMassRepository.js";
 import { PgMovementRepository } from "../../src/repositories/PgMovementRepository.js";
@@ -25,10 +27,12 @@ export function useTestDb() {
     masses: new PgMassRepository(pool),
     songs: new PgSongRepository(pool),
     flags: new PgFlagRepository(pool),
+    authTokens: new PgAuthTokenRepository(pool),
+    trustedDevices: new PgTrustedDeviceRepository(pool),
   };
 
   beforeEach(async () => {
-    await pool.query("TRUNCATE users, user_roles, sessions, movements, masses, mass_shares, songs, flags, song_flags RESTART IDENTITY CASCADE");
+    await pool.query("TRUNCATE users, user_roles, sessions, auth_tokens, trusted_devices, movements, masses, mass_shares, songs, flags, song_flags RESTART IDENTITY CASCADE");
   });
   afterAll(() => pool.end());
 

@@ -54,6 +54,13 @@ export const changePasswordSchema = z.object({
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
+/** POST /api/me/email: o novo endereço só vale depois de confirmado pelo link. */
+export const changeEmailSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, "Informe sua senha.").max(200),
+});
+export type ChangeEmailInput = z.infer<typeof changeEmailSchema>;
+
 /** PATCH /api/admin/users/:id: o admin edita nome, e-mail, movimento e papéis. */
 export const adminUpdateUserSchema = z
   .object({
@@ -69,6 +76,21 @@ export const adminUpdateUserSchema = z
   .partial()
   .strict();
 export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>;
+
+/** POST /api/admin/users/invite: a pessoa cria a senha pelo link do e-mail. */
+export const inviteUserSchema = z
+  .object({
+    name: nameSchema,
+    email: emailSchema,
+    movementId: movementIdSchema,
+    roles: z
+      .array(z.enum(ROLES))
+      .min(1, "Escolha pelo menos um papel.")
+      .default(["musico"])
+      .transform((r) => [...new Set(r)]),
+  })
+  .strict();
+export type InviteUserInput = z.infer<typeof inviteUserSchema>;
 
 export const blockUserSchema = z.object({
   reason: optionalText(300),

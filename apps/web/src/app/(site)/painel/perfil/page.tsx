@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, KeyRound, Loader2 } from "lucide-react";
+import { Camera, KeyRound, Loader2, Mail, MailCheck } from "lucide-react";
 import { changePassword, initials, setPrefs, updateUser, uploadMyPhoto, usePrefs, useUser } from "@/lib/store";
-import { API_ENABLED, ApiError } from "@/lib/api";
+import { api, API_ENABLED, ApiError } from "@/lib/api";
+import { Modal } from "@/components/ui/Modal";
 import type { User } from "@/lib/types";
 import { Field } from "@/components/ui/Field";
 import { MovementSelect } from "@/components/user/MovementSelect";
@@ -74,7 +75,7 @@ function PersonalCard({ user }: { user: User }) {
           onChange={(e) => setName(e.target.value)}
           error={name.trim().length < 3 ? "Informe seu nome completo." : undefined}
         />
-        {/* Com a API, trocar o e-mail depende da confirmação por e-mail, que ainda não existe. */}
+        {/* Com a API, o e-mail só muda depois de confirmado pelo link enviado ao endereço novo. */}
         <Field
           label="E-mail"
           name="email"
@@ -83,9 +84,10 @@ function PersonalCard({ user }: { user: User }) {
           readOnly={API_ENABLED}
           onChange={(e) => setEmail(e.target.value)}
           error={!emailOk ? "Informe um e-mail válido." : undefined}
-          hint={API_ENABLED ? "É o seu login. Para trocar, peça à coordenação." : "Também é o seu login."}
+          hint={API_ENABLED ? "É o seu login." : "Também é o seu login."}
           className={API_ENABLED ? "[&_input]:bg-surface-2 [&_input]:text-ink-muted" : undefined}
         />
+        {API_ENABLED && <ChangeEmail current={user.email} />}
         <div className="flex justify-end">
           <Button type="submit" disabled={busy || !dirty || name.trim().length < 3 || !emailOk}>
             {busy && <Loader2 size={16} className="animate-spin" />} Salvar alterações
@@ -93,6 +95,94 @@ function PersonalCard({ user }: { user: User }) {
         </div>
       </form>
     </Card>
+  );
+}
+
+/** Troca do e-mail (com a API): pede a senha e manda o link de confirmação para o endereço novo. */
+function ChangeEmail({ current }: { current: string }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const valid = /^\S+@\S+\.\S+$/.test(email) && password.length > 0;
+
+  const close = () => {
+    setOpen(false);
+    setEmail("");
+    setPassword("");
+    setErrors({});
+  };
+
+  return (
+    <div className="-mt-1">
+      {sentTo ? (
+        <p role="status" className="flex gap-2 rounded-[10px] border border-primary/30 bg-primary-soft p-3 text-sm">
+          <MailCheck size={18} className="mt-0.5 shrink-0 text-primary" />
+          <span>
+            Enviamos um link para <strong>{sentTo}</strong>. Abra o e-mail e confirme para concluir a troca. Até lá, você continua entrando com{" "}
+            <strong>{current}</strong>.
+          </span>
+        </p>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+          <Mail size={16} /> Trocar e-mail
+        </button>
+      )}
+      {open && (
+        <Modal
+          title="Trocar e-mail"
+          onClose={close}
+          footer={
+            <>
+              <Button variant="ghost" onClick={close}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={!valid || busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setErrors({});
+                  try {
+                    await api.requestEmailChange(email.trim(), password);
+                    setSentTo(email.trim().toLowerCase());
+                    close();
+                  } catch (e) {
+                    const fields = e instanceof ApiError ? e.details?.fields : undefined;
+                    setErrors(fields ? { email: fields.email, password: fields.password } : { form: e instanceof ApiError ? e.message : "Não foi possível enviar agora." });
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {busy && <Loader2 size={16} className="animate-spin" />} Enviar link
+              </Button>
+            </>
+          }
+        >
+          <p className="mb-4 text-sm text-ink-muted">Vamos mandar um link para o e-mail novo. A troca só vale depois que você confirmar por ele.</p>
+          <div className="space-y-4">
+            <Field label="Novo e-mail" name="new-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
+            <Field
+              label="Sua senha"
+              name="current-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
+              hint="Para confirmar que é você."
+            />
+            {errors.form && (
+              <p role="alert" className="text-sm text-danger">
+                {errors.form}
+              </p>
+            )}
+          </div>
+        </Modal>
+      )}
+    </div>
   );
 }
 

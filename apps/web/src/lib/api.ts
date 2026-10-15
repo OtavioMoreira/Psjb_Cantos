@@ -56,6 +56,14 @@ export interface ApiMass {
 
 export type ApiMassBody = Pick<ApiMass, "name" | "date" | "time" | "season" | "year" | "slots">;
 
+/** Senha certa com o 2FA ligado: falta o código enviado por e-mail. */
+export interface LoginChallenge {
+  twoFactor: true;
+  challengeId: string;
+  emailHint: string;
+  expiresIn: number;
+}
+
 interface AuthResult {
   accessToken: string;
   expiresIn: number;
@@ -67,7 +75,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
-    readonly details?: { reason?: string | null; fields?: Record<string, string> },
+    readonly details?: { reason?: string | null; fields?: Record<string, string>; attemptsLeft?: number; retryAfter?: number },
   ) {
     super(message);
   }
@@ -131,9 +139,17 @@ async function authed<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  async login(email: string, password: string, remember: boolean) {
-    return keep(await call<AuthResult>("/auth/login", { method: "POST", body: JSON.stringify({ email, password, remember }) })).user;
+  /** Devolve o usuário (sessão aberta) ou o desafio do 2FA, quando o código ainda precisa ser digitado. */
+  async login(email: string, password: string, remember: boolean): Promise<{ user: ApiUser } | { challenge: LoginChallenge }> {
+    const r = await call<AuthResult | LoginChallenge>("/auth/login", { method: "POST", body: JSON.stringify({ email, password, remember }) });
+    if ("twoFactor" in r) return { challenge: r };
+    return { user: keep(r).user };
   },
+  /** Segunda etapa: o código de 6 dígitos. `trustDevice` dispensa o código neste aparelho por 30 dias. */
+  async verifyLoginCode(challengeId: string, code: string, trustDevice: boolean) {
+    return keep(await call<AuthResult>("/auth/login/verify", { method: "POST", body: JSON.stringify({ challengeId, code, trustDevice }) })).user;
+  },
+  resendLoginCode: (challengeId: string) => call<LoginChallenge>("/auth/login/resend", { method: "POST", body: JSON.stringify({ challengeId }) }),
   async logout() {
     accessToken = null;
     await call("/auth/logout", { method: "POST" }).catch(() => undefined);
@@ -141,6 +157,14 @@ export const api = {
   async signup(data: { name: string; email: string; password: string; movementId: number | null; phone: string }) {
     return (await call<{ user: ApiUser }>("/users", { method: "POST", body: JSON.stringify(data) })).user;
   },
+  /** Sempre responde igual, exista ou não a conta. */
+  forgotPassword: (email: string) => call<{ ok: true }>("/auth/forgot", { method: "POST", body: JSON.stringify({ email }) }),
+  /** Link de redefinição ou de convite. INVALID_TOKEN se o link venceu ou já foi usado. */
+  resetPassword: (token: string, password: string) => call<{ email: string }>("/auth/reset", { method: "POST", body: JSON.stringify({ token, password }) }),
+  /** Pede a troca do próprio e-mail: o link vai para o endereço novo. */
+  requestEmailChange: (email: string, password: string) => authed<{ ok: true }>("/me/email", { method: "POST", body: JSON.stringify({ email, password }) }),
+  /** Confirma pelo link do e-mail (não precisa estar logado). */
+  confirmEmailChange: (token: string) => call<{ email: string }>("/auth/confirm-email", { method: "POST", body: JSON.stringify({ token }) }),
   async movements() {
     return (await call<{ movements: { id: number; name: string }[] }>("/movements")).movements;
   },
@@ -171,6 +195,10 @@ export const api = {
     block: async (id: string, reason: string | null) =>
       (await authed<{ user: ApiUser }>(`/admin/users/${id}/block`, { method: "POST", body: JSON.stringify({ reason }) })).user,
     unblock: async (id: string) => (await authed<{ user: ApiUser }>(`/admin/users/${id}/unblock`, { method: "POST" })).user,
+    invite: async (body: { name: string; email: string; roles: ApiRole[] }) =>
+      (await authed<{ user: ApiUser }>("/admin/users/invite", { method: "POST", body: JSON.stringify(body) })).user,
+    resendInvite: (id: string) => authed<{ ok: true }>(`/admin/users/${id}/invite`, { method: "POST" }),
+    sendResetLink: (id: string) => authed<{ ok: true }>(`/admin/users/${id}/reset-link`, { method: "POST" }),
     resetPassword: (id: string) => authed<{ user: ApiUser; temporaryPassword: string }>(`/admin/users/${id}/reset-password`, { method: "POST" }),
     deleteUser: (id: string) => authed<void>(`/admin/users/${id}`, { method: "DELETE" }),
     songs: (q: { q?: string; flags?: number[]; page?: number; pageSize?: number } = {}) => {

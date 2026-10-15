@@ -10,8 +10,13 @@ const PUBLIC = new Set([
   "GET /api/health",
   "GET /api/test",
   "POST /api/auth/login",
+  "POST /api/auth/login/verify",
+  "POST /api/auth/login/resend",
   "POST /api/auth/refresh",
   "POST /api/auth/logout",
+  "POST /api/auth/forgot",
+  "POST /api/auth/reset",
+  "POST /api/auth/confirm-email",
   "POST /api/users",
   "GET /api/movements",
   "GET /api/songs",
@@ -209,10 +214,12 @@ describe("Erros e cabeçalhos", () => {
   });
 });
 
+const PROD_ENV = { NODE_ENV: "production", JWT_SECRET: "segredo-de-producao-com-mais-de-32-caracteres", RESEND_API_KEY: "re_teste" };
+
 describe("Em produção", () => {
   let prod: FastifyInstance;
   beforeEach(async () => {
-    const t = makeTestContainer({ NODE_ENV: "production", JWT_SECRET: "segredo-de-producao-com-mais-de-32-caracteres" });
+    const t = makeTestContainer({ ...PROD_ENV, LOGIN_2FA: "false" });
     adapters = t.adapters;
     prod = await buildApp({ container: t.container, logger: false });
   });
@@ -235,5 +242,14 @@ describe("Em produção", () => {
 
   it("a API não sobe em produção com o segredo de desenvolvimento", () => {
     expect(() => makeTestContainer({ NODE_ENV: "production" })).toThrow(/JWT_SECRET/);
+  });
+
+  it("em produção o login em duas etapas vem ligado (só desliga com LOGIN_2FA=false)", () => {
+    expect(makeTestContainer(PROD_ENV).container.env.loginTwoFactor).toBe(true);
+    expect(makeTestContainer().container.env.loginTwoFactor).toBe(false);
+  });
+
+  it("a API não sobe em produção sem o serviço de e-mail", () => {
+    expect(() => makeTestContainer({ ...PROD_ENV, RESEND_API_KEY: "" })).toThrow(/RESEND_API_KEY/);
   });
 });

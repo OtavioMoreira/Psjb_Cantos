@@ -360,8 +360,26 @@ Comportamento:
 - A conta criada fica **pendente** até abrir o link; ao abrir `/confirmar-email?token=`, passa a **ativa** sozinha (spinner "Confirmando seu e-mail…" e depois o sucesso). Token inválido mostra "Link inválido ou expirado".
 - O reenvio tem uma contagem regressiva de 60 s. "Voltar para o login" volta sempre para a aba **Entrar**.
 - A recuperação responde sempre a mesma coisa, sem revelar se o e-mail existe. `/redefinir-senha?token=` tem nova senha + confirmação, com medidor de força.
-- Enquanto não há serviço de e-mail, uma caixa amarela **"Demonstração"** simula o link que chegaria na caixa de entrada.
-- 🔜 Fase 3: tela "Digite o código de 6 dígitos enviado para m***@…" (6 campos, colar funciona, reenviar após 60 s) depois do login, para o **2FA por e-mail**.
+- Na demonstração (sem API), uma caixa amarela **"Demonstração"** simula o link que chegaria na caixa de entrada. Com a API, o e-mail sai de verdade e a caixa não aparece.
+- `/redefinir-senha?token=…&convite=1` (link do convite) troca os textos: "Bem-vindo! Crie sua senha", botão "Criar senha" e, no fim, "Conta pronta!". Depois de salvar, [Entrar] leva para `/entrar?email=…`, com o e-mail preenchido.
+- `/confirmar-email?token=` com a API confirma a **troca de e-mail** feita no perfil: "E-mail alterado! A partir de agora, você entra com {novo}" + [Ir para o painel].
+- **2FA (com a API, `LOGIN_2FA`):** depois da senha, o mesmo cartão mostra a etapa do código:
+```
+┌─────────────────────────────────────┐
+│ ✉  Confirme que é você              │
+│ Digite o código de 6 números que    │
+│ enviamos para s***@psjb.org.br.     │
+│ Ele vale por 10 minutos.            │
+│ [ 7 ][ 0 ][ 3 ][ 5 ][ 5 ][ _ ]      │  grid de 6 colunas, h 56 px, mono
+│ ☑ Confiar neste aparelho por 30 dias│
+│   Não pede o código de novo aqui…   │
+│ [          Confirmar          ]     │
+│ ← Voltar        Reenviar código em 42 s │
+│ Não chegou? Confira o spam…         │
+└─────────────────────────────────────┘
+```
+  - Os campos ocupam a largura do cartão (grid de 6), então cabem em 360 px. Colar o código, ou aceitar a sugestão do teclado do celular (`autocomplete="one-time-code"`), preenche todos; ao completar, envia sozinho.
+  - Código errado limpa os campos e diz quantas tentativas sobram; vencido ou com tentativas esgotadas mostra [Entrar de novo]. "Confiar neste aparelho" vem marcado.
 
 ### 4.5 Painel: visão geral (`/painel`)
 ```
@@ -468,7 +486,7 @@ Só aparecem pessoas com conta ativa.
 - **Flags:** um card por grupo, com "＋ Adicionar". Cada linha tem a bolinha de cor, o nome, o identificador, o número de cantos e os botões de editar e excluir (44 px). O modal tem grupo, nome, identificador (gerado do nome), cor (seletor + "Sem cor") e ordem.
 - **Movimentos:** campo + [Adicionar] no topo; lista com o número de pessoas, renomear na própria linha (✓/✕) e excluir desabilitado quando há pessoas.
 - **Publicar no site:** modal que explica que as páginas são geradas de antemão e que a atualização leva alguns minutos. Toast: "Publicação pedida. O site atualiza em alguns minutos."
-- **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Nome, paróquia, movimento, instrumento e senha salvam no servidor (botão com spinner enquanto salva). O e-mail fica só leitura (fundo `surface-2`), com a dica "É o seu login. Para trocar, peça à coordenação."
+- **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Nome, paróquia, movimento, instrumento e senha salvam no servidor (botão com spinner enquanto salva). O e-mail fica só leitura (fundo `surface-2`), com a dica "É o seu login." e o link [✉ Trocar e-mail], que abre um modal com "Novo e-mail" e "Sua senha" e o botão [Enviar link]. Enviado, o link dá lugar a um aviso verde: "Enviamos um link para {novo}… Até lá, você continua entrando com {atual}."
 - **Senha temporária:** quem entra com a senha gerada pelo admin é levado a `/painel/perfil#seguranca` (qualquer outra página do painel redireciona para lá). No topo, aviso em `gold-soft` com 🔑 "Você entrou com uma senha temporária…", e o primeiro campo se chama "Senha temporária".
 
 ### 4.8 Montar Missa: editor (`/painel/missas/nova`)
@@ -628,14 +646,14 @@ Usuários                                        [👤+ Convidar usuário]
 - **Menu ⋯ do usuário:**
   - Editar dados e papel
   - Redefinir senha
-  - (se pendente) Reenviar confirmação de e-mail / Ativar sem confirmação; com a API, aparece só Ativar acesso
+  - (se pendente) Reenviar confirmação de e-mail / Ativar sem confirmação; com a API: Enviar convite por e-mail / Ativar acesso
   - Bloquear acesso (vermelho) ou Liberar acesso
   - Excluir usuário (vermelho)
 - **Modais** (no celular, abrem como bottom sheet):
   - **Bloquear:** texto explicativo + campo "Motivo (aparece para a pessoa ao tentar entrar)" + [⛔ Bloquear] em vermelho. O toast oferece "Desfazer".
-  - **Redefinir senha:** duas opções grandes, "Enviar link por e-mail (recomendado)" e "Gerar senha temporária". A senha gerada aparece **uma única vez**, com [Copiar]. Com a API, o link por e-mail aparece desabilitado ("em breve") até existir o serviço de e-mail.
+  - **Redefinir senha:** duas opções grandes, "Enviar link por e-mail (recomendado)" e "Gerar senha temporária". A senha gerada aparece **uma única vez**, com [Copiar]. Com a API, o link por e-mail só fica habilitado para conta ativa (nas outras, a descrição orienta a usar o convite). Erro no envio aparece em toast.
   - **Editar:** nome, e-mail (com a API, a dica avisa que é o login da pessoa), movimento (seletor) e papel, com a descrição de cada papel. Erro da API aparece dentro do modal.
-  - **Convidar:** nome, e-mail e papel; o convidado nasce "Aguardando e-mail".
+  - **Convidar:** nome, e-mail e papel; o convidado nasce "Aguardando e-mail" (com a API, "Aguardando ativação") e recebe o link de 7 dias para criar a senha. O botão fica com spinner enquanto envia.
   - **Excluir:** confirmação que sugere bloquear, por ser reversível; o toast oferece "Desfazer". Com a API, avisa que as missas criadas pela pessoa são apagadas junto, e a exclusão só vai para o servidor depois dos 6,5 s do "Desfazer".
 - **Tabela (desktop):** o contêiner não usa `overflow-hidden`, para o menu ⋯ das últimas linhas não ser cortado; os cantos arredondados ficam no cabeçalho.
 - **Proteções visuais:** na própria linha, com a etiqueta "você", o admin não pode Bloquear nem Excluir (itens desabilitados) e não pode trocar o próprio papel.

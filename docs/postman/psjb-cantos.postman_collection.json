@@ -103,7 +103,7 @@
                 "login"
               ]
             },
-            "description": "Devolve `accessToken` (15 min) e grava o cookie `psjb_refresh`. Erros: 401 INVALID_CREDENTIALS, 403 ACCOUNT_PENDING, 403 ACCOUNT_BLOCKED.",
+            "description": "Devolve `accessToken` (15 min) e grava o cookie `psjb_refresh`. Erros: 401 INVALID_CREDENTIALS, 403 ACCOUNT_PENDING, 403 ACCOUNT_BLOCKED.\n\n**Com o 2FA ligado** (`LOGIN_2FA=true`, padrão em produção) e sem o cookie `psjb_device`, a resposta é `{ twoFactor: true, challengeId, emailHint, expiresIn }` e o código de 6 dígitos vai por e-mail: continue em **Login: confirmar código**. 502 EMAIL_FAILED se o código não saiu.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"remember\": true\n}",
@@ -125,7 +125,98 @@
                 "exec": [
                   "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
                   "const j = pm.response.json();",
-                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);"
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "// Com o 2FA ligado (produção), vem o desafio: copie o código do e-mail em loginCode e rode **Login: confirmar código**.",
+                  "if (j.challengeId) pm.collectionVariables.set('challengeId', j.challengeId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login: confirmar código (2FA)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login",
+                "verify"
+              ]
+            },
+            "description": "Segunda etapa do login. `code`: os 6 dígitos do e-mail (10 min; 5 tentativas). `trustDevice: true` grava o cookie `psjb_device` (30 dias) e os próximos logins deste aparelho não pedem código. Resposta igual à do login. 400 INVALID_CODE (com `attemptsLeft`) ou INVALID_TOKEN (vencido, usado ou tentativas esgotadas). Localmente o 2FA vem desligado, então esta requisição de exemplo espera 400.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"code\": \"{{loginCode}}\",\n  \"trustDevice\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.expect(pm.response.code).to.equal(400));",
+                  "const j = pm.response.json();",
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "// Com o 2FA ligado (produção), vem o desafio: copie o código do e-mail em loginCode e rode **Login: confirmar código**.",
+                  "if (j.challengeId) pm.collectionVariables.set('challengeId', j.challengeId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login: reenviar código (2FA)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login/resend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login",
+                "resend"
+              ]
+            },
+            "description": "Manda um código novo (o anterior deixa de valer) e devolve um `challengeId` novo. Só 60 s depois do último (429 TOO_SOON, com `retryAfter`). Localmente o 2FA vem desligado, então esta requisição de exemplo espera 400.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.expect(pm.response.code).to.equal(400));",
+                  "const j = pm.response.json(); if (j.challengeId) pm.collectionVariables.set('challengeId', j.challengeId);"
                 ]
               }
             }
@@ -159,7 +250,9 @@
                 "exec": [
                   "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
                   "const j = pm.response.json();",
-                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);"
+                  "if (j.accessToken) pm.collectionVariables.set('accessToken', j.accessToken);",
+                  "// Com o 2FA ligado (produção), vem o desafio: copie o código do e-mail em loginCode e rode **Login: confirmar código**.",
+                  "if (j.challengeId) pm.collectionVariables.set('challengeId', j.challengeId);"
                 ]
               }
             }
@@ -192,6 +285,129 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Esqueci a senha",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot"
+              ]
+            },
+            "description": "Sempre 202 `{ ok: true }`, exista ou não a conta (não revela quais e-mails estão cadastrados). Só conta **ativa** recebe o link, que vale 1 h; pedir de novo antes de 60 s não envia outro. Sem `RESEND_API_KEY`, o e-mail aparece no terminal da API.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Redefinir a senha (token do e-mail)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset"
+              ]
+            },
+            "description": "Cole em `resetToken` o token do link recebido (`/redefinir-senha?token=…`). Também serve para o link de **convite** (ativa a conta pendente). Uso único; derruba as sessões abertas. Resposta: `{ email }`. Sem um token válido, 400 INVALID_TOKEN (é o que esta requisição de exemplo espera).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"novaSenha123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.expect(pm.response.code).to.equal(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar troca de e-mail",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/confirm-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "confirm-email"
+              ]
+            },
+            "description": "Token do link `/confirmar-email?token=…` enviado ao novo endereço. Pública: o link pode ser aberto em outro aparelho. Resposta: `{ email }` (o novo). 409 EMAIL_TAKEN se outra conta pegou o endereço nesse meio-tempo. Sem um token válido, 400 INVALID_TOKEN (é o que esta requisição de exemplo espera).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.expect(pm.response.code).to.equal(400));"
                 ]
               }
             }
@@ -466,6 +682,44 @@
           ]
         },
         {
+          "name": "Trocar meu e-mail",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "email"
+              ]
+            },
+            "description": "Exige a senha. Manda um link (24 h) para o **novo** endereço; o e-mail só muda depois de confirmar (**Autenticação › Confirmar troca de e-mail**), e o antigo recebe um aviso. 400 com `fields.password` ou `fields.email`; 429 TOO_SOON se pediu há menos de 60 s; 502 EMAIL_FAILED se o e-mail não saiu. 202.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"novo+{{$timestamp}}@exemplo.com\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 202 ou 429', () => pm.expect(pm.response.code).to.be.oneOf([202, 429]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Trocar foto",
           "request": {
             "method": "PUT",
@@ -602,6 +856,86 @@
           ]
         },
         {
+          "name": "Convidar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "invite"
+              ]
+            },
+            "description": "Cria a conta **pendente** e manda o convite por e-mail: link de 7 dias para criar a senha (`/redefinir-senha?token=…&convite=1`). Ao criar a senha (**Autenticação › Redefinir a senha**), a conta fica ativa. `roles` padrão: `[\"musico\"]`. 409 EMAIL_TAKEN; 502 EMAIL_FAILED se o e-mail não saiu (a conta fica criada; use **Reenviar convite**).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Convidado de Teste\",\n  \"email\": \"{{inviteEmail}}\",\n  \"roles\": [\n    \"musico\"\n  ],\n  \"movementId\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('inviteEmail', `convidado+${Date.now()}@exemplo.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
+                  "pm.collectionVariables.set('invitedUserId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reenviar convite",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{invitedUserId}}/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{invitedUserId}}",
+                "invite"
+              ]
+            },
+            "description": "Manda um convite novo; o link anterior deixa de valer. Só para conta pendente (400 nas outras). 202."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Ativar usuário",
           "request": {
             "method": "PATCH",
@@ -669,7 +1003,40 @@
                 "exec": [
                   "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));",
                   "const j = pm.response.json();",
-                  "if (j.accessToken) pm.collectionVariables.set('memberToken', j.accessToken);"
+                  "if (j.accessToken) pm.collectionVariables.set('memberToken', j.accessToken);",
+                  "// Com o 2FA ligado (produção), vem o desafio: copie o código do e-mail em loginCode e rode **Login: confirmar código**.",
+                  "if (j.challengeId) pm.collectionVariables.set('challengeId', j.challengeId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar link de redefinição",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}/reset-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{userId}}",
+                "reset-link"
+              ]
+            },
+            "description": "Manda à pessoa o link para criar uma senha nova (1 h). Só conta ativa (400 nas outras). 202; 502 EMAIL_FAILED se o e-mail não saiu (alternativa: senha temporária)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
                 ]
               }
             }
@@ -2108,6 +2475,36 @@
               }
             }
           ]
+        },
+        {
+          "name": "Excluir o convidado",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{invitedUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{invitedUserId}}"
+              ]
+            },
+            "description": "Limpa a conta criada em **Admin › Usuários › Convidar**, para a coleção não deixar contas de teste no banco."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
@@ -2164,6 +2561,28 @@
     {
       "key": "newUserPassword",
       "value": "senha1234"
+    },
+    {
+      "key": "challengeId",
+      "value": ""
+    },
+    {
+      "key": "loginCode",
+      "value": "",
+      "description": "Código de 6 dígitos recebido por e-mail (2FA)"
+    },
+    {
+      "key": "inviteEmail",
+      "value": ""
+    },
+    {
+      "key": "invitedUserId",
+      "value": ""
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "description": "Token do link recebido por e-mail (redefinição ou convite)"
     }
   ]
 }

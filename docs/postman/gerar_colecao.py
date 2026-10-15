@@ -26,7 +26,7 @@ SONG_BODY_PUT = """{
 }"""
 RAW_BODIES = {"SONG_BODY": SONG_BODY, "SONG_BODY_PUT": SONG_BODY_PUT}
 
-def req(name, method, path, body=None, desc="", auth=None, tests=None, prereq=None, query=None, formdata=None):
+def req(name, method, path, body=None, desc="", auth=None, tests=None, prereq=None, query=None, formdata=None, status=None):
     segs = [p for p in path.strip("/").split("/")]
     url = {"raw": "{{baseUrl}}/" + "/".join(segs) + ("?" + "&".join(f"{k}={v}" for k, v, *_ in query) if query else ""),
            "host": ["{{baseUrl}}"], "path": segs}
@@ -42,7 +42,14 @@ def req(name, method, path, body=None, desc="", auth=None, tests=None, prereq=No
     elif auth: r["auth"] = {"type": "bearer", "bearer": [{"key": "token", "value": auth, "type": "string"}]}
     item = {"name": name, "request": r, "event": []}
     if prereq: item["event"] += pre(prereq)
-    item["event"] += ex(["pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"] + (tests or []))
+    # status: resposta esperada quando a requisição de exemplo não tem como dar certo sozinha (ex.: token que só chega por e-mail).
+    if isinstance(status, tuple):
+        check = f"pm.test('status {' ou '.join(map(str, status))}', () => pm.expect(pm.response.code).to.be.oneOf({list(status)}));"
+    elif status:
+        check = f"pm.test('status {status}', () => pm.expect(pm.response.code).to.equal({status}));"
+    else:
+        check = "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+    item["event"] += ex([check] + (tests or []))
     return item
 
 def folder(name, desc, items): return {"name": name, "description": desc, "item": items}
@@ -50,6 +57,8 @@ def folder(name, desc, items): return {"name": name, "description": desc, "item"
 SAVE_TOKEN = lambda var: [
     "const j = pm.response.json();",
     f"if (j.accessToken) pm.collectionVariables.set('{var}', j.accessToken);",
+    "// Com o 2FA ligado (produção), vem o desafio: copie o código do e-mail em loginCode e rode **Login: confirmar código**.",
+    "if (j.challengeId) pm.collectionVariables.set('challengeId', j.challengeId);",
 ]
 
 MASS_BODY = {
@@ -70,12 +79,24 @@ items = [  # na ordem em que faz sentido rodar
     ]),
     folder("Autenticação", "Rode **Login (superadmin)** primeiro: ele guarda o `accessToken` na coleção, e as outras requisições usam esse token. O refresh token fica no cookie `psjb_refresh` (o Postman guarda sozinho).", [
         req("Login (superadmin)", "POST", "/auth/login", {"email": "{{adminEmail}}", "password": "{{adminPassword}}", "remember": True}, auth="none",
-            desc="Devolve `accessToken` (15 min) e grava o cookie `psjb_refresh`. Erros: 401 INVALID_CREDENTIALS, 403 ACCOUNT_PENDING, 403 ACCOUNT_BLOCKED.",
+            desc="Devolve `accessToken` (15 min) e grava o cookie `psjb_refresh`. Erros: 401 INVALID_CREDENTIALS, 403 ACCOUNT_PENDING, 403 ACCOUNT_BLOCKED.\n\n**Com o 2FA ligado** (`LOGIN_2FA=true`, padrão em produção) e sem o cookie `psjb_device`, a resposta é `{ twoFactor: true, challengeId, emailHint, expiresIn }` e o código de 6 dígitos vai por e-mail: continue em **Login: confirmar código**. 502 EMAIL_FAILED se o código não saiu.",
             tests=SAVE_TOKEN("accessToken")),
+        req("Login: confirmar código (2FA)", "POST", "/auth/login/verify", {"challengeId": "{{challengeId}}", "code": "{{loginCode}}", "trustDevice": True}, auth="none", status=400,
+            desc="Segunda etapa do login. `code`: os 6 dígitos do e-mail (10 min; 5 tentativas). `trustDevice: true` grava o cookie `psjb_device` (30 dias) e os próximos logins deste aparelho não pedem código. Resposta igual à do login. 400 INVALID_CODE (com `attemptsLeft`) ou INVALID_TOKEN (vencido, usado ou tentativas esgotadas). Localmente o 2FA vem desligado, então esta requisição de exemplo espera 400.",
+            tests=SAVE_TOKEN("accessToken")),
+        req("Login: reenviar código (2FA)", "POST", "/auth/login/resend", {"challengeId": "{{challengeId}}"}, auth="none", status=400,
+            desc="Manda um código novo (o anterior deixa de valer) e devolve um `challengeId` novo. Só 60 s depois do último (429 TOO_SOON, com `retryAfter`). Localmente o 2FA vem desligado, então esta requisição de exemplo espera 400.",
+            tests=["const j = pm.response.json(); if (j.challengeId) pm.collectionVariables.set('challengeId', j.challengeId);"]),
         req("Refresh", "POST", "/auth/refresh", auth="none",
             desc="Troca o cookie por um access token novo e **rotaciona** o cookie. Reusar um cookie antigo derruba todas as sessões daquele login.",
             tests=SAVE_TOKEN("accessToken")),
         req("Logout", "POST", "/auth/logout", auth="none", desc="Revoga a sessão do cookie e apaga o cookie. 204."),
+        req("Esqueci a senha", "POST", "/auth/forgot", {"email": "{{adminEmail}}"}, auth="none",
+            desc="Sempre 202 `{ ok: true }`, exista ou não a conta (não revela quais e-mails estão cadastrados). Só conta **ativa** recebe o link, que vale 1 h; pedir de novo antes de 60 s não envia outro. Sem `RESEND_API_KEY`, o e-mail aparece no terminal da API."),
+        req("Redefinir a senha (token do e-mail)", "POST", "/auth/reset", {"token": "{{resetToken}}", "password": "novaSenha123"}, auth="none", status=400,
+            desc="Cole em `resetToken` o token do link recebido (`/redefinir-senha?token=…`). Também serve para o link de **convite** (ativa a conta pendente). Uso único; derruba as sessões abertas. Resposta: `{ email }`. Sem um token válido, 400 INVALID_TOKEN (é o que esta requisição de exemplo espera)."),
+        req("Confirmar troca de e-mail", "POST", "/auth/confirm-email", {"token": "{{resetToken}}"}, auth="none", status=400,
+            desc="Token do link `/confirmar-email?token=…` enviado ao novo endereço. Pública: o link pode ser aberto em outro aparelho. Resposta: `{ email }` (o novo). 409 EMAIL_TAKEN se outra conta pegou o endereço nesse meio-tempo. Sem um token válido, 400 INVALID_TOKEN (é o que esta requisição de exemplo espera)."),
     ]),
     folder("Movimentos", "Movimentos e pastorais. Cada pessoa participa de no máximo um.", [
         req("Listar (público)", "GET", "/movements", auth="none", desc="Usado no cadastro. Guarda o primeiro id em `movementId`.",
@@ -100,6 +121,9 @@ items = [  # na ordem em que faz sentido rodar
         req("Eu (/me)", "GET", "/me", desc="Dados da pessoa logada."),
         req("Editar meu perfil", "PATCH", "/me", {"parish": "Paróquia Catedral São João Batista", "instrument": "Violão"},
             desc="Só os campos enviados mudam: `name`, `phone`, `movementId`, `parish`, `instrument` (vazio ou null limpa). E-mail, papel e status não são aceitos aqui (400)."),
+        req("Trocar meu e-mail", "POST", "/me/email", {"email": "novo+{{$timestamp}}@exemplo.com", "password": "{{adminPassword}}"},
+            status=(202, 429),
+            desc="Exige a senha. Manda um link (24 h) para o **novo** endereço; o e-mail só muda depois de confirmar (**Autenticação › Confirmar troca de e-mail**), e o antigo recebe um aviso. 400 com `fields.password` ou `fields.email`; 429 TOO_SOON se pediu há menos de 60 s; 502 EMAIL_FAILED se o e-mail não saiu. 202."),
         req("Trocar foto", "PUT", "/me/photo",
             formdata=[{"key": "photo", "type": "file", "src": "foto-exemplo.png", "description": "JPG, PNG ou WebP de até 2 MB"}],
             desc="multipart/form-data com o campo `photo`. Já aponta para `foto-exemplo.png` (nesta pasta); no Postman, escolha o arquivo de novo na aba Body se ele não achar. Em produção vai para o Vercel Blob; local, para `apps/api/uploads/`."),
@@ -111,10 +135,18 @@ items = [  # na ordem em que faz sentido rodar
         req("Listar usuários", "GET", "/admin/users",
             query=[("status", "pending", "pending | active | blocked", True), ("role", "musico", "admin | musico", True), ("q", "", "nome, e-mail ou movimento", True)],
             desc="Pendentes primeiro, depois bloqueados e ativos."),
+        req("Convidar", "POST", "/admin/users/invite", {"name": "Convidado de Teste", "email": "{{inviteEmail}}", "roles": ["musico"], "movementId": None},
+            desc="Cria a conta **pendente** e manda o convite por e-mail: link de 7 dias para criar a senha (`/redefinir-senha?token=…&convite=1`). Ao criar a senha (**Autenticação › Redefinir a senha**), a conta fica ativa. `roles` padrão: `[\"musico\"]`. 409 EMAIL_TAKEN; 502 EMAIL_FAILED se o e-mail não saiu (a conta fica criada; use **Reenviar convite**).",
+            prereq=["pm.collectionVariables.set('inviteEmail', `convidado+${Date.now()}@exemplo.com`);"],
+            tests=["pm.collectionVariables.set('invitedUserId', pm.response.json().user.id);"]),
+        req("Reenviar convite", "POST", "/admin/users/{{invitedUserId}}/invite",
+            desc="Manda um convite novo; o link anterior deixa de valer. Só para conta pendente (400 nas outras). 202."),
         req("Ativar usuário", "PATCH", "/admin/users/{{userId}}/activate", desc="Libera a conta pendente (ou desbloqueia). `userId` vem do **Cadastro**."),
         req("Login como a pessoa ativada", "POST", "/auth/login", {"email": "{{newUserEmail}}", "password": "{{newUserPassword}}", "remember": False}, auth="none",
             desc="Entra com a conta criada em **Usuários › Cadastro**, já ativada no passo anterior. Guarda o token em `memberToken`, usado nas requisições de convidado.",
             tests=SAVE_TOKEN("memberToken")),
+        req("Enviar link de redefinição", "POST", "/admin/users/{{userId}}/reset-link",
+            desc="Manda à pessoa o link para criar uma senha nova (1 h). Só conta ativa (400 nas outras). 202; 502 EMAIL_FAILED se o e-mail não saiu (alternativa: senha temporária)."),
         req("Editar usuário", "PATCH", "/admin/users/{{userId}}", {"name": "Músico de Teste (editado)", "movementId": "{{movementId}}", "roles": ["musico"]},
             desc="Só os campos enviados mudam: `name`, `email`, `phone`, `movementId`, `roles` (substitui a lista). O admin não tira o próprio papel de admin (403) e sempre sobra um admin ativo (409 LAST_ADMIN). 409 EMAIL_TAKEN se o e-mail é de outra conta."),
         req("Trocar a própria senha (pessoa ativada)", "POST", "/auth/password", {"currentPassword": "{{newUserPassword}}", "newPassword": "outraSenha123"}, auth="{{memberToken}}",
@@ -208,6 +240,8 @@ items = [  # na ordem em que faz sentido rodar
             tests=["pm.test('senha temporária', () => pm.expect(pm.response.json().temporaryPassword).to.match(/^[a-z]{4}-/));"]),
         req("Excluir usuário", "DELETE", "/admin/users/{{userId}}",
             desc="204. As missas da pessoa são apagadas junto, e os convidados perdem o acesso a elas. Para só impedir o acesso, prefira **Bloquear**."),
+        req("Excluir o convidado", "DELETE", "/admin/users/{{invitedUserId}}",
+            desc="Limpa a conta criada em **Admin › Usuários › Convidar**, para a coleção não deixar contas de teste no banco."),
     ]),
 ]
 
@@ -244,6 +278,11 @@ collection = {
         {"key": "songId", "value": ""},
         {"key": "newUserEmail", "value": ""},
         {"key": "newUserPassword", "value": "senha1234"},
+        {"key": "challengeId", "value": ""},
+        {"key": "loginCode", "value": "", "description": "Código de 6 dígitos recebido por e-mail (2FA)"},
+        {"key": "inviteEmail", "value": ""},
+        {"key": "invitedUserId", "value": ""},
+        {"key": "resetToken", "value": "", "description": "Token do link recebido por e-mail (redefinição ou convite)"},
     ],
 }
 
@@ -259,7 +298,10 @@ env = lambda name, base, email, pwd: {
 
 import os
 out = os.path.dirname(os.path.abspath(__file__)) + "/"
-json.dump(collection, open(out + "psjb-cantos.postman_collection.json", "w"), ensure_ascii=False, indent=2)
-json.dump(env("PSJB — Local", "http://localhost:3333/api", "superadmin@psjb.org.br", "123456"), open(out + "psjb-local.postman_environment.json", "w"), ensure_ascii=False, indent=2)
-json.dump(env("PSJB — Produção", "https://SEU-PROJETO-API.vercel.app/api", "superadmin@psjb.org.br", ""), open(out + "psjb-producao.postman_environment.json", "w"), ensure_ascii=False, indent=2)
+def write(name, data):
+    with open(out + name, "w") as f:
+        f.write(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+write("psjb-cantos.postman_collection.json", collection)
+write("psjb-local.postman_environment.json", env("PSJB — Local", "http://localhost:3333/api", "superadmin@psjb.org.br", "123456"))
+write("psjb-producao.postman_environment.json", env("PSJB — Produção", "https://SEU-PROJETO-API.vercel.app/api", "superadmin@psjb.org.br", ""))
 print(sum(len(f["item"]) for f in items), "requisições")

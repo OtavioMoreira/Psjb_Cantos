@@ -17,7 +17,11 @@ export type ErrorCode =
   | "UNAUTHORIZED"
   | "FORBIDDEN"
   | "NOT_FOUND"
-  | "INVALID_FILE";
+  | "INVALID_FILE"
+  | "INVALID_TOKEN"
+  | "INVALID_CODE"
+  | "TOO_SOON"
+  | "EMAIL_FAILED";
 
 const STATUS: Record<ErrorCode, number> = {
   VALIDATION_ERROR: 400,
@@ -37,6 +41,10 @@ const STATUS: Record<ErrorCode, number> = {
   FLAG_TAKEN: 409,
   NOT_CONFIGURED: 501,
   INVALID_FILE: 415,
+  INVALID_TOKEN: 400,
+  INVALID_CODE: 400,
+  TOO_SOON: 429,
+  EMAIL_FAILED: 502,
 };
 
 export class AppError extends Error {

@@ -10,15 +10,15 @@ Site de cantos litúrgicos da **Paróquia Catedral São João Batista**, que sub
 ## Fase atual
 **Transição da Fase 1 (visual) para a API.** O site publicado no GitHub Pages é a demonstração (sem banco); a API e o banco já existem e são usados quando o front tem `API_URL`.
 - **Dados da demonstração:** JSONs em `data/` (`songs.json`, `categories.json`, `users.json`).
-- **Já com API:** usuários, login, missas (com link de convite), cantos e flags (`apps/api` + Postgres).
+- **Já com API:** usuários, login (com 2FA por e-mail), missas (com link de convite), cantos, flags e e-mails (`apps/api` + Postgres).
   - O front só usa a API quando o build tem `API_URL`; sem ela (GitHub Pages), continua no modo demonstração.
   - Com a API, o `store.ts` espelha o usuário (`syncApiUser`) e usa o `localStorage` como cache das missas, enviando cada alteração numa fila por missa.
   - Compartilhar é `setMassShares`, separado de `saveMass`.
   - O repertório público lê os cantos do banco (via API) quando há `API_URL`: no build, as páginas ficam estáticas até o "Publicar no site"; no `next dev`, com cache de 1 minuto. Sem `API_URL`, usa o `data/songs.json`.
 - **Estado do cliente** (sessão, perfil, usuários, missas, preferências): fica em `localStorage`, via `apps/web/src/lib/store.ts`.
-- **E-mails:** são simulados por links na própria tela, como "Abrir link de confirmação".
-- **Hospedagem futura:** Vercel (front e API), Neon (Postgres) e Vercel Blob (arquivos).
-- **Fases seguintes:** deploy na Vercel, serviço de e-mail (recuperação de senha, convite, troca de e-mail), 2FA por e-mail e reCAPTCHA no servidor. O plano está em `planning.md` §5.2, §6.6 e §6.9.
+- **E-mails:** com a API, saem pelo Resend (porta `EmailSender`; sem `RESEND_API_KEY`, aparecem no terminal da API): recuperação de senha, convite, troca de e-mail, conta liberada e o código do 2FA (ligado por padrão só em produção, `LOGIN_2FA`). Na demonstração, continuam simulados por links na tela.
+- **Hospedagem futura:** Vercel (front e API), Neon (Postgres), Vercel Blob (arquivos) e Resend (e-mail, pelo Marketplace da Vercel).
+- **Fases seguintes:** deploy na Vercel (com SPF/DKIM/DMARC do `psjb.org.br` para o Resend) e reCAPTCHA no servidor. O plano está em `planning.md` §5.2, §6.6 e §6.9.
 
 ## Stack e estrutura (npm workspaces)
 ```

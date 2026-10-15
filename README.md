@@ -12,7 +12,7 @@ Novo site de cantos litúrgicos da **Paróquia Catedral São João Batista**, qu
 >   - missas salvas no servidor, com compartilhamento e link de convite;
 >   - cantos e flags com envio de PDF e áudio.
 >
-> Ainda faltam o 2FA por e-mail, o serviço de e-mail e as telas de admin de cantos. O plano está em [`planning.md`](planning.md).
+> Com a API, os e-mails saem pelo Resend (sem a chave, aparecem no terminal da API): recuperação de senha, convite, troca de e-mail, aviso de conta liberada e o código do login em duas etapas. O resto do plano está em [`planning.md`](planning.md).
 
 ## O que já existe
 | Área | Destaques |
@@ -107,7 +107,7 @@ npx newman run docs/postman/psjb-cantos.postman_collection.json -e docs/postman/
 
 **Deploy (Vercel + Neon + Blob):**
 1. **Banco:** crie o banco no Neon e copie a string *pooled* (host com `-pooler`, `?sslmode=require`). Rode `DATABASE_URL=... npm run db:migrate -w api` e, uma vez, `DATABASE_URL=... SEED_ADMIN_PASSWORD=... npm run db:seed -w api`.
-2. **API:** crie um projeto na Vercel com raiz `apps/api`. A Vercel detecta o Fastify por `src/server.ts`. Variáveis: `DATABASE_URL`, `JWT_SECRET` (`openssl rand -base64 48`), `NODE_ENV=production`, `WEB_ORIGIN` e `PUBLIC_URL`. Em Storage, ligue um **Blob store**, que cria o `BLOB_READ_WRITE_TOKEN`.
+2. **API:** crie um projeto na Vercel com raiz `apps/api`. A Vercel detecta o Fastify por `src/server.ts`. Variáveis: `DATABASE_URL`, `JWT_SECRET` (`openssl rand -base64 48`), `NODE_ENV=production`, `WEB_ORIGIN` e `PUBLIC_URL`. Em Storage, ligue um **Blob store**, que cria o `BLOB_READ_WRITE_TOKEN`. Para os e-mails (recuperação de senha, convite, troca de e-mail e código do login), instale o **Resend** pelo Marketplace (`vc i resend`, região `sa-east-1`), que cria a `RESEND_API_KEY`; defina `EMAIL_FROM` (ex.: `Cantos PSJB <nao-responda@psjb.org.br>`) e `APP_URL` (o endereço do site, usado nos links). O domínio precisa dos registros SPF, DKIM e DMARC que o Resend mostrar. Sem a chave, a API não sobe em produção. O login em duas etapas vem ligado em produção (`LOGIN_2FA=false` desliga).
 3. **Front:** crie outro projeto com raiz `apps/web` e a variável `API_URL=https://<api>.vercel.app`. O Next repassa `/api/*` para a API, então o cookie de sessão fica no mesmo domínio do site. No build, os cantos e as flags vêm da API.
 4. **Arquivos do site antigo:** antes de desligar a HostGator, rode `DATABASE_URL=<neon> BLOB_READ_WRITE_TOKEN=<token> npm run db:migrate-files -w api`. Ele baixa os PDFs e MP3 de `cantos.psjb.org.br`, converte os MP3 para 64 kbps mono (pelo Docker, se não houver ffmpeg) e os arquivos em Word ou imagem para PDF (LibreOffice), envia ao Blob e troca os links no banco. Pode rodar de novo: só faz o que faltou. Os originais ficam em `db/arquivos-legado/` como backup.
 5. **Publicar no site:** no projeto do front, crie um **Deploy Hook** (Settings › Git) e coloque a URL em `SITE_DEPLOY_HOOK_URL` no projeto da API. O botão "Publicar no site" do admin passa a gerar o site de novo.
