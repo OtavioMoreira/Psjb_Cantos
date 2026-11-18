@@ -1,9 +1,10 @@
 import { mkdirSync } from "node:fs";
-import { buildApp } from "./app.js";
+import { buildApp } from "./buildApp.js";
 import { loadEnv } from "./config/env.js";
 import { buildContainer, createAdapters, UPLOADS_DIR } from "./container.js";
 
-// Ponto de entrada local e na Vercel (que detecta src/server.ts e roda como uma Function).
+// Ponto de entrada local e na Vercel (que procura app.ts, index.ts e server.ts nessa ordem; por isso a montagem da
+// aplicação fica em buildApp.ts, e não em app.ts) e roda como uma Function.
 const env = loadEnv();
 const adapters = createAdapters(env);
 const useLocalUploads = !env.BLOB_READ_WRITE_TOKEN;

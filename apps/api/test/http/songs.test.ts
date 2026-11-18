@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../../src/app.js";
+import { buildApp } from "../../src/buildApp.js";
 import { makeTestContainer } from "../support/inMemory.js";
 
 let app: FastifyInstance;

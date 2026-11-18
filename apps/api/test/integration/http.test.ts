@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildApp } from "../../src/app.js";
+import { buildApp } from "../../src/buildApp.js";
 import { loadEnv } from "../../src/config/env.js";
 import { buildContainer, createAdapters } from "../../src/container.js";
 import { Argon2PasswordHasher } from "../../src/services/Argon2PasswordHasher.js";

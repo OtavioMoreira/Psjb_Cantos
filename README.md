@@ -168,4 +168,4 @@ No GitHub Pages a API não fica disponível.
 ## Onde trocar os dados de exemplo pela API
 - `apps/web/src/lib/data/index.ts` é o único ponto que lê `data/`. Na Fase 2 ele passa a usar `fetch` à API, mantendo as mesmas assinaturas.
 - `apps/web/src/lib/store.ts` guarda sessão, usuários, missas e preferências no `localStorage`. Na Fase 3 isso vira chamadas a `/api/auth`, `/api/me`, `/api/admin/users` e `/api/masses`.
-- `apps/api/src/app.ts` é onde as novas rotas da API são registradas. O mapa completo está em `planning.md` §5.2.
+- `apps/api/src/buildApp.ts` é onde as novas rotas da API são registradas. O mapa completo está em `planning.md` §5.2.

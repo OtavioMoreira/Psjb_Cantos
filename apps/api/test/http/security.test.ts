@@ -1,7 +1,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { SignJWT } from "jose";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { buildApp } from "../../src/app.js";
+import { buildApp } from "../../src/buildApp.js";
 import { routes } from "../../src/routes/index.js";
 import { makeTestContainer } from "../support/inMemory.js";
 
