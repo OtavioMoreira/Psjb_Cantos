@@ -44,7 +44,7 @@ Roteiro para tirar o site do GitHub Pages (demonstração) e publicá-lo com a A
 - [x] Conta na Vercel criada com o GitHub do repositório (plano Hobby).
 - [x] CLI logada nesta máquina: `! npx vercel login` (a sessão do Claude passa a enxergar a conta).
 - [ ] Descobrir **quem tem acesso à conta do Cloudflare** do `psjb.org.br` (o DNS está lá, não na HostGator).
-- [ ] Confirmar que o domínio `psjb.org.br` está **pago no registro.br** (é isso que mantém o DNS no ar depois de cancelar a HostGator).
+- [x] Confirmar que o domínio `psjb.org.br` está **pago no registro.br** (RDAP em 18/11/2026: vence em 29/06/2031; DNS no Cloudflare desde 30/06/2021, então o editor de DNS do cPanel da HostGator não vale) (é isso que mantém o DNS no ar depois de cancelar a HostGator).
 
 ## 4. Passo a passo
 
@@ -78,7 +78,7 @@ Roteiro para tirar o site do GitHub Pages (demonstração) e publicá-lo com a A
 ### 4.2 Banco de produção (Neon)
 Rodado desta máquina, com a `DATABASE_URL_UNPOOLED` do `apps/api/.env.local` (gerado pelo `vercel link`/`env pull`, fora do git) passada na linha de comando, para não usar o `.env` local:
 - [x] `npm run db:migrate -w api` (cria as tabelas, migrations 001 a 007).
-- [x] `npm run db:seed -w api` com `SEED_ADMIN_PASSWORD` **digitada pelo Otavio** num terminal separado (`read -s`) e `SEED_ADMIN_EMAIL` com o e-mail dele (o código do 2FA e o remetente de teste do Resend só chegam no e-mail real do dono da conta). Cria o superadmin e os 8 movimentos iniciais.
+- [x] `npm run db:seed -w api` com `SEED_ADMIN_PASSWORD` **digitada pelo Otavio** num terminal separado (`read -s`) e `SEED_ADMIN_EMAIL` com o e-mail dele (depois trocado no banco para `contato.otavio.moreira@gmail.com`, a pedido) (o código do 2FA e o remetente de teste do Resend só chegam no e-mail real do dono da conta). Cria o superadmin e os 8 movimentos iniciais.
 - [x] `npm run db:import-songs -w api` (623 cantos e 35 flags, mantendo os ids).
 - [x] `npm run db:migrate-files -w api` com o `BLOB_READ_WRITE_TOKEN` de produção: copia os 1.211 PDFs e MP3 do site antigo para o Blob (MP3 a 64 kbps mono, ~518 MB) e troca os links no banco. Usa o backup local `db/arquivos-legado/originais/` (`--origem`) para não baixar de novo da HostGator. **É este passo que libera o desligamento da HostGator.**
 - [x] Conferir: nenhum link em `songs` apontando para `cantos.psjb.org.br` (0 de 623).
