@@ -68,21 +68,24 @@ Roteiro para tirar o site do GitHub Pages (demonstração) e publicá-lo com a A
   | `LOGIN_2FA` | não definir (ligado em produção quando o e-mail está ativo). Ver a observação abaixo |
   | `SITE_DEPLOY_HOOK_URL` | Deploy Hook do front (passo 4.3) |
 
-- [ ] Primeiro deploy da API e teste de `GET /api/health`.
+- [x] Primeiro deploy da API e teste de `GET /api/health` (18/11/2026). Três ajustes para a Vercel:
+  - a Vercel procura a entrada em `app.ts`, `index.ts` e `server.ts`, nessa ordem, e só aceita um arquivo com `from "fastify"` no texto: a montagem virou `src/buildApp.ts`, e o `src/server.ts` importa o tipo `FastifyInstance`;
+  - o `@fastify/static` (pasta `uploads/` local) só é importado em desenvolvimento, porque a dependência `content-disposition` 3 é ESM e o runtime da Vercel recusa o `require()`;
+  - o `engines` `>=20.6` faz a Vercel usar o Node 26 em vez do 24 das configurações (só um aviso, funciona).
 
 > **Observação sobre o 2FA antes do domínio verificado:** com o remetente de teste (`onboarding@resend.dev`), o Resend só entrega para o e-mail dono da conta do Resend. Até o `psjb.org.br` ser verificado, as outras pessoas não receberiam o código do login. Por isso a aprovação roda com **`EMAIL_ENABLED=false`** (18/11/2026): nenhum e-mail sai, o login é só com senha e, para quem esqueceu, vale a senha temporária do admin. Depois de verificar o domínio (4.5), apagar a variável e fazer redeploy: o envio e o 2FA voltam sozinhos.
 
 ### 4.2 Banco de produção (Neon)
 Rodado desta máquina, com a `DATABASE_URL_UNPOOLED` do `apps/api/.env.local` (gerado pelo `vercel link`/`env pull`, fora do git) passada na linha de comando, para não usar o `.env` local:
 - [x] `npm run db:migrate -w api` (cria as tabelas, migrations 001 a 007).
-- [ ] `npm run db:seed -w api` com `SEED_ADMIN_PASSWORD` **digitada pelo Otavio** no terminal (`! read -s SEED_ADMIN_PASSWORD ...`). Cria o superadmin.
+- [x] `npm run db:seed -w api` com `SEED_ADMIN_PASSWORD` **digitada pelo Otavio** num terminal separado (`read -s`) e `SEED_ADMIN_EMAIL` com o e-mail dele (o código do 2FA e o remetente de teste do Resend só chegam no e-mail real do dono da conta). Cria o superadmin e os 8 movimentos iniciais.
 - [x] `npm run db:import-songs -w api` (623 cantos e 35 flags, mantendo os ids).
 - [x] `npm run db:migrate-files -w api` com o `BLOB_READ_WRITE_TOKEN` de produção: copia os 1.211 PDFs e MP3 do site antigo para o Blob (MP3 a 64 kbps mono, ~518 MB) e troca os links no banco. Usa o backup local `db/arquivos-legado/originais/` (`--origem`) para não baixar de novo da HostGator. **É este passo que libera o desligamento da HostGator.**
 - [x] Conferir: nenhum link em `songs` apontando para `cantos.psjb.org.br` (0 de 623).
 
 ### 4.3 Projeto do front (`apps/web`)
-- [ ] `vercel link` em `apps/web` criando o projeto **psjb-cantos** (raiz `apps/web`).
-- [ ] Variável `API_URL=https://psjb-cantos-api.vercel.app` (Production e Preview). No build, os cantos e as flags vêm da API, então **a API e o banco precisam estar prontos antes**.
+- [x] `vercel link` em `apps/web` criando o projeto **psjb-cantos** (raiz `apps/web`, Next.js, ligado ao GitHub).
+- [x] Variável `API_URL=https://psjb-cantos-api.vercel.app` (Production e Preview). No build, os cantos e as flags vêm da API, então **a API e o banco precisam estar prontos antes**.
 - [ ] Primeiro deploy do front.
 - [ ] Criar o **Deploy Hook** (Settings › Git › Deploy Hooks, branch `main`) e colocar a URL em `SITE_DEPLOY_HOOK_URL` no projeto da API; redeploy da API.
 
