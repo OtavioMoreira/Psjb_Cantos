@@ -89,6 +89,13 @@ describe("Importação de salmos: canto novo", () => {
     expect(adapters.psalmSource.downloads).toHaveLength(downloads);
   });
 
+  it("PDF escaneado (sem texto): cria sem letra e avisa para digitar antes de aprovar", async () => {
+    adapters.psalmSource.list = [item(1354, "Nosso Senhor Jesus Cristo, Rei do Universo | Salmo 22", "2026-11-26", "")];
+    const r = await run();
+    expect(r.items[0]).toMatchObject({ outcome: "created", message: expect.stringContaining("PDF escaneado") });
+    expect(adapters.songs.rows[0]).toMatchObject({ lyrics: "", active: false });
+  });
+
   it("só pega a janela da semana (hoje até N dias)", async () => {
     adapters.psalmSource.list = [
       item(1, "33º Domingo do Tempo Comum | Salmo 127", "2026-11-15"),

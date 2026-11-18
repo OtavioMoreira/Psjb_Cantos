@@ -28,6 +28,14 @@ type Deps = {
 
 export type ImportOutcome = "created" | "linked" | "review" | "failed" | "skipped";
 
+/** Sem texto no PDF (partitura escaneada), a letra precisa ser digitada antes de aprovar. */
+const createdMessage = (song: Song, pdf: Buffer | null) =>
+  song.lyrics.trim()
+    ? "Canto novo, oculto até alguém aprovar."
+    : pdf
+      ? "PDF escaneado (imagem, sem texto): digite a letra no editor antes de aprovar. Canto oculto."
+      : "Sem PDF na fonte: digite a letra no editor antes de aprovar. Canto oculto.";
+
 /** Hoje no fuso de Brasília (AAAA-MM-DD). */
 const today = (now: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(now);
 const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
@@ -145,7 +153,7 @@ class PsalmImporter {
     if (!info.key) return save("review", null, "Não reconheci o domingo ou a festa no título.");
 
     const song = await this.createSong(item, info, pdf);
-    return save("created", song.id, "Canto novo, oculto até alguém aprovar.");
+    return save("created", song.id, createdMessage(song, pdf));
   }
 }
 
@@ -217,6 +225,6 @@ export class ResolveImportAction extends PsalmImporter {
     }
     const pdf = item.pdfUrl ? await this.deps.psalmSource.download(item.pdfUrl) : null;
     const song = await this.createSong(external, info, pdf);
-    return save("created", song.id, "Criado na revisão, oculto até alguém aprovar.");
+    return save("created", song.id, `Criado na revisão. ${createdMessage(song, pdf)}`);
   }
 }
