@@ -30,6 +30,7 @@ import unicodedata
 from pathlib import Path
 
 import alinhar_acordes
+import completar_estrofes
 
 RAIZ = Path(__file__).resolve().parents[2]
 SONGS = RAIZ / "data" / "songs.json"
@@ -224,6 +225,8 @@ def converter_letra(descricao: str, pdf: Path | None = None):
     linhas = [nova if linha_de_acordes(bruta) else atual for atual, nova, (bruta, _) in zip(linhas, realinhadas, brutas)]
     # Uma linha em branco no máximo entre blocos, sem brancos nas pontas.
     letra = re.sub(r"\n{3,}", "\n\n", "\n".join(linhas)).strip("\n")
+    # Estrofes sem acordes recebem a cifra da 1ª estrofe (completar_estrofes.py).
+    letra, _ = completar_estrofes.completar(letra, linha_de_acordes)
     return compositor or None, letra
 
 
