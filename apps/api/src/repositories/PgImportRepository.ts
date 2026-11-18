@@ -57,7 +57,7 @@ export class PgImportRepository implements ImportRepository {
   async songIdByPdfHash(source: string, hash: string) {
     const { rows } = await this.pool.query<{ song_id: number }>(
       `SELECT song_id FROM import_items
-       WHERE source = $1 AND pdf_hash = $2 AND song_id IS NOT NULL AND status IN ('created', 'linked')
+       WHERE source = $1 AND pdf_hash = $2 AND song_id IS NOT NULL AND status = 'created'
        ORDER BY id LIMIT 1`,
       [source, hash],
     );

@@ -466,7 +466,7 @@ export class InMemoryImports implements ImportRepository {
     return structuredClone(this.items.find((i) => i.id === id) ?? null);
   }
   async songIdByPdfHash(source: string, hash: string) {
-    return this.items.find((i) => i.source === source && i.pdfHash === hash && i.songId && ["created", "linked"].includes(i.status))?.songId ?? null;
+    return this.items.find((i) => i.source === source && i.pdfHash === hash && i.songId && i.status === "created")?.songId ?? null;
   }
   async saveItem(d: ImportItemData) {
     const i = this.items.findIndex((x) => x.source === d.source && x.externalId === d.externalId);

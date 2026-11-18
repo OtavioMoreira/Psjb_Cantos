@@ -38,8 +38,9 @@ const psalmNumberOf = (title: string) => Number(title.match(/salmo\s*0*(\d+)/i)?
 /**
  * Regras compartilhadas pela rotina e pela revisão do admin. Contra duplicados, em camadas:
  * 1. o item da fonte (código do arquivo + data) só é processado uma vez;
- * 2. o mesmo PDF (SHA-256) de outro domingo vira o mesmo canto;
- * 3. um canto do repertório com a mesma celebração, o mesmo tipo e o mesmo ano é reconhecido, não recriado;
+ * 2. um canto do repertório com a mesma celebração, o mesmo tipo e o mesmo ano é reconhecido, não recriado;
+ * 3. o mesmo PDF (SHA-256) de outro domingo vira o canto que a própria rotina criou para ele
+ *    (vem depois da 2ª: a aclamação do Natal serve até o Batismo, mas cada festa já tem a sua no repertório);
  * 4. na dúvida (mais de um parecido, outro número de salmo, celebração desconhecida), vai para a revisão.
  */
 class PsalmImporter {
@@ -122,18 +123,7 @@ class PsalmImporter {
     const save = (status: ImportItem["status"], songId: number | null, message: string | null, candidateSongIds: number[] = []) =>
       this.deps.imports.saveItem({ ...this.base(item, info, hash), status, songId, candidateSongIds, message });
 
-    // 2. O mesmo PDF já entrou para outro domingo: é o mesmo canto.
-    const sameFile = hash ? await this.deps.imports.songIdByPdfHash(this.deps.psalmSource.id, hash) : null;
-    if (sameFile) {
-      const song = await this.deps.songs.findById(sameFile);
-      if (song) {
-        await this.addCelebrationFlags(song, info);
-        return save("linked", song.id, "Mesmo PDF de outra celebração já importada.");
-      }
-    }
-    if (!info.key) return save("review", null, "Não reconheci o domingo ou a festa no título.");
-
-    // 3. Já existe no repertório (mesma celebração, mesmo tipo, mesmo ano)?
+    // 2. Já existe no repertório (mesma celebração, mesmo tipo, mesmo ano)?
     const found = await this.candidates(info);
     if (found.length) {
       const sameNumber = info.psalmNumber ? found.filter((s) => psalmNumberOf(s.title) === info.psalmNumber) : found;
@@ -142,6 +132,17 @@ class PsalmImporter {
       const why = sameNumber.length ? "Há mais de um canto parecido no repertório." : "Há um canto para esta celebração, mas com outro salmo.";
       return save("review", null, why, found.map((s) => s.id));
     }
+
+    // 3. O mesmo PDF já virou um canto criado por esta rotina (outro domingo): é o mesmo canto.
+    const sameFile = hash ? await this.deps.imports.songIdByPdfHash(this.deps.psalmSource.id, hash) : null;
+    if (sameFile) {
+      const song = await this.deps.songs.findById(sameFile);
+      if (song) {
+        await this.addCelebrationFlags(song, info);
+        return save("linked", song.id, `Mesmo PDF de "${song.title}".`);
+      }
+    }
+    if (!info.key) return save("review", null, "Não reconheci o domingo ou a festa no título.");
 
     const song = await this.createSong(item, info, pdf);
     return save("created", song.id, "Canto novo, oculto até alguém aprovar.");

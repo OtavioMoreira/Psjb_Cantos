@@ -330,7 +330,7 @@ export interface ImportRun {
 export interface ImportRepository {
   findItem(source: string, externalId: string): Promise<ImportItem | null>;
   getItem(id: number): Promise<ImportItem | null>;
-  /** Canto já ligado a um PDF com este hash (criado ou reconhecido antes). */
+  /** Canto que a rotina criou a partir de um PDF com este hash (os do repertório antigo não contam). */
   songIdByPdfHash(source: string, hash: string): Promise<number | null>;
   /** Cria o item; se já existe (mesma fonte e id), atualiza. */
   saveItem(data: ImportItemData): Promise<ImportItem>;

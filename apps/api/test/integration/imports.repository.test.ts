@@ -31,16 +31,19 @@ describe.skipIf(!dbUrl)("PgImportRepository", () => {
     expect((await repos.imports.listItems({ limit: 10 })).length).toBe(1);
   });
 
-  it("acha o canto pelo hash do PDF só em itens criados ou reconhecidos; o canto excluído solta o item", async () => {
+  it("acha o canto pelo hash do PDF só em itens que a rotina criou; o canto excluído solta o item", async () => {
     const s = await factory.song({ title: "Salmo importado", source: { name: "Diocese de Montenegro", url: "https://d" } }, null);
     expect(s.source).toEqual({ name: "Diocese de Montenegro", url: "https://d" });
     await repos.imports.saveItem(item({ externalId: "1@x", status: "review", songId: s.id, pdfHash: "b".repeat(64) }));
     expect(await repos.imports.songIdByPdfHash("diocese-montenegro", "b".repeat(64))).toBeNull();
+    // Reconhecido no repertório antigo: não serve para outras celebrações.
     await repos.imports.saveItem(item({ externalId: "2@x", status: "linked", songId: s.id, pdfHash: "b".repeat(64) }));
+    expect(await repos.imports.songIdByPdfHash("diocese-montenegro", "b".repeat(64))).toBeNull();
+    await repos.imports.saveItem(item({ externalId: "3@x", status: "created", songId: s.id, pdfHash: "b".repeat(64) }));
     expect(await repos.imports.songIdByPdfHash("diocese-montenegro", "b".repeat(64))).toBe(s.id);
     await repos.songs.delete(s.id);
     expect(await repos.imports.songIdByPdfHash("diocese-montenegro", "b".repeat(64))).toBeNull();
-    expect((await repos.imports.findItem("diocese-montenegro", "2@x"))?.songId).toBeNull();
+    expect((await repos.imports.findItem("diocese-montenegro", "3@x"))?.songId).toBeNull();
   });
 
   it("filtra por status e registra as execuções, da mais nova para a mais antiga", async () => {

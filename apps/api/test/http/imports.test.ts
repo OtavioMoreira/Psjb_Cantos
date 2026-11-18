@@ -100,7 +100,7 @@ describe("Importação de salmos: canto novo", () => {
 });
 
 describe("Importação de salmos: sem duplicados", () => {
-  it("2ª camada: o mesmo PDF para outro domingo vira o mesmo canto (e ganha o que faltava)", async () => {
+  it("3ª camada: o mesmo PDF para outro domingo vira o mesmo canto (e ganha o que faltava)", async () => {
     adapters.psalmSource.list = [
       item(153, "1º Domingo do Advento, Ano B | Aclamação ao Evangelho", "2026-11-29", ACLAMACAO_ADVENTO),
       item(361, "2º Domingo do Advento, Ano B | Aclamação ao Evangelho", "2026-12-06", ACLAMACAO_ADVENTO),
@@ -116,7 +116,20 @@ describe("Importação de salmos: sem duplicados", () => {
     );
   });
 
-  it("3ª camada: reconhece o canto do site antigo (outro jeito de escrever) e não cria", async () => {
+  it("o mesmo PDF em festas que já têm canto no repertório: cada uma fica com o seu (não cruza)", async () => {
+    const natal = await song("Aclamação Natal dia", ["momento:aclamacao", "tempo:natal", "ano:B"]);
+    const familia = await song("Aclamação Sagrada Família", ["momento:aclamacao", "tempo:natal", "ano:B"]);
+    adapters.clock.now = () => new Date("2026-12-21T06:00:00Z");
+    adapters.psalmSource.list = [
+      item(487, "Dia de Natal | Aclamação ao Evangelho", "2026-12-25", ACLAMACAO_ADVENTO),
+      item(489, "Sagrada Família | Aclamação ao Evangelho", "2026-12-27", ACLAMACAO_ADVENTO),
+    ];
+    const r = await run();
+    expect(r.items.map((i: { songId: number }) => i.songId)).toEqual([natal.id, familia.id]);
+    expect(adapters.songs.rows).toHaveLength(2);
+  });
+
+  it("2ª camada: reconhece o canto do site antigo (outro jeito de escrever) e não cria", async () => {
     const old = await song("Advento 4º Dom - Salmo 088", ["momento:salmo", "tempo:advento", "ano:B"]);
     adapters.clock.now = () => new Date("2026-12-14T06:00:00Z");
     adapters.psalmSource.list = [item(88, "4º Domingo do Advento, Ano B | Salmo 88", "2026-12-20")];
