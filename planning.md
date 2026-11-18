@@ -461,7 +461,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 
 ### 6.6 Segurança e autenticação
 
-**Já implementado:** argon2id; login → access JWT de 15 min + refresh rotativo em cookie httpOnly; **2FA por e-mail** com aparelho confiável (15/10/2026, ligado por padrão em produção, `LOGIN_2FA`); detecção de reuso; papéis no JWT e `requireRole` no servidor; rate limit em login, 2FA, recuperação, cadastro e refresh; tokens de e-mail de uso único guardados como hash (`auth_tokens`); `@fastify/helmet`; CORS restrito; validação com Zod; respostas de erro no formato `{ error: { code, message, details } }`. Faltam reCAPTCHA, `AuditLog` e a parte de LGPD.
+**Já implementado:** argon2id; login → access JWT de 15 min + refresh rotativo em cookie httpOnly; **2FA por e-mail** com aparelho confiável (15/10/2026, ligado por padrão em produção, `LOGIN_2FA`; `EMAIL_ENABLED=false` trava o envio e desliga o 2FA); detecção de reuso; papéis no JWT e `requireRole` no servidor; rate limit em login, 2FA, recuperação, cadastro e refresh; tokens de e-mail de uso único guardados como hash (`auth_tokens`); `@fastify/helmet`; CORS restrito; validação com Zod; respostas de erro no formato `{ error: { code, message, details } }`. Faltam reCAPTCHA, `AuditLog` e a parte de LGPD.
 
 **Senhas**
 - Hash com **argon2id**. Política: 8 ou mais caracteres, com letras e números (a mesma da UI); se possível, checar contra listas de senhas vazadas.
@@ -567,7 +567,7 @@ Modelos de e-mail (pt-BR; `apps/api/src/emails/templates.ts`):
 - ✅ PostgreSQL com migrations em SQL e seed do superadmin. 🔜 Cantos e missas no banco.
 - ✅ argon2id, **JWT (15 min) + refresh rotativo em cookie httpOnly** e papéis (admin, musico) com `requireRole`.
 - ✅ **2FA por código no e-mail**, com aparelho confiável por 30 dias.
-- [ ] Deploy: projetos `apps/web` e `apps/api` na Vercel, banco no Neon (rodar `db:migrate` no deploy) e Blob ligado à API.
+- [ ] Deploy: projetos `apps/web` e `apps/api` na Vercel, banco no Neon (rodar `db:migrate` no deploy) e Blob ligado à API. Roteiro e checklist em `docs/DEPLOY.md`.
 - ✅ Recuperação de senha, convites e troca de e-mail com confirmação.
 - [ ] Cadastro com **reCAPTCHA no servidor** (o cadastro continua esperando a ativação pelo admin).
 - ✅ Serviço de e-mail (**Resend**) + modelos (§6.9). Falta configurar SPF/DKIM/DMARC em `psjb.org.br` no deploy.

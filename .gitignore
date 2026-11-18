@@ -19,3 +19,6 @@ db/arquivos-legado/
 apps/api/uploads/
 
 __pycache__/
+
+# Vercel CLI (vínculo local dos projetos)
+.vercel

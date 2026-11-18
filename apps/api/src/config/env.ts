@@ -25,21 +25,31 @@ const schema = z.object({
   RESEND_API_KEY: z.string().optional(),
   /** Remetente. Sem domínio verificado no Resend, só funciona o de teste (onboarding@resend.dev). */
   EMAIL_FROM: z.string().default("Cantos PSJB <onboarding@resend.dev>"),
-  /** Login em duas etapas (código por e-mail). Ligado por padrão só em produção. */
+  /** Trava do envio: "false" não manda e-mail nenhum, nem com a chave (ex.: antes de verificar o domínio no Resend). */
+  EMAIL_ENABLED: z.enum(["true", "false"]).optional(),
+  /** Login em duas etapas (código por e-mail). Ligado por padrão só em produção e com o e-mail ativo. */
   LOGIN_2FA: z.enum(["true", "false"]).optional(),
 });
 
-export type Env = z.infer<typeof schema> & { loginTwoFactor: boolean };
+export type Env = z.infer<typeof schema> & { loginTwoFactor: boolean; emailEnabled: boolean };
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = schema.parse(source);
-  const env = { ...parsed, loginTwoFactor: (parsed.LOGIN_2FA ?? (parsed.NODE_ENV === "production" ? "true" : "false")) === "true" };
+  const production = parsed.NODE_ENV === "production";
+  const emailEnabled = parsed.EMAIL_ENABLED !== "false";
+  // Com o e-mail travado, o código do 2FA não chegaria: o padrão passa a ser desligado.
+  const loginTwoFactor = (parsed.LOGIN_2FA ?? (production && emailEnabled ? "true" : "false")) === "true";
+  const env = { ...parsed, loginTwoFactor, emailEnabled };
   if (env.NODE_ENV === "production" && env.JWT_SECRET.startsWith("dev-only")) {
     throw new Error("Defina JWT_SECRET em produção.");
   }
-  // Sem e-mail em produção, recuperação de senha, convite e 2FA ficariam mudos.
-  if (env.NODE_ENV === "production" && !env.RESEND_API_KEY) {
-    throw new Error("Defina RESEND_API_KEY em produção.");
+  // Sem e-mail em produção, recuperação de senha, convite e 2FA ficariam mudos (a não ser que a trava esteja ligada de propósito).
+  if (production && emailEnabled && !env.RESEND_API_KEY) {
+    throw new Error("Defina RESEND_API_KEY em produção (ou EMAIL_ENABLED=false para travar o envio).");
+  }
+  // Em produção, o código só sairia no log: ninguém conseguiria entrar.
+  if (production && !emailEnabled && loginTwoFactor) {
+    throw new Error("LOGIN_2FA=true precisa do e-mail ativo (EMAIL_ENABLED=false trava o envio do código).");
   }
   return env;
 }

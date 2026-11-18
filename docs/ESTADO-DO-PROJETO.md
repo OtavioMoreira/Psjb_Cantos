@@ -46,7 +46,7 @@ Fastify + TypeScript em **arquitetura hexagonal**: `routes → controllers → a
 |---|---|---|
 | Saúde | `GET /api/health`, `/api/test` | |
 | Sessão | `POST /api/auth/login`, `/login/verify`, `/login/resend`, `/refresh`, `/logout` | JWT de 15 min + refresh rotativo em cookie httpOnly; reuso derruba a família; argon2id; limite de tentativas; **2FA por e-mail** (ligado por padrão em produção, `LOGIN_2FA`) com aparelho confiável por 30 dias (cookie `psjb_device`) |
-| E-mail (**novo**) | `POST /api/auth/forgot` · `/reset` · `/confirm-email`, `POST /api/me/email` | Porta `EmailSender`: Resend (`RESEND_API_KEY`, obrigatória em produção) ou console. Tokens de uso único só como hash (`auth_tokens`); 1 envio por minuto por pessoa e tipo |
+| E-mail (**novo**) | `POST /api/auth/forgot` · `/reset` · `/confirm-email`, `POST /api/me/email` | Porta `EmailSender`: Resend (`RESEND_API_KEY`, obrigatória em produção) ou console; `EMAIL_ENABLED=false` trava todo envio (e desliga o 2FA) para os testes antes do domínio verificado. Tokens de uso único só como hash (`auth_tokens`); 1 envio por minuto por pessoa e tipo |
 | Contas | `POST /api/users` (cadastro), `GET/PATCH /api/me`, `PUT /api/me/photo`, `POST /api/auth/password` | Cadastro nasce **pendente**; foto JPG/PNG/WebP até 2 MB; trocar a senha derruba os outros aparelhos |
 | Admin de usuários | `GET /api/admin/users`, `PATCH .../:id/activate`, `PATCH .../:id`, `POST .../:id/block` · `/unblock` · `/reset-password` · `/reset-link` · `/invite`, `POST /api/admin/users/invite`, `DELETE .../:id` | Só admin (`requireRole`). Não age sobre si mesmo; sempre sobra 1 admin ativo (`LAST_ADMIN`); bloquear e senha temporária derrubam as sessões; ativar manda "Sua conta foi liberada"; convite cria a conta pendente com link de 7 dias para criar a senha |
 | Movimentos | `GET /api/movements`; admin: `POST/PATCH/DELETE /api/admin/movements` | Um por pessoa; excluir em uso → 409 |
@@ -118,7 +118,7 @@ Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo 
 | 19 | Limpeza periódica de sessões, tokens de e-mail e aparelhos confiáveis vencidos (cron) | — | `sessions`, `auth_tokens` e `trusted_devices` crescem com o tempo |
 
 ## 5. Próximos passos sugeridos
-1. **Deploy na Vercel + Neon + Blob + Resend**, com o Deploy Hook ligado ao "Publicar no site". Para o e-mail: instalar o Resend pelo Marketplace (`RESEND_API_KEY`), definir `EMAIL_FROM` e `APP_URL` e cadastrar SPF/DKIM/DMARC no DNS do `psjb.org.br` (o domínio precisa continuar ativo mesmo sem a HostGator). Antes de desligar a HostGator, rodar `npm run db:migrate-files -w api` contra o Neon e o Blob (README, Deploy, passo 4).
+1. **Deploy na Vercel + Neon + Blob + Resend**, seguindo o roteiro e o checklist de [`docs/DEPLOY.md`](DEPLOY.md), com o Deploy Hook ligado ao "Publicar no site". Para o e-mail: instalar o Resend pelo Marketplace (`RESEND_API_KEY`), definir `EMAIL_FROM` e `APP_URL` e cadastrar SPF/DKIM/DMARC no DNS do `psjb.org.br` (o domínio precisa continuar ativo mesmo sem a HostGator). Antes de desligar a HostGator, rodar `npm run db:migrate-files -w api` contra o Neon e o Blob (README, Deploy, passo 4).
 2. **reCAPTCHA no servidor** (item 11).
 3. **Revisão das flags dos 623 cantos** com a equipe de liturgia (momentos de Velas/Preces/Saída, Creio e Sequências como momento?).
 4. **Testes de tela com Playwright no CI.**

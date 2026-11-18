@@ -172,7 +172,10 @@ export function createAdapters(env: Env): Adapters & { pool: Pool } {
     sessions: new PgSessionRepository(pool),
     authTokens: new PgAuthTokenRepository(pool),
     trustedDevices: new PgTrustedDeviceRepository(pool),
-    email: env.RESEND_API_KEY ? new ResendEmailSender(env.RESEND_API_KEY, env.EMAIL_FROM) : new ConsoleEmailSender(),
+    email:
+      env.emailEnabled && env.RESEND_API_KEY
+        ? new ResendEmailSender(env.RESEND_API_KEY, env.EMAIL_FROM)
+        : new ConsoleEmailSender({ showContent: env.NODE_ENV !== "production" }),
     movements: new PgMovementRepository(pool),
     masses: new PgMassRepository(pool),
     songs: new PgSongRepository(pool),

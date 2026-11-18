@@ -252,4 +252,17 @@ describe("Em produção", () => {
   it("a API não sobe em produção sem o serviço de e-mail", () => {
     expect(() => makeTestContainer({ ...PROD_ENV, RESEND_API_KEY: "" })).toThrow(/RESEND_API_KEY/);
   });
+
+  it("EMAIL_ENABLED=false trava o e-mail: sobe sem a chave e o 2FA vem desligado", () => {
+    const env = makeTestContainer({ ...PROD_ENV, RESEND_API_KEY: "", EMAIL_ENABLED: "false" }).container.env;
+    expect(env.emailEnabled).toBe(false);
+    expect(env.loginTwoFactor).toBe(false);
+    expect(makeTestContainer(PROD_ENV).container.env.emailEnabled).toBe(true);
+  });
+
+  it("com o e-mail travado, LOGIN_2FA=true é recusado em produção (o código não chegaria)", () => {
+    expect(() => makeTestContainer({ ...PROD_ENV, EMAIL_ENABLED: "false", LOGIN_2FA: "true" })).toThrow(/LOGIN_2FA/);
+    // Fora de produção pode: o código aparece no terminal.
+    expect(makeTestContainer({ EMAIL_ENABLED: "false", LOGIN_2FA: "true" }).container.env.loginTwoFactor).toBe(true);
+  });
 });

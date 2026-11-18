@@ -16,7 +16,7 @@ Site de cantos litúrgicos da **Paróquia Catedral São João Batista**, que sub
   - Compartilhar é `setMassShares`, separado de `saveMass`.
   - O repertório público lê os cantos do banco (via API) quando há `API_URL`: no build, as páginas ficam estáticas até o "Publicar no site"; no `next dev`, com cache de 1 minuto. Sem `API_URL`, usa o `data/songs.json`.
 - **Estado do cliente** (sessão, perfil, usuários, missas, preferências): fica em `localStorage`, via `apps/web/src/lib/store.ts`.
-- **E-mails:** com a API, saem pelo Resend (porta `EmailSender`; sem `RESEND_API_KEY`, aparecem no terminal da API): recuperação de senha, convite, troca de e-mail, conta liberada e o código do 2FA (ligado por padrão só em produção, `LOGIN_2FA`). Na demonstração, continuam simulados por links na tela.
+- **E-mails:** com a API, saem pelo Resend (porta `EmailSender`; sem `RESEND_API_KEY`, aparecem no terminal da API): recuperação de senha, convite, troca de e-mail, conta liberada e o código do 2FA (ligado por padrão só em produção, `LOGIN_2FA`). `EMAIL_ENABLED=false` trava todo envio (e desliga o 2FA). Na demonstração, continuam simulados por links na tela.
 - **Hospedagem futura:** Vercel (front e API), Neon (Postgres), Vercel Blob (arquivos) e Resend (e-mail, pelo Marketplace da Vercel).
 - **Fases seguintes:** deploy na Vercel (com SPF/DKIM/DMARC do `psjb.org.br` para o Resend) e reCAPTCHA no servidor. O plano está em `planning.md` §5.2, §6.6 e §6.9.
 
@@ -51,6 +51,7 @@ apps/api/             Fastify + TS, arquitetura hexagonal (detalhes em planning.
                       · integration/ (Postgres real, banco *_test) · support/ (fakes e helpers)
 docs/postman/         coleção do Postman (gerada por gerar_colecao.py) + ambientes e arquivos de exemplo
 docs/ESTADO-DO-PROJETO.md   o que está pronto e o que falta (front e backend): atualizar a cada entrega
+docs/DEPLOY.md        roteiro do deploy na Vercel (Neon, Blob, Resend, DNS no Cloudflare): marcar o checklist a cada passo
 db/                   dump de produção (*.sql no .gitignore: dados reais, repositório público)
   postgres/           conversão fiel MySQL → PostgreSQL 18: migrar.py, 01-schema.sql (versionado),
                       02-dados.sql (gerado, fora do git), CONVERSAO.md e VERIFICACAO.md (auditoria)

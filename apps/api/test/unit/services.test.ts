@@ -2,9 +2,10 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { SignJWT } from "jose";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { sniffSongFile } from "../../src/actions/songs/SongActions.js";
 import { sniffImage } from "../../src/actions/users/UpdateMyPhotoAction.js";
+import { ConsoleEmailSender } from "../../src/services/ConsoleEmailSender.js";
 import { Argon2PasswordHasher } from "../../src/services/Argon2PasswordHasher.js";
 import { JoseTokenService } from "../../src/services/JoseTokenService.js";
 import { LocalDiskStorage } from "../../src/services/LocalDiskStorage.js";
@@ -136,5 +137,24 @@ describe("Identificação de arquivos pelos bytes (o nome e o Content-Type não 
     expect(sniffSongFile("audio", Buffer.from("\0\0\0\x20ftypM4A "))?.ext).toBe("m4a");
     expect(sniffSongFile("audio", Buffer.from("OggS\0"))?.ext).toBe("ogg");
     expect(sniffSongFile("audio", Buffer.from("MZ\x90\0"))).toBeNull(); // executável
+  });
+});
+
+describe("ConsoleEmailSender", () => {
+  const message = { to: "ana@x.com", subject: "Seu código de acesso", text: "Código: 123456", html: "<p>123456</p>" };
+
+  it("em desenvolvimento mostra o texto (link ou código) no terminal", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => {});
+    await new ConsoleEmailSender({ showContent: true }).send(message);
+    expect(log.mock.calls[0][0]).toContain("123456");
+    log.mockRestore();
+  });
+
+  it("em produção (e-mail travado) registra só destinatário e assunto, nunca o código", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => {});
+    await new ConsoleEmailSender({ showContent: false }).send(message);
+    expect(log.mock.calls[0][0]).toContain("ana@x.com");
+    expect(log.mock.calls[0][0]).not.toContain("123456");
+    log.mockRestore();
   });
 });
