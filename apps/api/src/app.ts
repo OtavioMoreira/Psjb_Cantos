@@ -4,7 +4,6 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
-import fastifyStatic from "@fastify/static";
 import { SONG_FILE_MAX_BYTES } from "./actions/songs/SongActions.js";
 import { PHOTO_MAX_BYTES } from "./actions/users/UpdateMyPhotoAction.js";
 import type { Container } from "./container.js";
@@ -32,7 +31,12 @@ export async function buildApp({ container, uploadsDir, logger = true }: AppOpti
   await app.register(rateLimit, { global: false });
   // Teto geral; cada action confere o limite do seu tipo (foto 2 MB, arquivos de canto 4 MB).
   await app.register(multipart, { limits: { fileSize: Math.max(PHOTO_MAX_BYTES, SONG_FILE_MAX_BYTES) + 1, files: 1 } });
-  if (uploadsDir) await app.register(fastifyStatic, { root: uploadsDir, prefix: "/uploads/", decorateReply: false });
+  // Import sob demanda: só serve a pasta local em desenvolvimento. Na Vercel (com Blob) o plugin nem carrega,
+  // porque uma dependência dele (content-disposition 3) é ESM e o runtime de lá recusa o require().
+  if (uploadsDir) {
+    const { default: fastifyStatic } = await import("@fastify/static");
+    await app.register(fastifyStatic, { root: uploadsDir, prefix: "/uploads/", decorateReply: false });
+  }
 
   app.setErrorHandler(errorHandler);
   app.setNotFoundHandler((_req, reply) => reply.status(404).send({ error: { code: "NOT_FOUND", message: "Rota não encontrada." } }));
