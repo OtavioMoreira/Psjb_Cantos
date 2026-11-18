@@ -86,8 +86,8 @@ Rodado desta máquina, com a `DATABASE_URL_UNPOOLED` do `apps/api/.env.local` (g
 ### 4.3 Projeto do front (`apps/web`)
 - [x] `vercel link` em `apps/web` criando o projeto **psjb-cantos** (raiz `apps/web`, Next.js, ligado ao GitHub).
 - [x] Variável `API_URL=https://psjb-cantos-api.vercel.app` (Production e Preview). No build, os cantos e as flags vêm da API, então **a API e o banco precisam estar prontos antes**.
-- [ ] Primeiro deploy do front.
-- [ ] Criar o **Deploy Hook** (Settings › Git › Deploy Hooks, branch `main`) e colocar a URL em `SITE_DEPLOY_HOOK_URL` no projeto da API; redeploy da API.
+- [x] Primeiro deploy do front: **https://psjb-cantos.vercel.app** (18/11/2026).
+- [x] Criar o **Deploy Hook** (`publicar-no-site`) (Settings › Git › Deploy Hooks, branch `main`) e colocar a URL em `SITE_DEPLOY_HOOK_URL` no projeto da API; redeploy da API.
 
 ### 4.4 Testes na URL `*.vercel.app`
 - [ ] Repertório: lista, busca, filtros, detalhe com cifra, PDF e áudio vindos do Blob.
