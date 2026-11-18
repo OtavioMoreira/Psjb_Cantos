@@ -15,7 +15,9 @@ Converte os 623 cantos do banco legado (tabela `audios`, já no Postgres local) 
   Salmos e aclamações pegam o tempo pelo título ("Quaresma 2º Dom. - Salmo 115" → quaresma).
 
 Depois de gravar, carregue no banco com: npm run db:import-songs -w api
-Só usa a biblioteca padrão e `docker exec` no container psjb-postgres (somente leitura).
+Lê o legado por `docker exec` no container psjb-postgres (somente leitura). Para realinhar os acordes
+(alinhar_acordes.py) precisa do Pillow, das fontes Liberation (fonts-liberation) e do pdftotext (poppler-utils),
+além do backup dos PDFs em db/arquivos-legado/originais/.
 """
 
 import argparse
@@ -26,6 +28,8 @@ import subprocess
 import sys
 import unicodedata
 from pathlib import Path
+
+import alinhar_acordes
 
 RAIZ = Path(__file__).resolve().parents[2]
 SONGS = RAIZ / "data" / "songs.json"
@@ -146,8 +150,8 @@ def limpar(texto: str) -> str:
 
 
 def sublinhas(paragrafo: str):
-    """Quebra o <p> nos <br>. Devolve [(texto, negrito de cada letra ou número)]."""
-    linhas, atual, negrito = [], [], 0
+    """Quebra o <p> nos <br>. Devolve [(texto, negrito de cada letra ou número, [(ch, negrito, itálico)])]."""
+    linhas, atual, negrito, italico = [], [], 0, 0
     for parte in re.split(r"(<[^>]+>)", paragrafo):
         if not parte:
             continue
@@ -161,12 +165,14 @@ def sublinhas(paragrafo: str):
                 atual = []
             elif nome in ("strong", "b"):
                 negrito = max(0, negrito - 1) if fecha else negrito + 1
+            elif nome in ("em", "i"):
+                italico = max(0, italico - 1) if fecha else italico + 1
             continue
         for ch in limpar(html.unescape(parte)):
-            atual.append((ch, negrito > 0))
+            atual.append((ch, negrito > 0, italico > 0))
     linhas.append(atual)
     # Só letras e números contam: a pontuação final às vezes fica fora do negrito ("…nós</strong>.").
-    return [("".join(c for c, _ in l), [b for c, b in l if c.isalnum()]) for l in linhas]
+    return [("".join(c for c, _, _ in l), [b for c, b, _ in l if c.isalnum()], l) for l in linhas]
 
 
 def cabecalho_compositor(p: str):
@@ -183,11 +189,13 @@ def eh_cabecalho(p: str, texto: str) -> bool:
     return bool(re.search(r"<u\b", p, re.I)) or bool(re.match(r"\s*(<[^>]+>\s*)*(<strong|<b\b)", p, re.I))
 
 
-def converter_letra(descricao: str):
-    """Devolve (compositor, letra) a partir do HTML do editor."""
+def converter_letra(descricao: str, pdf: Path | None = None):
+    """Devolve (compositor, letra) a partir do HTML do editor. Com o PDF da cifra, os acordes seguem o PDF."""
     paragrafos = re.findall(r"<p\b[^>]*>(.*?)</p>", descricao or "", flags=re.I | re.S)
     compositor = None
     linhas = []
+    # Texto sem os ** e os caracteres com negrito/itálico: base para realinhar os acordes (alinhar_acordes.py).
+    brutas = []
     cabecalho = True
     for p in paragrafos:
         texto = texto_puro(p)
@@ -199,7 +207,8 @@ def converter_letra(descricao: str):
             if eh_cabecalho(p, texto):
                 compositor = cabecalho_compositor(p)
                 continue
-        for texto, negritos in sublinhas(p):
+        for texto, negritos, chars in sublinhas(p):
+            brutas.append((texto.rstrip(), chars if texto.strip() else None))
             if not texto.strip():
                 linhas.append("")
             elif linha_de_acordes(texto):
@@ -210,6 +219,9 @@ def converter_letra(descricao: str):
                 linhas.append(f"{recuo}**{texto.strip()}**")
             else:
                 linhas.append(texto.rstrip())
+    # Acordes digitados em Times New Roman → colunas da cifra monoespaçada.
+    realinhadas, _ = alinhar_acordes.realinhar(brutas, acorde, linha_de_acordes, pdf)
+    linhas = [nova if linha_de_acordes(bruta) else atual for atual, nova, (bruta, _) in zip(linhas, realinhadas, brutas)]
     # Uma linha em branco no máximo entre blocos, sem brancos nas pontas.
     letra = re.sub(r"\n{3,}", "\n\n", "\n".join(linhas)).strip("\n")
     return compositor or None, letra
@@ -234,11 +246,20 @@ def url(caminho):
     return SITE_ANTIGO + caminho if caminho else None
 
 
+def pdf_da_cifra(caminho):
+    """PDF original da cifra no backup local (db/arquivos-legado/originais/), se houver."""
+    caminho = (caminho or "").strip()
+    if not caminho.lower().endswith(".pdf"):
+        return None
+    arquivo = RAIZ / "db" / "arquivos-legado" / "originais" / caminho
+    return arquivo if arquivo.exists() else None
+
+
 def converter(a):
     nome = re.sub(r"\s+", " ", a["nome"]).strip()
     m = re.match(r"^(\d+)\s*(?:[-–]\s*)?(.+)$", nome)
     numero, titulo = (int(m.group(1)), m.group(2).strip()) if m else (None, nome)
-    compositor, letra = converter_letra(a["descricao"])
+    compositor, letra = converter_letra(a["descricao"], pdf_da_cifra(a["cifra"]))
     moments, seasons, years, themes = flags_da_categoria(a["categoria"], titulo)
     usuario, link = (a["usuario"] or "").strip(), (a["link"] or "").strip()
     return {

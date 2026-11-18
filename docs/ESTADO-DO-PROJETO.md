@@ -103,6 +103,8 @@ Todas ficaram prontas em 15/10/2026: trocar o próprio e-mail, recuperar senha, 
 
 Já feitos em 15/10/2026: **serviço de e-mail (Resend)**, recuperação de senha, convite, troca do próprio e-mail, link de redefinição pelo admin, aviso de conta liberada e **2FA por e-mail** com aparelho confiável (antigos itens 3, 8, 9 e 10).
 
+Feito em 18/11/2026: **acordes realinhados nos 623 cantos** (3.514 linhas mudaram). A cifra do site antigo foi digitada em Times New Roman e os acordes "andavam" na fonte monoespaçada; agora a posição vem do PDF da cifra (3.247 linhas) ou da largura de cada letra na Times (`db/postgres/alinhar_acordes.py`). Aplicado no `data/songs.json` e no banco de produção (só a letra, e só nos cantos não editados pelo admin).
+
 Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo item 20); a migração dos PDFs e MP3 do site antigo para o storage (`npm run db:migrate-files -w api`, MP3 a 64 kbps mono, 518 MB no total, com os erros de cadastro do site antigo corrigidos); perfil (`PATCH /api/me`), troca de senha, editar, bloquear/liberar, excluir e senha temporária no admin de usuários (antigos itens 1, 2 e 4 a 7).
 
 | # | Rota ou recurso | Para qual tela | Detalhes |
