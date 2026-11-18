@@ -84,6 +84,8 @@ export function SongViewer({ song }: { song: Song }) {
       <div role="tabpanel" id={`painel-${tab}`} aria-labelledby={`tab-${tab}`} className="pt-5">
         {tab === "cifra" && (
           <>
+            {/* Ouvir enquanto acompanha a cifra, sem trocar de aba. */}
+            {song.media.audio && <AudioPlayer src={song.media.audio} compact />}
             <div className="sticky top-14 z-10 -mx-4 mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur sm:top-[72px] sm:mx-0 sm:rounded-[10px] sm:border sm:bg-surface-2/90">
               <div className="flex items-center gap-2" aria-label="Transposição">
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">Tom</span>
@@ -197,7 +199,8 @@ function PdfViewer({ src, title }: { src: string; title: string }) {
   );
 }
 
-function AudioPanel({ song }: { song: Song }) {
+/** Player do MP3: completo na aba Áudio, compacto acima da barra de Tom na aba Letra e Cifra. */
+function AudioPlayer({ src, compact = false }: { src: string; compact?: boolean }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [rate, setRate] = useState(1);
   useEffect(() => {
@@ -214,28 +217,43 @@ function AudioPanel({ song }: { song: Song }) {
   }, []);
 
   return (
+    <div className={compact ? "mb-3 rounded-[10px] border border-border bg-surface px-3 py-2" : ""}>
+      {compact && (
+        <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
+          <Headphones size={14} /> Ouvir enquanto acompanha
+        </p>
+      )}
+      <audio ref={ref} controls preload="none" src={src} className={compact ? "h-11 w-full" : "mt-4 w-full"} />
+      <div className={`flex flex-wrap items-center gap-2 ${compact ? "mt-2" : "mt-4"}`}>
+        <span className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">Velocidade</span>
+        {[0.75, 1, 1.25].map((r) => (
+          <button
+            key={r}
+            aria-pressed={rate === r}
+            onClick={() => setRate(r)}
+            className="min-h-9 rounded-full border border-border px-3 py-1 text-sm aria-pressed:border-primary aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary"
+          >
+            {String(r).replace(".", ",")}×
+          </button>
+        ))}
+        {!compact && (
+          <a href={src} download className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+            <Download size={16} /> Baixar MP3
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AudioPanel({ song }: { song: Song }) {
+  return (
     <div className="space-y-6">
       {song.media.audio && (
         <div className="rounded-[16px] border border-border bg-surface p-5 shadow-card">
           <p className="font-serif text-xl font-semibold">{song.title}</p>
           {song.composer && <p className="text-sm text-ink-muted">{song.composer}</p>}
-          <audio ref={ref} controls preload="none" src={song.media.audio} className="mt-4 w-full" />
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">Velocidade</span>
-            {[0.75, 1, 1.25].map((r) => (
-              <button
-                key={r}
-                aria-pressed={rate === r}
-                onClick={() => setRate(r)}
-                className="rounded-full border border-border px-3 py-1 text-sm aria-pressed:border-primary aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary"
-              >
-                {String(r).replace(".", ",")}×
-              </button>
-            ))}
-            <a href={song.media.audio} download className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-              <Download size={16} /> Baixar MP3
-            </a>
-          </div>
+          <AudioPlayer src={song.media.audio} />
         </div>
       )}
       {song.media.audiomack && (

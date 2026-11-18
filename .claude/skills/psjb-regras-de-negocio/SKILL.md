@@ -95,6 +95,7 @@ Os eixos:
   - Abre um popover com o momento sugerido (vem da categoria do canto) e a lista de missas, mais a opção "Nova missa…".
   - Sem login, leva a `/entrar?volta=<página>`.
 - **Áudio:** um só por vez. Tem velocidades de 0,75×, 1× e 1,25× e download.
+- **Ouvir e ver a cifra juntos (18/11/2026):** quando o canto tem MP3, a aba Letra e Cifra mostra um player compacto (com velocidade) **logo acima da barra de Tom**. A aba Áudio continua, com o player completo e o download.
 
 ## 6. Calendário litúrgico
 - **Tempo pela data:**

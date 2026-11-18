@@ -288,6 +288,7 @@ Comportamento:
 - **Só letra**: esconde os acordes e ativa a capitular no primeiro verso.
 - **Partitura**: PdfViewer (ver 5.1), com altura de `calc(100vh − 200px)`.
 - **Áudio**: player grande com velocidade (0,75× / 1× / 1,25×) e loop A–B (útil para ensaio).
+- **Áudio junto da cifra** (18/11/2026): com MP3, a aba Letra e Cifra mostra um player compacto ("Ouvir enquanto acompanha", com velocidade) logo acima da barra de Tom, para ouvir e seguir a cifra sem trocar de aba. Não é fixo na rolagem (a barra de Tom já é).
 - **Adicionar à minha missa**: popover com a lista de missas do usuário e o momento sugerido (pré-selecionado pela categoria), mais "Nova missa…". Sem login, o botão leva a `/entrar?volta=…`.
 - Mobile: o bloco de ações vira uma barra fixa inferior (Missa · Baixar · Modo Missa) e os controles de tom e fonte viram uma barra compacta sticky abaixo das abas.
 
