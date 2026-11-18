@@ -42,6 +42,10 @@ import {
   UploadSongFileAction,
 } from "./actions/songs/SongActions.js";
 import { PublishSiteAction } from "./actions/songs/PublishSiteAction.js";
+import { ImportPsalmsAction, ListImportsAction, ResolveImportAction } from "./actions/imports/ImportPsalmsActions.js";
+import { DioceseMontenegroSource } from "./services/DioceseMontenegroSource.js";
+import { UnpdfReader } from "./services/UnpdfReader.js";
+import { PgImportRepository } from "./repositories/PgImportRepository.js";
 import { DeployHookPublisher } from "./services/DeployHookPublisher.js";
 import { CreateFlagAction, DeleteFlagAction, ListFlagsAction, UpdateFlagAction } from "./actions/songs/FlagActions.js";
 import { CreateMovementAction, DeleteMovementAction, ListMovementsAction, RenameMovementAction } from "./actions/movements/MovementActions.js";
@@ -62,6 +66,9 @@ import type {
   TokenService,
   TrustedDeviceRepository,
   UserRepository,
+  ImportRepository,
+  PdfReader,
+  PsalmSource,
 } from "./interfaces/index.js";
 import { PgAuthTokenRepository } from "./repositories/PgAuthTokenRepository.js";
 import { PgTrustedDeviceRepository } from "./repositories/PgTrustedDeviceRepository.js";
@@ -90,6 +97,9 @@ export interface Adapters {
   songs: SongRepository;
   flags: FlagRepository;
   site: SitePublisher;
+  psalmSource: PsalmSource;
+  pdf: PdfReader;
+  imports: ImportRepository;
   hasher: PasswordHasher;
   tokens: TokenService;
   storage: FileStorage;
@@ -155,6 +165,9 @@ export function buildContainer(env: Env, adapters: Adapters) {
       updateFlag: new UpdateFlagAction(deps),
       deleteFlag: new DeleteFlagAction(deps),
       publishSite: new PublishSiteAction(deps),
+      importPsalms: new ImportPsalmsAction(deps),
+      listImports: new ListImportsAction(deps),
+      resolveImport: new ResolveImportAction(deps),
     },
   };
 }
@@ -181,6 +194,9 @@ export function createAdapters(env: Env): Adapters & { pool: Pool } {
     songs: new PgSongRepository(pool),
     flags: new PgFlagRepository(pool),
     site: new DeployHookPublisher(env.SITE_DEPLOY_HOOK_URL),
+    psalmSource: new DioceseMontenegroSource(env.PSALM_SOURCE_URL),
+    pdf: new UnpdfReader(),
+    imports: new PgImportRepository(pool),
     hasher: new Argon2PasswordHasher(),
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: env.BLOB_READ_WRITE_TOKEN

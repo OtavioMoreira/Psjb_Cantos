@@ -121,6 +121,8 @@ export interface SongDTO {
   media: Song["media"];
   flags: Song["flags"];
   active: boolean;
+  /** Crédito da fonte (cantos importados). */
+  source: Song["source"];
   createdAt: string;
   updatedAt: string;
 }

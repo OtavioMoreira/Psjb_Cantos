@@ -25,6 +25,10 @@ const schema = z.object({
   RESEND_API_KEY: z.string().optional(),
   /** Remetente. Sem domínio verificado no Resend, só funciona o de teste (onboarding@resend.dev). */
   EMAIL_FROM: z.string().default("Cantos PSJB <onboarding@resend.dev>"),
+  /** Segredo que a Vercel manda no cron (Authorization: Bearer …). Sem ele, a rota do cron fica desligada. */
+  CRON_SECRET: z.string().min(16).optional(),
+  /** Página da fonte de salmos e aclamações (importação semanal). */
+  PSALM_SOURCE_URL: z.url().default("https://www.diocesemontenegro.org.br/salmos-e-aclamacoes"),
   /** Trava do envio: "false" não manda e-mail nenhum, nem com a chave (ex.: antes de verificar o domínio no Resend). */
   EMAIL_ENABLED: z.enum(["true", "false"]).optional(),
   /** Login em duas etapas (código por e-mail). Ligado por padrão só em produção e com o e-mail ativo. */

@@ -16,6 +16,8 @@ interface SongRow {
   cifra_pdf_url: string | null;
   partitura_pdf_url: string | null;
   active: boolean;
+  source_name: string | null;
+  source_url: string | null;
   created_at: Date;
   updated_at: Date;
   flags: FlagRef[];
@@ -50,6 +52,7 @@ const toSong = (r: SongRow): Song => ({
   media: { audio: r.audio_url, audiomack: r.audiomack_url, cifraPdf: r.cifra_pdf_url, partituraPdf: r.partitura_pdf_url },
   flags: r.flags,
   active: r.active,
+  source: r.source_name && r.source_url ? { name: r.source_name, url: r.source_url } : null,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -116,18 +119,20 @@ export class PgSongRepository implements SongRepository {
     return { songs: rows.map(toSong), total: Number(rows[0]?.total ?? 0) };
   }
 
-  async create(d: SongData, userId: string) {
+  async create(d: SongData, userId: string | null) {
     return this.write(async (q) => {
       const { rows } = await q(
-        `INSERT INTO songs (number, slug, title, composer, song_key, lyrics, audio_url, audiomack_url, cifra_pdf_url, partitura_pdf_url, active, created_by, updated_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12) RETURNING id`,
-        [d.number, d.slug, d.title, d.composer, d.key, d.lyrics, d.media.audio, d.media.audiomack, d.media.cifraPdf, d.media.partituraPdf, d.active, userId],
+        `INSERT INTO songs (number, slug, title, composer, song_key, lyrics, audio_url, audiomack_url, cifra_pdf_url, partitura_pdf_url, active,
+           source_name, source_url, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $14) RETURNING id`,
+        [d.number, d.slug, d.title, d.composer, d.key, d.lyrics, d.media.audio, d.media.audiomack, d.media.cifraPdf, d.media.partituraPdf, d.active,
+          d.source?.name ?? null, d.source?.url ?? null, userId],
       );
       return rows[0].id as number;
     }, d.flagIds);
   }
 
-  async update(id: number, d: SongData, userId: string) {
+  async update(id: number, d: SongData, userId: string | null) {
     const exists = await this.pool.query("SELECT 1 FROM songs WHERE id = $1", [id]);
     if (!exists.rowCount) return null;
     return this.write(async (q) => {
@@ -165,7 +170,7 @@ export class PgSongRepository implements SongRepository {
     return Boolean(rowCount);
   }
 
-  async setMedia(id: number, field: keyof SongMedia, url: string | null, userId: string) {
+  async setMedia(id: number, field: keyof SongMedia, url: string | null, userId: string | null) {
     const { rowCount } = await this.pool.query(
       `UPDATE songs SET ${MEDIA_COLUMN[field]} = $2, updated_by = $3, updated_at = now() WHERE id = $1`,
       [id, url, userId],

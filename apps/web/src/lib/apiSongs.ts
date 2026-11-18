@@ -25,6 +25,7 @@ export interface ApiSong {
   media: { audio: string | null; audiomack: string | null; cifraPdf: string | null; partituraPdf: string | null };
   flags: Pick<ApiFlag, "id" | "group" | "slug" | "name" | "color">[];
   active: boolean;
+  source?: { name: string; url: string } | null;
 }
 
 const byPosition = (a: ApiFlag, b: ApiFlag) => a.position - b.position || a.name.localeCompare(b.name, "pt-BR");
@@ -57,5 +58,6 @@ export function toSong(s: ApiSong): Song {
     themes: slugs("tema", "outro"),
     media: s.media,
     lyrics: s.lyrics ?? "",
+    ...(s.source ? { source: s.source } : {}),
   };
 }

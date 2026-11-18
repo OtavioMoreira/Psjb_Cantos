@@ -1794,6 +1794,168 @@
       ]
     },
     {
+      "name": "Admin › Importação de salmos",
+      "description": "Salmos e aclamações da semana lidos do site da Diocese de Montenegro. Roda sozinho pelo Cron da Vercel (segunda a quinta, 3h) e pelo botão \"Buscar agora\". Nada é duplicado: item já lido, mesmo PDF, mesma celebração no repertório; na dúvida, vai para a revisão.",
+      "item": [
+        {
+          "name": "Listar importações",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/imports?status=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "imports"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "created | linked | review | ignored | failed",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Itens lidos (o que foi feito com cada um) e as últimas execuções."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar agora",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/imports/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "imports",
+                "run"
+              ]
+            },
+            "description": "Roda a importação de hoje até `days` dias adiante. **Acessa o site da diocese**: por isso só roda com a variável de ambiente `runImport` = `true`. 502 IMPORT_FAILED se a fonte estiver fora do ar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"days\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('runImport') !== 'true') pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 ou 502', () => pm.expect(pm.response.code).to.be.oneOf([200, 502]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolver item da revisão",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/imports/0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "imports",
+                "0"
+              ]
+            },
+            "description": "`{ action: \"link\", songId }` = é este canto; `{ action: \"create\" }` = é um canto novo (criado oculto); `{ action: \"ignore\" }`. 409 IMPORT_RESOLVED se já foi resolvido. Aqui o id 0 não existe: 400.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"ignore\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400 ou 404', () => pm.expect(pm.response.code).to.be.oneOf([400, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cron (sem o segredo: 401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cron/import-psalms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cron",
+                "import-psalms"
+              ]
+            },
+            "description": "Chamado pelo Cron da Vercel com `Authorization: Bearer <CRON_SECRET>`. Sem o segredo: 401; sem CRON_SECRET configurado: 501.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401 ou 501', () => pm.expect(pm.response.code).to.be.oneOf([401, 501]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Missas",
       "description": "Monte sua Missa. Dono e convidados veem e editam; **só o dono** exclui e compartilha. Quem não é dono nem convidado recebe 403.",
       "item": [

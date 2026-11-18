@@ -39,6 +39,8 @@ export interface Song {
   media: SongMedia;
   /** Letra com cifra no formato "acordes na linha de cima". */
   lyrics: string;
+  /** Crédito da fonte, nos cantos importados (ex.: salmos da Diocese de Montenegro). */
+  source?: { name: string; url: string } | null;
 }
 
 /** Versão leve usada em listagens (sem a letra completa). */

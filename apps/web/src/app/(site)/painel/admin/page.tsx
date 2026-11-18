@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronRight, Flag, Music, UserCog, Users } from "lucide-react";
+import { BookOpen, ChevronRight, Flag, Music, UserCog, Users } from "lucide-react";
 import { api, API_ENABLED } from "@/lib/api";
 import { AdminGuard, AdminTitle } from "@/components/admin/AdminShell";
 
 interface Counts {
+  review: number;
   pending: number;
   users: number;
   songs: number;
@@ -28,10 +29,17 @@ function AdminHome() {
   useEffect(() => {
     if (!API_ENABLED) return;
     let alive = true;
-    Promise.all([api.admin.users(), api.admin.songs({ pageSize: 1 }), api.admin.flags(), api.admin.movements()])
-      .then(([users, songs, flags, movements]) => {
+    Promise.all([api.admin.users(), api.admin.songs({ pageSize: 1 }), api.admin.flags(), api.admin.movements(), api.admin.imports("review").catch(() => ({ items: [] }))])
+      .then(([users, songs, flags, movements, imports]) => {
         if (!alive) return;
-        setCounts({ pending: users.filter((u) => u.status === "pending").length, users: users.length, songs: songs.total, flags: flags.length, movements: movements.length });
+        setCounts({
+          review: imports.items.length,
+          pending: users.filter((u) => u.status === "pending").length,
+          users: users.length,
+          songs: songs.total,
+          flags: flags.length,
+          movements: movements.length,
+        });
       })
       .catch(() => undefined);
     return () => {
@@ -51,6 +59,14 @@ function AdminHome() {
     },
     { href: "/painel/admin/cantos", title: "Cantos", Icon: Music, text: "Letra e cifra, flags, PDF e áudio. Publicar no site.", stat: API_ENABLED ? `${n(counts?.songs)} cantos` : "Com servidor" },
     { href: "/painel/admin/flags", title: "Flags", Icon: Flag, text: "Momentos, tempos, anos (A, B, C) e temas dos cantos.", stat: API_ENABLED ? `${n(counts?.flags)} flags` : "Com servidor" },
+    {
+      href: "/painel/admin/salmos",
+      title: "Salmos da diocese",
+      Icon: BookOpen,
+      text: "Salmos e aclamações da semana, lidos do site da Diocese de Montenegro.",
+      stat: API_ENABLED ? "Segunda a quinta, 3h" : "Com servidor",
+      badge: counts?.review ? `${counts.review} a revisar` : null,
+    },
     { href: "/painel/admin/movimentos", title: "Movimentos", Icon: UserCog, text: "Pastorais e movimentos que aparecem no cadastro.", stat: API_ENABLED ? `${n(counts?.movements)} movimentos` : "Com servidor" },
   ];
 

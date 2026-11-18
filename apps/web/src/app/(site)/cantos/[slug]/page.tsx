@@ -102,6 +102,16 @@ export default async function SongPage(props: PageProps<"/cantos/[slug]">) {
                   <dd className="text-right font-semibold">{song.composer}</dd>
                 </div>
               )}
+              {song.source && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-ink-muted">Fonte</dt>
+                  <dd className="text-right font-semibold">
+                    <a href={song.source.url} target="_blank" rel="noopener" className="text-primary underline-offset-2 hover:underline">
+                      {song.source.name}
+                    </a>
+                  </dd>
+                </div>
+              )}
             </dl>
             {downloads.length > 0 && (
               <>

@@ -26,6 +26,12 @@ export interface SongMedia {
   partituraPdf: string | null;
 }
 
+/** De onde o canto veio, quando foi importado (ex.: salmos da Diocese de Montenegro). */
+export interface SongSource {
+  name: string;
+  url: string;
+}
+
 export interface Song {
   id: number;
   number: number | null;
@@ -38,6 +44,7 @@ export interface Song {
   media: SongMedia;
   flags: FlagRef[];
   active: boolean;
+  source: SongSource | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -3,6 +3,7 @@ import { createPool, type Pool } from "../../src/database/pool.js";
 import { PgAuthTokenRepository } from "../../src/repositories/PgAuthTokenRepository.js";
 import { PgTrustedDeviceRepository } from "../../src/repositories/PgTrustedDeviceRepository.js";
 import { PgFlagRepository } from "../../src/repositories/PgFlagRepository.js";
+import { PgImportRepository } from "../../src/repositories/PgImportRepository.js";
 import { PgMassRepository } from "../../src/repositories/PgMassRepository.js";
 import { PgMovementRepository } from "../../src/repositories/PgMovementRepository.js";
 import { PgSessionRepository } from "../../src/repositories/PgSessionRepository.js";
@@ -29,10 +30,11 @@ export function useTestDb() {
     flags: new PgFlagRepository(pool),
     authTokens: new PgAuthTokenRepository(pool),
     trustedDevices: new PgTrustedDeviceRepository(pool),
+    imports: new PgImportRepository(pool),
   };
 
   beforeEach(async () => {
-    await pool.query("TRUNCATE users, user_roles, sessions, auth_tokens, trusted_devices, movements, masses, mass_shares, songs, flags, song_flags RESTART IDENTITY CASCADE");
+    await pool.query("TRUNCATE users, user_roles, sessions, auth_tokens, trusted_devices, movements, masses, mass_shares, songs, flags, song_flags, import_items, import_runs RESTART IDENTITY CASCADE");
   });
   afterAll(() => pool.end());
 
@@ -50,7 +52,7 @@ export function useTestDb() {
         roles: opts.roles ?? ["musico"],
       });
     },
-    song: (data: Partial<SongData> & { title: string }, userId: string) =>
+    song: (data: Partial<SongData> & { title: string }, userId: string | null) =>
       repos.songs.create(
         {
           number: null,

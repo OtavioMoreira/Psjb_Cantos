@@ -21,7 +21,9 @@ export type ErrorCode =
   | "INVALID_TOKEN"
   | "INVALID_CODE"
   | "TOO_SOON"
-  | "EMAIL_FAILED";
+  | "EMAIL_FAILED"
+  | "IMPORT_RESOLVED"
+  | "IMPORT_FAILED";
 
 const STATUS: Record<ErrorCode, number> = {
   VALIDATION_ERROR: 400,
@@ -45,6 +47,8 @@ const STATUS: Record<ErrorCode, number> = {
   INVALID_CODE: 400,
   TOO_SOON: 429,
   EMAIL_FAILED: 502,
+  IMPORT_RESOLVED: 409,
+  IMPORT_FAILED: 502,
 };
 
 export class AppError extends Error {

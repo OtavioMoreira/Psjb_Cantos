@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { Container } from "../container.js";
 import { AdminUserController } from "../controllers/AdminUserController.js";
 import { AuthController } from "../controllers/AuthController.js";
+import { ImportController } from "../controllers/ImportController.js";
 import { MassController } from "../controllers/MassController.js";
 import { MovementController } from "../controllers/MovementController.js";
 import { SongController } from "../controllers/SongController.js";
@@ -22,6 +23,7 @@ export async function routes(app: FastifyInstance, { container }: { container: C
   const movements = new MovementController(container);
   const masses = new MassController(container);
   const songs = new SongController(container);
+  const imports = new ImportController(container);
   const isAuthenticated = authenticate(container.tokens);
 
   await app.register(healthRoutes);
@@ -49,6 +51,9 @@ export async function routes(app: FastifyInstance, { container }: { container: C
   app.get("/songs", songs.list);
   app.get("/songs/:ref", songs.get);
   app.get("/flags", songs.listFlags);
+
+  // Cron da Vercel (segunda a quinta, 3h): protegido pelo CRON_SECRET, não pelo login.
+  app.get("/cron/import-psalms", strict(10), imports.cron);
 
   // Rotas de quem está logado (qualquer papel)
   await app.register(async (logged) => {
@@ -102,5 +107,9 @@ export async function routes(app: FastifyInstance, { container }: { container: C
     adminScope.delete("/flags/:id", songs.removeFlag);
 
     adminScope.post("/site/publish", strict(10), songs.publishSite);
+
+    adminScope.get("/imports", imports.list);
+    adminScope.post("/imports/run", strict(10), imports.run);
+    adminScope.patch("/imports/:id", imports.resolve);
   }, { prefix: "/admin" });
 }

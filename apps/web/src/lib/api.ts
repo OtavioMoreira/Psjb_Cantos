@@ -70,6 +70,29 @@ interface AuthResult {
   user: ApiUser;
 }
 
+export type ImportStatus = "created" | "linked" | "review" | "ignored" | "failed";
+export interface ApiImportItem {
+  id: number;
+  title: string;
+  kind: "salmo" | "aclamacao";
+  celebrationDate: string;
+  pdfUrl: string | null;
+  audioUrl: string | null;
+  status: ImportStatus;
+  songId: number | null;
+  candidateSongIds: number[];
+  message: string | null;
+  updatedAt: string;
+}
+export interface ApiImportRun {
+  id: number;
+  trigger: "cron" | "manual";
+  startedAt: string;
+  finishedAt: string | null;
+  summary: Record<string, number>;
+  error: string | null;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -229,6 +252,14 @@ export const api = {
     renameMovement: (id: number, name: string) => authed<unknown>(`/admin/movements/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
     deleteMovement: (id: number) => authed<void>(`/admin/movements/${id}`, { method: "DELETE" }),
     publishSite: () => authed<{ ok: true }>("/admin/site/publish", { method: "POST" }),
+    imports: (status?: ImportStatus) => authed<{ items: ApiImportItem[]; runs: ApiImportRun[] }>(`/admin/imports${status ? `?status=${status}` : ""}`),
+    runImport: (days = 10) =>
+      authed<{ runId: number; summary: Record<string, number>; items: { title: string; date: string; outcome: string; songId: number | null; message: string | null }[] }>(
+        "/admin/imports/run",
+        { method: "POST", body: JSON.stringify({ days }) },
+      ),
+    resolveImport: async (id: number, body: { action: "link"; songId: number } | { action: "create" } | { action: "ignore" }) =>
+      (await authed<{ item: ApiImportItem }>(`/admin/imports/${id}`, { method: "PATCH", body: JSON.stringify(body) })).item,
   },
   masses: {
     list: async () => (await authed<{ masses: ApiMass[] }>("/masses")).masses,

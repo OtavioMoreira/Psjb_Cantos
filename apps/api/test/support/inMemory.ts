@@ -12,6 +12,14 @@ import type {
   AuthTokenRepository,
   EmailMessage,
   EmailSender,
+  ExternalPsalm,
+  ImportItem,
+  ImportItemData,
+  ImportRepository,
+  ImportRun,
+  ImportStatus,
+  PdfReader,
+  PsalmSource,
   TrustedDeviceRepository,
   AdminUserData,
   CreateUserData,
@@ -275,8 +283,10 @@ export class InMemorySongs implements SongRepository {
 
   private build(id: number, d: SongData, prev?: Song): Song {
     const flags = this.flags.rows.filter((f) => d.flagIds.includes(f.id)).map(({ id, group, slug, name, color }) => ({ id, group, slug, name, color }));
-    const { flagIds: _f, ...rest } = d;
-    return { id, ...structuredClone(rest), flags, createdAt: prev?.createdAt ?? new Date(), updatedAt: new Date() };
+    const { flagIds: _f, source, ...rest } = d;
+    // Igual ao SQL: a fonte só é gravada na criação; no update, ausente = não muda.
+    const src = source !== undefined ? source : (prev?.source ?? null);
+    return { id, ...structuredClone(rest), source: src, flags, createdAt: prev?.createdAt ?? new Date(), updatedAt: new Date() };
   }
   private unique(d: SongData, id?: number) {
     if (this.rows.some((s) => s.id !== id && ((d.number && s.number === d.number) || s.slug === d.slug)))
@@ -445,6 +455,70 @@ export class FakePublisher {
   }
 }
 
+
+export class InMemoryImports implements ImportRepository {
+  items: ImportItem[] = [];
+  runs: ImportRun[] = [];
+  async findItem(source: string, externalId: string) {
+    return structuredClone(this.items.find((i) => i.source === source && i.externalId === externalId) ?? null);
+  }
+  async getItem(id: number) {
+    return structuredClone(this.items.find((i) => i.id === id) ?? null);
+  }
+  async songIdByPdfHash(source: string, hash: string) {
+    return this.items.find((i) => i.source === source && i.pdfHash === hash && i.songId && ["created", "linked"].includes(i.status))?.songId ?? null;
+  }
+  async saveItem(d: ImportItemData) {
+    const i = this.items.findIndex((x) => x.source === d.source && x.externalId === d.externalId);
+    const now = new Date();
+    const item: ImportItem = i >= 0 ? { ...this.items[i], ...d, updatedAt: now } : { id: this.items.length + 1, ...d, createdAt: now, updatedAt: now };
+    if (i >= 0) this.items[i] = item;
+    else this.items.push(item);
+    return structuredClone(item);
+  }
+  async listItems({ status, limit }: { status?: ImportStatus; limit: number }) {
+    return structuredClone(this.items.filter((i) => !status || i.status === status).slice(0, limit));
+  }
+  async startRun(source: string, trigger: ImportRun["trigger"]) {
+    this.runs.push({ id: this.runs.length + 1, source, trigger, startedAt: new Date(), finishedAt: null, summary: {}, error: null });
+    return this.runs.length;
+  }
+  async finishRun(id: number, summary: Record<string, number>, error: string | null) {
+    Object.assign(this.runs[id - 1], { finishedAt: new Date(), summary, error });
+  }
+  async listRuns(limit: number) {
+    return structuredClone([...this.runs].reverse().slice(0, limit));
+  }
+}
+
+/** Fonte de salmos falsa: a lista e os arquivos ficam em memória; conta os downloads. */
+export class FakePsalmSource implements PsalmSource {
+  readonly id = "diocese-montenegro";
+  readonly name = "Diocese de Montenegro";
+  readonly url = "https://www.diocesemontenegro.org.br/salmos-e-aclamacoes";
+  list: ExternalPsalm[] = [];
+  files = new Map<string, Buffer>();
+  downloads: string[] = [];
+  fail: Error | null = null;
+  async listUpcoming() {
+    if (this.fail) throw this.fail;
+    return structuredClone(this.list);
+  }
+  async download(url: string) {
+    this.downloads.push(url);
+    const f = this.files.get(url);
+    if (!f) throw new Error(`arquivo inexistente: ${url}`);
+    return f;
+  }
+}
+
+/** "PDF" falso: o conteúdo é o próprio texto, uma linha por linha. */
+export class FakePdfReader implements PdfReader {
+  async lines(pdf: Buffer) {
+    return pdf.toString("utf8").split("\n");
+  }
+}
+
 export function makeTestContainer(envOverrides: Record<string, string> = {}) {
   const env = loadEnv({ NODE_ENV: "test", ...envOverrides });
   const movements = new InMemoryMovements();
@@ -462,6 +536,9 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     flags: InMemoryFlags;
     site: FakePublisher;
     storage: MemoryStorage;
+    psalmSource: FakePsalmSource;
+    pdf: FakePdfReader;
+    imports: InMemoryImports;
   } = {
     users,
     sessions: new InMemorySessions(),
@@ -473,6 +550,9 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     songs: new InMemorySongs(flags),
     flags,
     site: new FakePublisher(),
+    psalmSource: new FakePsalmSource(),
+    pdf: new FakePdfReader(),
+    imports: new InMemoryImports(),
     hasher: fakeHasher,
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: new MemoryStorage(),

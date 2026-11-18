@@ -67,6 +67,7 @@ Roteiro para tirar o site do GitHub Pages (demonstração) e publicá-lo com a A
   | `EMAIL_ENABLED` | `false` durante a aprovação (trava todo envio e desliga o 2FA); **apagar** depois do passo 4.5 |
   | `LOGIN_2FA` | não definir (ligado em produção quando o e-mail está ativo). Ver a observação abaixo |
   | `SITE_DEPLOY_HOOK_URL` | Deploy Hook do front (passo 4.3) |
+  | `CRON_SECRET` | gerado no terminal (`openssl rand -hex 32`); a Vercel o manda no cron dos salmos (`apps/api/vercel.json`, seg–qui 3h) |
 
 - [x] Primeiro deploy da API e teste de `GET /api/health` (18/11/2026). Três ajustes para a Vercel:
   - a Vercel procura a entrada em `app.ts`, `index.ts` e `server.ts`, nessa ordem, e só aceita um arquivo com `from "fastify"` no texto: a montagem virou `src/buildApp.ts`, e o `src/server.ts` importa o tipo `FastifyInstance`;

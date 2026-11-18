@@ -474,8 +474,8 @@ Só aparecem pessoas com conta ativa.
 - Duplicar cria "Cópia de …" com a data vazia e abre o editor.
 
 ### 4.7.1 Administração (`/painel/admin`, só admin)
-- **Painel:** 4 cards (Usuários, Cantos, Flags, Movimentos) com ícone, descrição, contagem e, em Usuários, o selo `gold-soft` "N aguardando ativação". Uma coluna no celular, duas do tablet em diante.
-- **Barra lateral (desktop):** dentro de `/painel/admin`, as quatro seções aparecem recuadas abaixo de "Administração". No celular, o item "Admin" da barra inferior leva ao painel.
+- **Painel:** 5 cards (Usuários, Cantos, Flags, Salmos da diocese, Movimentos) com ícone, descrição, contagem e os selos `gold-soft` "N aguardando ativação" (Usuários) e "N a revisar" (Salmos). Uma coluna no celular, duas do tablet em diante.
+- **Barra lateral (desktop):** dentro de `/painel/admin`, as cinco seções aparecem recuadas abaixo de "Administração". No celular, o item "Admin" da barra inferior leva ao painel.
 - **Cabeçalho comum:** sobrelinha "🛡 ADMINISTRAÇÃO" em `gold-ink`, título em serifa e ações à direita (quebram para baixo no celular).
 - **Cantos:**
   - lista em cards (2 colunas no desktop) com Nº em dourado, título, autor, até 4 flags, selo "Oculto" e ícones de cifra, partitura e áudio; busca com espera de 300 ms e "Mostrar mais (N)";
@@ -485,6 +485,7 @@ Só aparecem pessoas com conta ativa.
   - cada arquivo é um bloco com "Abrir", [Enviar/Trocar] e [Remover];
   - a barra de ações (Excluir | Salvar canto) fica fixa acima da navegação no celular.
 - **Flags:** um card por grupo, com "＋ Adicionar". Cada linha tem a bolinha de cor, o nome, o identificador, o número de cantos e os botões de editar e excluir (44 px). O modal tem grupo, nome, identificador (gerado do nome), cor (seletor + "Sem cor") e ordem.
+- **Salmos da diocese** (`/painel/admin/salmos`): [Buscar agora] no topo; card "Rotina automática: segunda a quinta, às 3h" com as 5 últimas execuções (data, automática/manual, resumo "1 novos · 3 já existiam" ou o erro em `danger`); filtro Todos | A revisar (N); cada item em card com data, título, selo de status (Novo (oculto), Já existia, A revisar, Ignorado, Falhou), a mensagem, "Abrir canto" e "PDF na diocese". Na revisão: "É um destes cantos?" com [É este] por candidato, [É um canto novo] e [Ignorar]. Na página do canto importado, "Fonte: Diocese de Montenegro" (link) aparece em Detalhes.
 - **Movimentos:** campo + [Adicionar] no topo; lista com o número de pessoas, renomear na própria linha (✓/✕) e excluir desabilitado quando há pessoas.
 - **Publicar no site:** modal que explica que as páginas são geradas de antemão e que a atualização leva alguns minutos. Toast: "Publicação pedida. O site atualiza em alguns minutos."
 - **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Nome, paróquia, movimento, instrumento e senha salvam no servidor (botão com spinner enquanto salva). O e-mail fica só leitura (fundo `surface-2`), com a dica "É o seu login." e o link [✉ Trocar e-mail], que abre um modal com "Novo e-mail" e "Sua senha" e o botão [Enviar link]. Enviado, o link dá lugar a um aviso verde: "Enviamos um link para {novo}… Até lá, você continua entrando com {atual}."

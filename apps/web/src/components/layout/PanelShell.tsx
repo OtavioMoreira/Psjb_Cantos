@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Flag, Home, ListMusic, LogOut, Music, Plus, ShieldCheck, User, UserCog, Users } from "lucide-react";
+import { BookOpen, Flag, Home, ListMusic, LogOut, Music, Plus, ShieldCheck, User, UserCog, Users } from "lucide-react";
 import { logout, syncApiUser, syncMasses, useIsAdmin, useSession, useUser } from "@/lib/store";
 import { UserAvatar } from "@/components/user/UserAvatar";
 import { api, API_ENABLED, ApiError } from "@/lib/api";
@@ -15,6 +15,7 @@ const ADMIN_SECTIONS = [
   { href: "/painel/admin/usuarios", label: "Usuários", Icon: Users },
   { href: "/painel/admin/cantos", label: "Cantos", Icon: Music },
   { href: "/painel/admin/flags", label: "Flags", Icon: Flag },
+  { href: "/painel/admin/salmos", label: "Salmos da diocese", Icon: BookOpen },
   { href: "/painel/admin/movimentos", label: "Movimentos", Icon: UserCog },
 ];
 

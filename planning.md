@@ -379,6 +379,10 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | PUT · DELETE | `/api/admin/songs/:id/files/:kind` | ✅ | admin: `kind` = `cifra-pdf`, `partitura-pdf` ou `audio`. multipart, campo `file`, até 4 MB |
 | POST · PUT · DELETE | `/api/admin/flags[/:id]` | ✅ | admin: `{ group, slug, name, color?, position? }`. 409 `FLAG_TAKEN` |
 | POST | `/api/admin/site/publish` | ✅ | admin: pede um novo build do site (Deploy Hook em `SITE_DEPLOY_HOOK_URL`) → 202; sem hook → 501 `NOT_CONFIGURED` |
+| GET | `/api/cron/import-psalms` | ✅ | Cron da Vercel (seg–qui 3h): importa os salmos e aclamações da semana da Diocese de Montenegro. Sem login; exige `Authorization: Bearer <CRON_SECRET>` (401; sem o segredo configurado, 501) |
+| GET | `/api/admin/imports` | ✅ | admin: itens lidos (`?status=review`...) e as últimas execuções |
+| POST | `/api/admin/imports/run` | ✅ | admin: "Buscar agora" (`{ days }`, padrão 10); 502 `IMPORT_FAILED` se a fonte estiver fora do ar |
+| PATCH | `/api/admin/imports/:id` | ✅ | admin: resolve a revisão (`link` + `songId`, `create` ou `ignore`); 409 `IMPORT_RESOLVED` se já resolvido |
 | POST | `/api/uploads` | 4 | token de upload direto para o Vercel Blob (arquivos acima de 4 MB) |
 
 ---

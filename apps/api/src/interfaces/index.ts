@@ -3,7 +3,7 @@
 
 import type { Mass, MassSlot, PersonRef, SeasonId, YearId } from "../domain/mass.js";
 import type { Movement } from "../domain/movement.js";
-import type { Flag, FlagGroup, Song, SongMedia } from "../domain/song.js";
+import type { Flag, FlagGroup, Song, SongMedia, SongSource } from "../domain/song.js";
 import type { Role, User, UserStatus, UserWithPassword } from "../domain/user.js";
 
 export interface CreateUserData {
@@ -136,6 +136,8 @@ export interface SongData {
   media: SongMedia;
   flagIds: number[];
   active: boolean;
+  /** Crédito da fonte (importação). Só gravado na criação; ausente = não muda. */
+  source?: SongSource | null;
 }
 
 export interface SongFilters {
@@ -151,11 +153,11 @@ export interface SongRepository {
   list(filters: SongFilters): Promise<{ songs: Song[]; total: number }>;
   findById(id: number): Promise<Song | null>;
   findBySlug(slug: string): Promise<Song | null>;
-  /** Lança SONG_TAKEN se o número ou o slug já existem. */
-  create(data: SongData, userId: string): Promise<Song>;
-  update(id: number, data: SongData, userId: string): Promise<Song | null>;
+  /** Lança SONG_TAKEN se o número ou o slug já existem. userId null = rotina automática (importação). */
+  create(data: SongData, userId: string | null): Promise<Song>;
+  update(id: number, data: SongData, userId: string | null): Promise<Song | null>;
   delete(id: number): Promise<boolean>;
-  setMedia(id: number, field: keyof SongMedia, url: string | null, userId: string): Promise<Song | null>;
+  setMedia(id: number, field: keyof SongMedia, url: string | null, userId: string | null): Promise<Song | null>;
   /** Dos ids informados, devolve os que existem. */
   existingIds(ids: number[]): Promise<number[]>;
 }
@@ -262,4 +264,78 @@ export interface EmailMessage {
 /** Envio de e-mail transacional (Resend em produção; console no desenvolvimento e nos testes). */
 export interface EmailSender {
   send(message: EmailMessage): Promise<void>;
+}
+
+// ---------- Importação de salmos e aclamações (fonte externa) ----------
+
+/** Um item da lista da fonte: um salmo ou uma aclamação de uma data. */
+export interface ExternalPsalm {
+  /** Identificador estável na fonte (código do arquivo + data). */
+  externalId: string;
+  /** "1º Domingo do Advento, Ano B | Salmo 79" */
+  title: string;
+  /** Data da celebração, AAAA-MM-DD. */
+  date: string;
+  pdfUrl: string | null;
+  audioUrl: string | null;
+}
+
+/** Fonte externa de salmos (site da Diocese de Montenegro). */
+export interface PsalmSource {
+  /** Identificador gravado nos itens ("diocese-montenegro"). */
+  readonly id: string;
+  /** Crédito mostrado na página do canto. */
+  readonly name: string;
+  readonly url: string;
+  listUpcoming(): Promise<ExternalPsalm[]>;
+  download(url: string): Promise<Buffer>;
+}
+
+/** Linhas de texto de um PDF, de cima para baixo, página a página. */
+export interface PdfReader {
+  lines(pdf: Buffer): Promise<string[]>;
+}
+
+export type ImportStatus = "created" | "linked" | "review" | "ignored" | "failed";
+
+export interface ImportItem {
+  id: number;
+  source: string;
+  externalId: string;
+  title: string;
+  kind: "salmo" | "aclamacao";
+  celebrationDate: string;
+  pdfUrl: string | null;
+  audioUrl: string | null;
+  pdfHash: string | null;
+  status: ImportStatus;
+  songId: number | null;
+  candidateSongIds: number[];
+  message: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+export type ImportItemData = Omit<ImportItem, "id" | "createdAt" | "updatedAt">;
+
+export interface ImportRun {
+  id: number;
+  source: string;
+  trigger: "cron" | "manual";
+  startedAt: Date;
+  finishedAt: Date | null;
+  summary: Record<string, number>;
+  error: string | null;
+}
+
+export interface ImportRepository {
+  findItem(source: string, externalId: string): Promise<ImportItem | null>;
+  getItem(id: number): Promise<ImportItem | null>;
+  /** Canto já ligado a um PDF com este hash (criado ou reconhecido antes). */
+  songIdByPdfHash(source: string, hash: string): Promise<number | null>;
+  /** Cria o item; se já existe (mesma fonte e id), atualiza. */
+  saveItem(data: ImportItemData): Promise<ImportItem>;
+  listItems(opts: { status?: ImportStatus; limit: number }): Promise<ImportItem[]>;
+  startRun(source: string, trigger: ImportRun["trigger"]): Promise<number>;
+  finishRun(id: number, summary: Record<string, number>, error: string | null): Promise<void>;
+  listRuns(limit: number): Promise<ImportRun[]>;
 }

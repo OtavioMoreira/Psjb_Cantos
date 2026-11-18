@@ -22,6 +22,8 @@ const PUBLIC = new Set([
   "GET /api/songs",
   "GET /api/songs/:ref",
   "GET /api/flags",
+  // Sem login: protegida pelo CRON_SECRET (testes em imports.test.ts).
+  "GET /api/cron/import-psalms",
 ]);
 
 const ID = "6f1c2b8e-4c5d-4e7f-9a1b-2c3d4e5f6a7b";
