@@ -153,4 +153,15 @@ Os valores exatos (principalmente a chave DKIM) aparecem no painel do Resend. Em
 
 - Atualizar `docs/ESTADO-DO-PROJETO.md`, `planning.md` (Fase 3, deploy ✅), o README (URL de produção) e o `CLAUDE.md` (fase atual e deploy).
 - Ambiente `psjb-producao` do Postman apontando para a URL real.
-- Pendências que ficam para depois: reCAPTCHA no servidor, limite de tentativas compartilhado entre instâncias (Upstash Redis) e limpeza periódica de tokens vencidos (cron da Vercel). Ver `docs/ESTADO-DO-PROJETO.md` §4.
+- Pendências: ver `docs/ESTADO-DO-PROJETO.md` §3 e §5. Limite de tentativas compartilhado, faxina por cron e desafio no servidor já estão prontos (24/11/2026).
+
+## 8. Atualização de 24/11/2026 (antes do push na `main`)
+
+A API nova lê colunas e tabelas que ainda não existem no Neon. **Rodar as migrations antes do push**, senão as missas e o login quebram em produção.
+
+- [ ] `npm run db:migrate -w api` com o `DATABASE_URL` de produção (migrations 009 a 012: versão da missa, `site_state` com gatilhos, `audit_log` e `rate_limits`). São só acréscimos (`ADD COLUMN` com padrão, tabelas novas); o código antigo continua funcionando com elas.
+- [ ] Push na `main` (a Vercel publica a API e o front; o Pages publica a demonstração).
+- [ ] Conferir em **Settings › Cron Jobs** do projeto da API os dois crons: salmos (seg–qui 3h) e **faxina (todo dia às 4h)**. Os dois usam o mesmo `CRON_SECRET`.
+- [ ] Testar: editar a mesma missa em dois aparelhos ao mesmo tempo (as alterações se juntam); "Há alterações não publicadas" no admin de cantos; Admin › Auditoria; enviar um MP3 acima de 4 MB (vai direto ao Blob); abrir uma missa no Modo Missa, desligar a internet e recarregar.
+- [ ] **Desafio "não sou um robô"** (depois do acesso ao Cloudflare): criar um widget do **Turnstile** para `cantos.psjb.org.br` (e `psjb-cantos.vercel.app`), pôr `CAPTCHA_SECRET` no projeto da API e `NEXT_PUBLIC_CAPTCHA_SITE_KEY` no projeto do front, e fazer redeploy dos dois. Sem as chaves, o desafio fica desligado.
+- [ ] Opcional: `SITE_URL` no projeto do front enquanto o domínio for `psjb-cantos.vercel.app` (o padrão do sitemap e do canonical é `https://cantos.psjb.org.br`).
