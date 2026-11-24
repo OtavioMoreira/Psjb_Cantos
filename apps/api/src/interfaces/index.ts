@@ -273,6 +273,16 @@ export interface AuditRepository {
 export interface RateLimitCounter {
   /** Soma 1 na chave e devolve o total na janela atual e quanto falta para ela acabar. */
   hit(key: string, windowMs: number): Promise<{ hits: number; ttlMs: number }>;
+  /** Total na janela atual, sem somar (0 se não há janela aberta). */
+  peek(key: string, windowMs: number): Promise<number>;
+  reset(key: string): Promise<void>;
+}
+
+/** Desafio "não sou um robô" (Cloudflare Turnstile ou Google reCAPTCHA), conferido no servidor. */
+export interface HumanVerifier {
+  /** false = sem chave configurada: ninguém precisa resolver o desafio. */
+  readonly enabled: boolean;
+  verify(token: string, ip: string | null): Promise<boolean>;
 }
 
 export interface Clock {

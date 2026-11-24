@@ -16,4 +16,16 @@ export class PgRateLimitCounter implements RateLimitCounter {
     );
     return { hits: rows[0].hits, ttlMs: rows[0].ttl };
   }
+
+  async peek(key: string, windowMs: number) {
+    const { rows } = await this.pool.query<{ hits: number }>(
+      "SELECT hits FROM rate_limits WHERE key = $1 AND window_start + make_interval(secs => $2 / 1000.0) > now()",
+      [key.slice(0, 200), windowMs],
+    );
+    return rows[0]?.hits ?? 0;
+  }
+
+  async reset(key: string) {
+    await this.pool.query("DELETE FROM rate_limits WHERE key = $1", [key.slice(0, 200)]);
+  }
 }

@@ -33,6 +33,10 @@ const schema = z.object({
   EMAIL_ENABLED: z.enum(["true", "false"]).optional(),
   /** Login em duas etapas (código por e-mail). Ligado por padrão só em produção e com o e-mail ativo. */
   LOGIN_2FA: z.enum(["true", "false"]).optional(),
+  /** Chave secreta do desafio "não sou um robô". Sem ela, o desafio fica desligado (cadastro, recuperação e login). */
+  CAPTCHA_SECRET: z.string().min(10).optional(),
+  /** Cloudflare Turnstile (padrão: grátis e sem cookies de rastreamento) ou Google reCAPTCHA. */
+  CAPTCHA_PROVIDER: z.enum(["turnstile", "recaptcha"]).default("turnstile"),
 });
 
 export type Env = z.infer<typeof schema> & { loginTwoFactor: boolean; emailEnabled: boolean };

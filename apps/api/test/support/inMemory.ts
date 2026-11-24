@@ -20,6 +20,8 @@ import type {
   ImportRun,
   MaintenanceRepository,
   AuditFilters,
+  HumanVerifier,
+  RateLimitCounter,
   AuditRepository,
   SiteState,
   SiteStateRepository,
@@ -561,6 +563,35 @@ export class InMemorySiteState implements SiteStateRepository {
   }
 }
 
+/** Contador em memória com janela de verdade (o Postgres faz o mesmo na tabela rate_limits). */
+export class InMemoryRateLimits implements RateLimitCounter {
+  rows = new Map<string, { hits: number; start: number }>();
+  async hit(key: string, windowMs: number) {
+    const now = Date.now();
+    const cur = this.rows.get(key);
+    const row = cur && cur.start + windowMs > now ? { ...cur, hits: cur.hits + 1 } : { hits: 1, start: now };
+    this.rows.set(key, row);
+    return { hits: row.hits, ttlMs: row.start + windowMs - now };
+  }
+  async peek(key: string, windowMs: number) {
+    const cur = this.rows.get(key);
+    return cur && cur.start + windowMs > Date.now() ? cur.hits : 0;
+  }
+  async reset(key: string) {
+    this.rows.delete(key);
+  }
+}
+
+/** Desafio falso: desligado por padrão; ligado, aceita só o token "humano". */
+export class FakeCaptcha implements HumanVerifier {
+  enabled = false;
+  checked: string[] = [];
+  async verify(token: string) {
+    this.checked.push(token);
+    return token === "humano";
+  }
+}
+
 /** Faxina falsa: registra as chamadas. */
 export class FakeMaintenance implements MaintenanceRepository {
   calls: { now: Date; graceDays: number }[] = [];
@@ -606,6 +637,8 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     maintenance: FakeMaintenance;
     siteState: InMemorySiteState;
     audit: InMemoryAudit;
+    rateLimits: InMemoryRateLimits;
+    captcha: FakeCaptcha;
   } = {
     users,
     sessions: new InMemorySessions(),
@@ -623,6 +656,8 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     maintenance: new FakeMaintenance(),
     siteState: new InMemorySiteState(),
     audit: new InMemoryAudit(),
+    rateLimits: new InMemoryRateLimits(),
+    captcha: new FakeCaptcha(),
     hasher: fakeHasher,
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: new MemoryStorage(),

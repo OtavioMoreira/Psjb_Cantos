@@ -89,7 +89,7 @@ Todas ficaram prontas em 15/10/2026: trocar o próprio e-mail, recuperar senha, 
 | Item | Prioridade | Observação |
 |---|---|---|
 | **Deploy na Vercel** (front + API) com Neon, Blob e **Resend** | Alta | Configuração descrita no README; criar o Deploy Hook do front e pôr em `SITE_DEPLOY_HOOK_URL`; instalar o Resend pelo Marketplace e configurar SPF/DKIM/DMARC no DNS do `psjb.org.br` |
-| **reCAPTCHA real** (Google ou Turnstile) no cadastro | Alta | Hoje é só visual; precisa da validação no servidor |
+| **Chaves do desafio "não sou um robô"** (Cloudflare Turnstile) | Alta | Código pronto e testado contra o Turnstile (24/11/2026), desligado até criar as chaves: `CAPTCHA_SECRET` na API e `NEXT_PUBLIC_CAPTCHA_SITE_KEY` no front (depende de uma conta Cloudflare) |
 | Upload de arquivos **acima de 4 MB** direto para o Blob | Média | MP3 longo passa de 4 MB; depende do token de upload (API) |
 | **Revisar** os termos de uso e a política de privacidade com a paróquia | Média | Páginas `/termos` e `/privacidade` prontas (24/11/2026), escritas a partir do que o sistema faz de fato; precisam do aval da paróquia (contato usado: secretaria@psjb.org.br) |
 | **Modo offline (PWA)**: missas do dia em cache para o Modo Missa | Média | Hoje o PDF cobre o uso sem internet |
@@ -106,7 +106,6 @@ Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo 
 
 | # | Rota ou recurso | Para qual tela | Detalhes |
 |---|---|---|---|
-| 11 | **reCAPTCHA** validado no servidor | Criar conta | também na recuperação e no login depois de 3 falhas |
 | 13 | Token de **upload direto para o Blob** (`POST /api/uploads`) | Admin › Cantos | arquivos acima de 4 MB |
 
 ## 5. Próximos passos sugeridos

@@ -47,6 +47,7 @@ import { CleanupAction } from "./actions/maintenance/CleanupAction.js";
 import { AuditTargetLabelAction, ListAuditAction, RecordAuditAction } from "./actions/admin/AuditActions.js";
 import { PgAuditRepository } from "./repositories/PgAuditRepository.js";
 import { PgRateLimitCounter } from "./repositories/PgRateLimitCounter.js";
+import { CaptchaVerifier, DisabledHumanVerifier } from "./services/CaptchaVerifier.js";
 import { PgMaintenanceRepository } from "./repositories/PgMaintenanceRepository.js";
 import { ImportPsalmsAction, ListImportsAction, ResolveImportAction } from "./actions/imports/ImportPsalmsActions.js";
 import { DioceseMontenegroSource } from "./services/DioceseMontenegroSource.js";
@@ -77,6 +78,7 @@ import type {
   SiteStateRepository,
   AuditRepository,
   RateLimitCounter,
+  HumanVerifier,
   PdfReader,
   PsalmSource,
 } from "./interfaces/index.js";
@@ -113,8 +115,9 @@ export interface Adapters {
   maintenance: MaintenanceRepository;
   siteState: SiteStateRepository;
   audit: AuditRepository;
-  /** Sem ele (testes), o limite de tentativas fica em memória. */
-  rateLimits?: RateLimitCounter;
+  /** Limite de tentativas e senhas erradas no login (Postgres; em memória nos testes). */
+  rateLimits: RateLimitCounter;
+  captcha: HumanVerifier;
   hasher: PasswordHasher;
   tokens: TokenService;
   storage: FileStorage;
@@ -222,6 +225,7 @@ export function createAdapters(env: Env): Adapters & { pool: Pool } {
     siteState: new PgSiteStateRepository(pool),
     audit: new PgAuditRepository(pool),
     rateLimits: new PgRateLimitCounter(pool),
+    captcha: env.CAPTCHA_SECRET ? new CaptchaVerifier(env.CAPTCHA_SECRET, env.CAPTCHA_PROVIDER) : new DisabledHumanVerifier(),
     hasher: new Argon2PasswordHasher(),
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: env.BLOB_READ_WRITE_TOKEN

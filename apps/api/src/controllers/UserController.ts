@@ -11,7 +11,7 @@ export class UserController {
 
   /** Cadastro público. Responde 201 com a conta pendente; quem ativa é um admin. */
   create = async (req: FastifyRequest, reply: FastifyReply) => {
-    const user = await this.c.actions.createUser.execute(validate(createUserSchema, req.body));
+    const user = await this.c.actions.createUser.execute(validate(createUserSchema, req.body), { ip: req.ip });
     return reply.status(201).send({ user });
   };
 

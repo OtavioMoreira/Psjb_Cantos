@@ -11,7 +11,7 @@ import { Field } from "@/components/ui/Field";
 import { MovementSelect } from "@/components/user/MovementSelect";
 import { Button } from "@/components/ui/Button";
 import { AuthCard, DemoNote } from "./AuthCard";
-import { Recaptcha } from "./Recaptcha";
+import { CAPTCHA_ENABLED, HumanCheck } from "./HumanCheck";
 import { PasswordStrength, passwordScore } from "./PasswordStrength";
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
@@ -126,6 +126,10 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
   const [error, setError] = useState<{ text: string; pending?: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [challenge, setChallenge] = useState<LoginChallenge | null>(null);
+  // Depois de 3 senhas erradas, o servidor passa a pedir o desafio "não sou um robô".
+  const [needCaptcha, setNeedCaptcha] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   const emailErr = touched.email && !EMAIL_RE.test(email) ? "Informe um e-mail válido." : undefined;
   const passErr = touched.password && password.length < 6 ? "Use pelo menos 6 caracteres." : undefined;
@@ -140,11 +144,12 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
     e.preventDefault();
     setTouched({ email: true, password: true });
     if (!EMAIL_RE.test(email) || password.length < 6) return;
+    if (needCaptcha && CAPTCHA_ENABLED && !captcha) return setError({ text: "Confirme que você não é um robô." });
     setLoading(true);
     setError(null);
     if (API_ENABLED) {
       api
-        .login(email, password, remember)
+        .login(email, password, remember, needCaptcha ? (captcha ?? undefined) : undefined)
         .then((r) => {
           if ("challenge" in r) {
             setLoading(false);
@@ -155,6 +160,9 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
         .catch((err) => {
           setLoading(false);
           setError(loginErrorText(err));
+          if (err instanceof ApiError && (err.code === "CAPTCHA_REQUIRED" || err.details?.captcha)) setNeedCaptcha(true);
+          // O token só vale uma vez.
+          if (captcha) setCaptchaReset((n) => n + 1);
         });
       return;
     }
@@ -230,6 +238,7 @@ function LoginForm({ onPending }: { onPending: (email: string) => void }) {
             Esqueci a senha
           </Link>
         </div>
+        {needCaptcha && <HumanCheck onToken={setCaptcha} resetKey={captchaReset} />}
         {error && (
           <div role="alert" className="flex gap-2 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
             <ShieldAlert size={18} className="mt-0.5 shrink-0" />
@@ -293,7 +302,8 @@ function loginErrorText(err: unknown): { text: string; pending?: boolean } {
   if (err.code === "ACCOUNT_PENDING") return { text: "Sua conta ainda não foi ativada. Assim que a coordenação liberar, você consegue entrar." };
   if (err.code === "ACCOUNT_BLOCKED")
     return { text: `Seu acesso está bloqueado.${err.details?.reason ? ` Motivo: ${err.details.reason}` : ""} Procure a coordenação da paróquia.` };
-  if (err.code === "INVALID_CREDENTIALS") return { text: "E-mail ou senha não conferem. Tente de novo." };
+  if (err.code === "INVALID_CREDENTIALS")
+    return { text: `E-mail ou senha não conferem.${err.details?.captcha ? " Por segurança, confirme que você não é um robô para tentar de novo." : " Tente de novo."}` };
   return { text: err.message };
 }
 
@@ -301,7 +311,9 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirm: "" });
   const [movement, setMovement] = useState<{ id: number; name: string } | null>(null);
   const [accepted, setAccepted] = useState(false);
-  const [human, setHuman] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const human = !CAPTCHA_ENABLED || captcha !== null;
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -326,10 +338,11 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
     if (API_ENABLED) {
       const { name, email, phone, password } = form;
       api
-        .signup({ name, email, phone, password, movementId: movement?.id ?? null })
+        .signup({ name, email, phone, password, movementId: movement?.id ?? null, captchaToken: captcha ?? undefined })
         .then((u) => onCreated(u.email, ""))
         .catch((err) => {
           setLoading(false);
+          if (captcha) setCaptchaReset((n) => n + 1);
           const fields = err instanceof ApiError ? err.details?.fields : undefined;
           setError(fields ? Object.values(fields).join(" ") : err instanceof ApiError ? err.message : "Erro inesperado. Tente de novo.");
         });
@@ -387,7 +400,7 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
         </label>
         {submitted && !accepted && <p className="-mt-2 text-sm text-danger">É preciso aceitar os termos.</p>}
         <div>
-          <Recaptcha onChange={setHuman} />
+          <HumanCheck onToken={setCaptcha} resetKey={captchaReset} />
           {submitted && !human && <p className="mt-1.5 text-sm text-danger">Confirme que você não é um robô.</p>}
         </div>
         {error && (

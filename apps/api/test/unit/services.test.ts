@@ -158,3 +158,34 @@ describe("ConsoleEmailSender", () => {
     log.mockRestore();
   });
 });
+
+describe("CaptchaVerifier (Turnstile / reCAPTCHA)", async () => {
+  const { CaptchaVerifier } = await import("../../src/services/CaptchaVerifier.js");
+  const reply = (json: object, status = 200) => (async () => new Response(JSON.stringify(json), { status })) as unknown as typeof fetch;
+
+  it("manda segredo, token e IP para o provedor certo e só aceita success: true", async () => {
+    const calls: { url: string; body: string }[] = [];
+    const spy = (async (url: string, init: RequestInit) => {
+      calls.push({ url, body: String(init.body) });
+      return new Response(JSON.stringify({ success: true }));
+    }) as unknown as typeof fetch;
+    expect(await new CaptchaVerifier("segredo-123", "turnstile", spy).verify("tok", "1.2.3.4")).toBe(true);
+    expect(calls[0].url).toContain("challenges.cloudflare.com");
+    expect(calls[0].body).toBe("secret=segredo-123&response=tok&remoteip=1.2.3.4");
+    await new CaptchaVerifier("segredo-123", "recaptcha", spy).verify("tok", null);
+    expect(calls[1].url).toContain("google.com/recaptcha");
+    expect(calls[1].body).not.toContain("remoteip");
+
+    expect(await new CaptchaVerifier("s", "turnstile", reply({ success: false })).verify("t", null)).toBe(false);
+  });
+
+  it("reCAPTCHA v3 com nota baixa, erro HTTP ou de rede: não verificado", async () => {
+    expect(await new CaptchaVerifier("s", "recaptcha", reply({ success: true, score: 0.2 })).verify("t", null)).toBe(false);
+    expect(await new CaptchaVerifier("s", "recaptcha", reply({ success: true, score: 0.9 })).verify("t", null)).toBe(true);
+    expect(await new CaptchaVerifier("s", "turnstile", reply({}, 500)).verify("t", null)).toBe(false);
+    const down = (async () => {
+      throw new Error("sem rede");
+    }) as unknown as typeof fetch;
+    expect(await new CaptchaVerifier("s", "turnstile", down).verify("t", null)).toBe(false);
+  });
+});

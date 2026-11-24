@@ -29,6 +29,7 @@ export const createUserSchema = z.object({
   password: passwordSchema,
   phone: phoneSchema,
   movementId: movementIdSchema,
+  captchaToken: z.string().max(4096).optional(),
 });
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 

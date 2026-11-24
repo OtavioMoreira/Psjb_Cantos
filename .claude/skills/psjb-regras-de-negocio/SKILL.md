@@ -243,7 +243,7 @@ Os eixos:
   - Nome (3+ caracteres), e-mail válido, telefone/WhatsApp (opcional, 8–20 dígitos e símbolos), movimento (opcional, da lista), senha e confirmação.
   - A senha precisa de **8 ou mais caracteres, com letras e números**, e há medidor de força.
   - Aceite dos termos e da privacidade (LGPD) é obrigatório.
-  - **reCAPTCHA** obrigatório.
+  - **Desafio "não sou um robô"** obrigatório (Turnstile; ver §13).
   - A conta nasce **pendente**, com papel músico, e **um admin ativa depois** (`PATCH /api/admin/users/:id/activate`). Por enquanto não há e-mail de confirmação.
   - Depois de enviar, a tela mostra "Conta criada!" explicando que a coordenação vai liberar o acesso.
   - E-mail já cadastrado: 409 "Já existe uma conta com este e-mail". **(futuro)** Com o serviço de e-mail, a resposta passa a ser sempre a mesma.
@@ -340,7 +340,10 @@ Os eixos:
    - **Trocar a senha**, redefinir pelo link ou receber senha temporária do admin **tira a confiança de todos os aparelhos**.
 - **Rate limit** por IP: verify 20 e resend 10 a cada 15 min, além das 5 tentativas por código.
 - **Faxina diária (24/11/2026):** o Cron da Vercel chama `GET /api/cron/cleanup` todo dia às 4h (`0 7 * * *` UTC, mesmo `CRON_SECRET`) e apaga sessões, tokens de e-mail e aparelhos confiáveis **vencidos ou usados há mais de 7 dias**. Sessão revogada ainda no prazo fica, porque é ela que detecta o reuso de um refresh token.
-- **reCAPTCHA:** v3 invisível ou v2 checkbox (Google) ou Cloudflare Turnstile. O token é **validado no servidor** com a chave secreta. Vale para cadastro, recuperação de senha e login depois de 3 falhas.
+- **Desafio "não sou um robô" (24/11/2026):** **Cloudflare Turnstile** por padrão (grátis, sem cookies de rastreamento; o DNS da paróquia já está na Cloudflare) ou Google reCAPTCHA v2/v3 (`CAPTCHA_PROVIDER`). O token é **validado no servidor** (`CAPTCHA_SECRET`); falha de rede no provedor conta como não verificado. **Sem a chave, o desafio fica desligado** nas duas pontas (a tela não mostra; a API não pede).
+  - **Cadastro** e **recuperação de senha**: sempre (na recuperação, antes de procurar a conta, para a resposta não revelar se o e-mail existe).
+  - **Login:** depois de **3 senhas erradas para o mesmo e-mail em 15 min** (contadas em `rate_limits`, valendo também para e-mail inexistente). A 3ª erra e já volta com `details.captcha`, e a tela mostra o desafio; daí em diante, nem a senha certa entra sem ele (400 `CAPTCHA_REQUIRED`). Acertar zera a contagem.
+  - O token vale **uma vez**: depois de qualquer erro do servidor, a tela pede um novo. Na demonstração, continua o widget ilustrativo.
 - **E-mail transacional (15/10/2026): Resend**, escolhido pelo plano grátis (3.000/mês, **100/dia**), pela integração com a Vercel (Marketplace, região `sa-east-1`) e pela API simples. Precisa de SPF/DKIM/DMARC em `psjb.org.br`.
   - Porta `EmailSender` na API: `ResendEmailSender` (com `RESEND_API_KEY`) ou `ConsoleEmailSender` (sem a chave: imprime no terminal). **Em produção a chave é obrigatória** (a API não sobe sem ela), a não ser com a trava ligada. Remetente em `EMAIL_FROM`; links montados com `APP_URL`.
   - **Trava do envio:** `EMAIL_ENABLED=false` não manda e-mail nenhum, nem com a chave (a API sobe sem `RESEND_API_KEY`), e o 2FA passa a vir desligado; em produção, `LOGIN_2FA=true` com o e-mail travado é recusado, e o log registra só destinatário e assunto (nunca link ou código). Usada nos testes de aprovação, antes de o domínio ser verificado: o login é só com senha, e para quem esqueceu vale a senha temporária do admin. (18/11/2026)

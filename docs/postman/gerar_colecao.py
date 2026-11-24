@@ -92,7 +92,7 @@ items = [  # na ordem em que faz sentido rodar
             tests=SAVE_TOKEN("accessToken")),
         req("Logout", "POST", "/auth/logout", auth="none", desc="Revoga a sessão do cookie e apaga o cookie. 204."),
         req("Esqueci a senha", "POST", "/auth/forgot", {"email": "{{adminEmail}}"}, auth="none",
-            desc="Sempre 202 `{ ok: true }`, exista ou não a conta (não revela quais e-mails estão cadastrados). Só conta **ativa** recebe o link, que vale 1 h; pedir de novo antes de 60 s não envia outro. Sem `RESEND_API_KEY`, o e-mail aparece no terminal da API."),
+            desc="Com o desafio ligado (`CAPTCHA_SECRET`), mande `captchaToken` (Turnstile/reCAPTCHA); sem ele, 400 CAPTCHA_REQUIRED. Sempre 202 `{ ok: true }`, exista ou não a conta (não revela quais e-mails estão cadastrados). Só conta **ativa** recebe o link, que vale 1 h; pedir de novo antes de 60 s não envia outro. Sem `RESEND_API_KEY`, o e-mail aparece no terminal da API."),
         req("Redefinir a senha (token do e-mail)", "POST", "/auth/reset", {"token": "{{resetToken}}", "password": "novaSenha123"}, auth="none", status=400,
             desc="Cole em `resetToken` o token do link recebido (`/redefinir-senha?token=…`). Também serve para o link de **convite** (ativa a conta pendente). Uso único; derruba as sessões abertas. Resposta: `{ email }`. Sem um token válido, 400 INVALID_TOKEN (é o que esta requisição de exemplo espera)."),
         req("Confirmar troca de e-mail", "POST", "/auth/confirm-email", {"token": "{{resetToken}}"}, auth="none", status=400,

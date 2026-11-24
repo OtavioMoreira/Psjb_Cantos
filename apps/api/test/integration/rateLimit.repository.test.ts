@@ -23,3 +23,19 @@ describe.skipIf(!dbUrl)("PgRateLimitCounter", () => {
     expect((await repos.rateLimits.hit("junto", 60_000)).hits).toBe(21);
   });
 });
+
+describe.skipIf(!dbUrl)("PgRateLimitCounter: peek e reset (senhas erradas no login)", () => {
+  const { repos } = useTestDb();
+
+  it("peek lê sem somar; janela vencida conta 0; reset apaga", async () => {
+    const r = repos.rateLimits;
+    expect(await r.peek("login-fail|a@x.com", 60_000)).toBe(0);
+    await r.hit("login-fail|a@x.com", 60_000);
+    await r.hit("login-fail|a@x.com", 60_000);
+    expect(await r.peek("login-fail|a@x.com", 60_000)).toBe(2);
+    expect(await r.peek("login-fail|a@x.com", 60_000)).toBe(2);
+    expect(await r.peek("login-fail|a@x.com", 1)).toBe(0);
+    await r.reset("login-fail|a@x.com");
+    expect(await r.peek("login-fail|a@x.com", 60_000)).toBe(0);
+  });
+});

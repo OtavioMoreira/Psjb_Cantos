@@ -1,10 +1,12 @@
 import { AppError } from "../../domain/errors.js";
 import type { ForgotPasswordInput, ResetPasswordInput } from "../../dtos/auth.dto.js";
 import { passwordResetEmail } from "../../emails/templates.js";
-import type { PasswordHasher, SessionRepository, TrustedDeviceRepository, UserRepository } from "../../interfaces/index.js";
+import type { HumanVerifier, PasswordHasher, SessionRepository, TrustedDeviceRepository, UserRepository } from "../../interfaces/index.js";
+import { requireHuman } from "./captcha.js";
 import { issueLinkToken, sendQuietly, sentRecently, type EmailTokenDeps } from "./emailTokens.js";
 
 interface Deps extends EmailTokenDeps {
+  captcha: HumanVerifier;
   users: UserRepository;
   sessions: SessionRepository;
   trustedDevices: TrustedDeviceRepository;
@@ -18,7 +20,9 @@ interface Deps extends EmailTokenDeps {
 export class RequestPasswordResetAction {
   constructor(private readonly deps: Deps) {}
 
-  async execute(input: ForgotPasswordInput): Promise<void> {
+  async execute(input: ForgotPasswordInput, ctx: { ip: string | null } = { ip: null }): Promise<void> {
+    // Antes de procurar a conta: a resposta ao robô é a mesma, exista o e-mail ou não.
+    await requireHuman(this.deps.captcha, input.captchaToken, ctx.ip);
     const user = await this.deps.users.findByEmailWithPassword(input.email);
     if (!user || user.status !== "active") return;
     if (await sentRecently(this.deps, user.id, "password_reset")) return;

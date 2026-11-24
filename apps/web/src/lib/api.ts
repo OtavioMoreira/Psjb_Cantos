@@ -119,7 +119,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
-    readonly details?: { reason?: string | null; fields?: Record<string, string>; attemptsLeft?: number; retryAfter?: number; mass?: ApiMass },
+    readonly details?: { reason?: string | null; fields?: Record<string, string>; attemptsLeft?: number; retryAfter?: number; mass?: ApiMass; captcha?: boolean },
   ) {
     super(message);
   }
@@ -191,8 +191,8 @@ async function authed<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   /** Devolve o usuário (sessão aberta) ou o desafio do 2FA, quando o código ainda precisa ser digitado. */
-  async login(email: string, password: string, remember: boolean): Promise<{ user: ApiUser } | { challenge: LoginChallenge }> {
-    const r = await call<AuthResult | LoginChallenge>("/auth/login", { method: "POST", body: JSON.stringify({ email, password, remember }) });
+  async login(email: string, password: string, remember: boolean, captchaToken?: string): Promise<{ user: ApiUser } | { challenge: LoginChallenge }> {
+    const r = await call<AuthResult | LoginChallenge>("/auth/login", { method: "POST", body: JSON.stringify({ email, password, remember, captchaToken }) });
     if ("twoFactor" in r) return { challenge: r };
     return { user: keep(r).user };
   },
@@ -205,11 +205,11 @@ export const api = {
     accessToken = null;
     await call("/auth/logout", { method: "POST" }).catch(() => undefined);
   },
-  async signup(data: { name: string; email: string; password: string; movementId: number | null; phone: string }) {
+  async signup(data: { name: string; email: string; password: string; movementId: number | null; phone: string; captchaToken?: string }) {
     return (await call<{ user: ApiUser }>("/users", { method: "POST", body: JSON.stringify(data) })).user;
   },
   /** Sempre responde igual, exista ou não a conta. */
-  forgotPassword: (email: string) => call<{ ok: true }>("/auth/forgot", { method: "POST", body: JSON.stringify({ email }) }),
+  forgotPassword: (email: string, captchaToken?: string) => call<{ ok: true }>("/auth/forgot", { method: "POST", body: JSON.stringify({ email, captchaToken }) }),
   /** Link de redefinição ou de convite. INVALID_TOKEN se o link venceu ou já foi usado. */
   resetPassword: (token: string, password: string) => call<{ email: string }>("/auth/reset", { method: "POST", body: JSON.stringify({ token, password }) }),
   /** Pede a troca do próprio e-mail: o link vai para o endereço novo. */

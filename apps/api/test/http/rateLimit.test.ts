@@ -13,6 +13,12 @@ class SharedCounter implements RateLimitCounter {
     this.hits.set(key, n);
     return { hits: n, ttlMs: 60_000 };
   }
+  async peek(key: string) {
+    return this.hits.get(key) ?? 0;
+  }
+  async reset(key: string) {
+    this.hits.delete(key);
+  }
 }
 
 const twoInstances = async (counter: RateLimitCounter) => {

@@ -206,7 +206,8 @@ Estado do cliente em `localStorage`:
 - ✅ **Recuperar senha:** `/recuperar-senha` sempre dá a mesma resposta (não revela se o e-mail existe), e `/redefinir-senha?token=` define a nova senha.
 - 🟡 Na demonstração, os e-mails são simulados por um link "Demonstração" na tela.
 - ✅ **Com a API (15/10/2026):** recuperação de senha real (`/auth/forgot` e `/auth/reset`), e-mails pelo Resend, tokens de uso único com validade (§6.6) e **2FA por código enviado ao e-mail**, com "confiar neste aparelho por 30 dias" (§6.6).
-- 🔜 O cadastro também não revela se o e-mail já existe; reCAPTCHA no servidor.
+- 🔜 O cadastro também não revela se o e-mail já existe.
+- ✅ Desafio "não sou um robô" no servidor (Turnstile ou reCAPTCHA), desligado até criar as chaves.
 
 ### E4. Perfil 🟡
 - ✅ Nome, e-mail, paróquia, movimento, instrumento, tema (claro/escuro/sistema) e sustenidos/bemóis.
@@ -469,7 +470,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 
 ### 6.6 Segurança e autenticação
 
-**Já implementado:** argon2id; login → access JWT de 15 min + refresh rotativo em cookie httpOnly; **2FA por e-mail** com aparelho confiável (15/10/2026, ligado por padrão em produção, `LOGIN_2FA`; `EMAIL_ENABLED=false` trava o envio e desliga o 2FA); detecção de reuso; papéis no JWT e `requireRole` no servidor; rate limit em login, 2FA, recuperação, cadastro e refresh; tokens de e-mail de uso único guardados como hash (`auth_tokens`); `@fastify/helmet`; CORS restrito; validação com Zod; respostas de erro no formato `{ error: { code, message, details } }`. Também: auditoria das ações de admin (`audit_log`). Faltam reCAPTCHA e a parte de LGPD.
+**Já implementado:** argon2id; login → access JWT de 15 min + refresh rotativo em cookie httpOnly; **2FA por e-mail** com aparelho confiável (15/10/2026, ligado por padrão em produção, `LOGIN_2FA`; `EMAIL_ENABLED=false` trava o envio e desliga o 2FA); detecção de reuso; papéis no JWT e `requireRole` no servidor; rate limit em login, 2FA, recuperação, cadastro e refresh; tokens de e-mail de uso único guardados como hash (`auth_tokens`); `@fastify/helmet`; CORS restrito; validação com Zod; respostas de erro no formato `{ error: { code, message, details } }`. Também: auditoria das ações de admin (`audit_log`), desafio Turnstile/reCAPTCHA no servidor (desligado até criar as chaves), limite de tentativas compartilhado entre instâncias (Postgres) e as páginas de termos e privacidade.
 
 **Senhas**
 - Hash com **argon2id**. Política: 8 ou mais caracteres, com letras e números (a mesma da UI); se possível, checar contra listas de senhas vazadas.
@@ -488,10 +489,10 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 - Bloquear ou redefinir a senha **revoga todas as sessões**; trocar a senha revoga as dos outros aparelhos. Trocar ou redefinir a senha tira a confiança de todos os aparelhos.
 - A autorização por papel acontece **no servidor** (`requireRole('admin')`).
 
-**reCAPTCHA**
-- reCAPTCHA v3 (invisível) ou v2 (checkbox, que é o que o visual da Fase 1 imita), ou Cloudflare Turnstile.
-- Usado no cadastro, na recuperação de senha e no login depois de 3 falhas.
-- O token é validado **no servidor** (`siteverify`, com a chave secreta); score mínimo sugerido de 0,5.
+**reCAPTCHA / Turnstile** ✅ (24/11/2026; falta criar as chaves de produção)
+- **Cloudflare Turnstile** por padrão (grátis, sem cookies de rastreamento); Google reCAPTCHA v2 também funciona (`CAPTCHA_PROVIDER=recaptcha`; no v3, nota mínima 0,5).
+- Usado no cadastro, na recuperação de senha e no login depois de 3 senhas erradas para o mesmo e-mail em 15 min (contadas em `rate_limits`; acertar zera).
+- O token é validado **no servidor** (`siteverify`, com `CAPTCHA_SECRET`); sem a chave, o desafio fica desligado nas duas pontas. Erro: 400 `CAPTCHA_REQUIRED`; a 3ª senha errada já volta com `details.captcha` para o front mostrar o desafio.
 
 **Outros**
 - Rate limit (`@fastify/rate-limit`) em login, cadastro, reenvios e 2FA; `@fastify/helmet`; CORS restrito; validação de entrada por schema (Zod/TypeBox).
@@ -577,7 +578,7 @@ Modelos de e-mail (pt-BR; `apps/api/src/emails/templates.ts`):
 - ✅ **2FA por código no e-mail**, com aparelho confiável por 30 dias.
 - [ ] Deploy: projetos `apps/web` e `apps/api` na Vercel, banco no Neon (rodar `db:migrate` no deploy) e Blob ligado à API. Roteiro e checklist em `docs/DEPLOY.md`.
 - ✅ Recuperação de senha, convites e troca de e-mail com confirmação.
-- [ ] Cadastro com **reCAPTCHA no servidor** (o cadastro continua esperando a ativação pelo admin).
+- [x] Cadastro com **reCAPTCHA/Turnstile no servidor** (o cadastro continua esperando a ativação pelo admin). Falta criar as chaves de produção.
 - ✅ Serviço de e-mail (**Resend**) + modelos (§6.9). Falta configurar SPF/DKIM/DMARC em `psjb.org.br` no deploy.
 - [ ] Endpoints de admin de usuários + `AuditLog` (§5.2).
 - [ ] Trocar o `lib/store.ts` (localStorage) pelas chamadas à API, mantendo as telas.

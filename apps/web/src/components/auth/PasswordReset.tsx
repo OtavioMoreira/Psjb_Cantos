@@ -9,6 +9,7 @@ import { api, API_ENABLED, ApiError } from "@/lib/api";
 import { Field } from "@/components/ui/Field";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { AuthCard, DemoNote } from "./AuthCard";
+import { CAPTCHA_ENABLED, HumanCheck } from "./HumanCheck";
 import { PasswordStrength, passwordScore } from "./PasswordStrength";
 
 export function ForgotPassword() {
@@ -16,7 +17,9 @@ export function ForgotPassword() {
   const [sent, setSent] = useState<{ token: string | null } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const valid = /^\S+@\S+\.\S+$/.test(email);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const valid = /^\S+@\S+\.\S+$/.test(email) && (!API_ENABLED || !CAPTCHA_ENABLED || captcha !== null);
 
   if (sent) {
     return (
@@ -61,15 +64,18 @@ export function ForgotPassword() {
           setError("");
           if (!API_ENABLED) return void setTimeout(() => setSent({ token: requestPasswordReset(email) }), 600);
           api
-            .forgotPassword(email)
+            .forgotPassword(email, captcha ?? undefined)
             .then(() => setSent({ token: null }))
             .catch((err) => {
               setError(err instanceof ApiError ? err.message : "Não foi possível enviar. Tente de novo.");
               setLoading(false);
+              if (captcha) setCaptchaReset((n) => n + 1);
             });
         }}
       >
         <Field label="E-mail" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        {/* Na demonstração o pedido nem sai do aparelho: o desafio só aparece com a API. */}
+        {API_ENABLED && <HumanCheck onToken={setCaptcha} resetKey={captchaReset} />}
         {error && (
           <p role="alert" className="text-sm text-danger">
             {error}

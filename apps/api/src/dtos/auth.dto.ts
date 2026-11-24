@@ -6,6 +6,8 @@ export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email("E-mail inválido.")),
   password: z.string().min(1, "Informe a senha.").max(200),
   remember: z.boolean().default(true),
+  /** Só é exigido depois de 3 senhas erradas (e se o desafio estiver ligado). */
+  captchaToken: z.string().max(4096).optional(),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
@@ -18,6 +20,7 @@ export interface AuthResultDTO {
 
 export const forgotPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email("E-mail inválido.")),
+  captchaToken: z.string().max(4096).optional(),
 });
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 

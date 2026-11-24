@@ -305,7 +305,7 @@
                 "forgot"
               ]
             },
-            "description": "Sempre 202 `{ ok: true }`, exista ou não a conta (não revela quais e-mails estão cadastrados). Só conta **ativa** recebe o link, que vale 1 h; pedir de novo antes de 60 s não envia outro. Sem `RESEND_API_KEY`, o e-mail aparece no terminal da API.",
+            "description": "Com o desafio ligado (`CAPTCHA_SECRET`), mande `captchaToken` (Turnstile/reCAPTCHA); sem ele, 400 CAPTCHA_REQUIRED. Sempre 202 `{ ok: true }`, exista ou não a conta (não revela quais e-mails estão cadastrados). Só conta **ativa** recebe o link, que vale 1 h; pedir de novo antes de 60 s não envia outro. Sem `RESEND_API_KEY`, o e-mail aparece no terminal da API.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{adminEmail}}\"\n}",

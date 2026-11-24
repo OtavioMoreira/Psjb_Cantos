@@ -27,7 +27,7 @@ export class AuthController {
   /** Com o 2FA ligado (e aparelho não confiável), responde o desafio em vez da sessão. */
   login = async (req: FastifyRequest, reply: FastifyReply): Promise<AuthResultDTO | LoginChallengeDTO> => {
     const input = validate(loginSchema, req.body);
-    const result = await this.c.actions.login.execute(input, { userAgent: req.headers["user-agent"] ?? null, deviceToken: req.cookies[DEVICE_COOKIE] });
+    const result = await this.c.actions.login.execute(input, { userAgent: req.headers["user-agent"] ?? null, deviceToken: req.cookies[DEVICE_COOKIE], ip: req.ip });
     if (result.kind === "challenge") return { twoFactor: true, challengeId: result.challengeId, emailHint: result.emailHint, expiresIn: result.expiresIn };
     return this.respond(reply, result);
   };
@@ -68,7 +68,7 @@ export class AuthController {
 
   /** Sempre 202 com a mesma mensagem: não revela se o e-mail está cadastrado. */
   forgot = async (req: FastifyRequest, reply: FastifyReply) => {
-    await this.c.actions.requestPasswordReset.execute(validate(forgotPasswordSchema, req.body));
+    await this.c.actions.requestPasswordReset.execute(validate(forgotPasswordSchema, req.body), { ip: req.ip });
     return reply.status(202).send({ ok: true });
   };
 

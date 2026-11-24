@@ -6,12 +6,15 @@ import type {
   AuthTokenRepository,
   Clock,
   EmailSender,
+  HumanVerifier,
   PasswordHasher,
+  RateLimitCounter,
   SessionRepository,
   TokenService,
   TrustedDeviceRepository,
   UserRepository,
 } from "../../interfaces/index.js";
+import { LOGIN_FAIL_WINDOW_MS, LOGIN_FAILS_BEFORE_CAPTCHA, loginFailKey, requireHuman } from "./captcha.js";
 import { issueSession, type IssuedSession, type SessionTtl } from "./issueSession.js";
 import { sendLoginCode, type LoginChallenge } from "./TwoFactorActions.js";
 
@@ -27,12 +30,15 @@ export interface LoginDeps {
   ttl: SessionTtl;
   /** Login em duas etapas ligado (env LOGIN_2FA). */
   twoFactor: boolean;
+  captcha: HumanVerifier;
+  rateLimits: RateLimitCounter;
 }
 
 export interface LoginContext {
   userAgent: string | null;
   /** Token do cookie "confiar neste aparelho", se houver. */
   deviceToken?: string;
+  ip?: string | null;
 }
 
 export type LoggedIn = IssuedSession & { user: UserDTO };
@@ -60,15 +66,28 @@ export class LoginAction {
   constructor(private readonly deps: LoginDeps) {}
 
   async execute(input: LoginInput, ctx: LoginContext): Promise<LoginResult> {
+    // Depois de 3 senhas erradas para o mesmo e-mail em 15 min, o desafio passa a ser exigido
+    // (vale para e-mail inexistente também: a resposta não revela se a conta existe).
+    const failKey = loginFailKey(input.email);
+    const { captcha, rateLimits } = this.deps;
+    if (captcha.enabled && (await rateLimits.peek(failKey, LOGIN_FAIL_WINDOW_MS)) >= LOGIN_FAILS_BEFORE_CAPTCHA)
+      await requireHuman(captcha, input.captchaToken, ctx.ip ?? null);
+
     const user = await this.deps.users.findByEmailWithPassword(input.email);
+    const fail = async () => {
+      const { hits } = await rateLimits.hit(failKey, LOGIN_FAIL_WINDOW_MS);
+      // Avisa o front para já mostrar o desafio na próxima tentativa.
+      return invalid(captcha.enabled && hits >= LOGIN_FAILS_BEFORE_CAPTCHA);
+    };
 
     // Sem usuário, ainda verifica um hash qualquer: o tempo de resposta não revela se o e-mail existe.
     if (!user) {
       this.dummyHash ??= this.deps.hasher.hash("senha-inexistente-0");
       await this.deps.hasher.verify(await this.dummyHash, input.password);
-      throw invalid();
+      throw await fail();
     }
-    if (!(await this.deps.hasher.verify(user.passwordHash, input.password))) throw invalid();
+    if (!(await this.deps.hasher.verify(user.passwordHash, input.password))) throw await fail();
+    await rateLimits.reset(failKey);
     ensureCanEnter(user);
 
     const trusted =
@@ -79,4 +98,5 @@ export class LoginAction {
   }
 }
 
-const invalid = () => new AppError("INVALID_CREDENTIALS", "E-mail ou senha não conferem.");
+const invalid = (captcha = false) =>
+  new AppError("INVALID_CREDENTIALS", "E-mail ou senha não conferem.", captcha ? { captcha: true } : undefined);

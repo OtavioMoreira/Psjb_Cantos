@@ -86,6 +86,10 @@ export default function PrivacidadePage() {
           <li>
             <strong>Resend</strong>: envio dos e-mails do serviço.
           </li>
+          <li>
+            <strong>Cloudflare Turnstile</strong>: o desafio &quot;não sou um robô&quot; do cadastro, da recuperação de senha e do login depois de
+            senhas erradas. Ele confere sinais do navegador para separar pessoas de robôs, sem cookies de publicidade.
+          </li>
         </ul>
         <p>Parte desses serviços pode processar dados fora do Brasil, com as garantias previstas na LGPD.</p>
       </section>
