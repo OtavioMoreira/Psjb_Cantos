@@ -51,6 +51,14 @@ export const massPatchSchema = z
   .refine((v) => Object.keys(v).length > 0, "Envie pelo menos um campo.");
 export type MassPatch = z.infer<typeof massPatchSchema>;
 
+/** If-Match com a versão da missa: `3` ou `"3"` (ETag). Ausente = grava sem conferir. */
+export const ifMatchSchema = z
+  .string()
+  .trim()
+  .regex(/^(W\/)?"?\d{1,9}"?$/, "If-Match inválido (use a versão da missa).")
+  .transform((v) => Number(v.replace(/\D/g, "")))
+  .optional();
+
 export const massIdParamSchema = z.object({ id: z.uuid("ID inválido.") });
 
 export const listMassesQuerySchema = z.object({
@@ -82,6 +90,9 @@ export interface MassDTO {
   access: MassAccess;
   /** Só para o dono: token do link de convite (null = sem link). Convidados recebem sempre null. */
   shareToken: string | null;
+  /** Mandar de volta no If-Match do PUT/PATCH: se outra pessoa salvou antes, a API responde 409. */
+  version: number;
+  updatedBy: PersonDTO | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -99,6 +110,8 @@ export function toMassDTO(m: Mass, viewerId: string): MassDTO {
     sharedWith: m.sharedWith,
     access: massAccess(m, viewerId) ?? "shared",
     shareToken: massAccess(m, viewerId) === "owner" ? m.shareToken : null,
+    version: m.version,
+    updatedBy: m.updatedBy,
     createdAt: m.createdAt.toISOString(),
     updatedAt: m.updatedAt.toISOString(),
   };

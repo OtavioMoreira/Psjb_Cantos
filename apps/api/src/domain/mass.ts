@@ -59,6 +59,10 @@ export interface Mass {
   sharedWith: PersonRef[];
   /** Token do link de convite (só o dono vê). null = sem link ativo. */
   shareToken: string | null;
+  /** Sobe a cada alteração do conteúdo: controle de concorrência na edição (If-Match). */
+  version: number;
+  /** Quem salvou por último (null se a conta foi excluída). */
+  updatedBy: PersonRef | null;
   createdAt: Date;
   updatedAt: Date;
 }

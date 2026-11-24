@@ -224,16 +224,18 @@ export class InMemoryMasses implements MassRepository {
       ...structuredClone(d),
       sharedWith: [],
       shareToken: null,
+      version: 1,
+      updatedBy: this.person(ownerId),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     this.rows.push(m);
     return structuredClone(m);
   }
-  async update(id: string, d: MassData) {
+  async update(id: string, d: MassData, updatedBy: string, expectedVersion?: number) {
     const m = this.rows.find((r) => r.id === id);
-    if (!m) return null;
-    Object.assign(m, structuredClone(d), { updatedAt: new Date() });
+    if (!m || (expectedVersion !== undefined && m.version !== expectedVersion)) return null;
+    Object.assign(m, structuredClone(d), { updatedAt: new Date(), version: m.version + 1, updatedBy: this.person(updatedBy) });
     return structuredClone(m);
   }
   async delete(id: string) {

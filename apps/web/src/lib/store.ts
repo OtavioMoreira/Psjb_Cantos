@@ -3,6 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import usersJson from "@data/users.json";
 import type { Mass, MassSlot, MomentId, User } from "./types";
+import { mergeMass } from "./massMerge";
 import { liturgicalSeason, liturgicalYear, nextSundayIso } from "./liturgy";
 import { api, API_ENABLED, ApiError, type ApiMass, type ApiPerson, type ApiUser } from "./api";
 
@@ -645,10 +646,15 @@ export { uid };
 
 /** Missas que já existem no servidor, com a lista de convidados que ele conhece. */
 const serverMasses = new Map<string, string[]>();
+/** Última versão de cada missa vinda do servidor: a base para juntar alterações simultâneas. */
+const serverBase = new Map<string, ApiMass>();
 const queues = new Map<string, Promise<unknown>>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const syncErrorStore = createStore<{ message: string | null }>("psjb:sync", { message: null });
 export const useMassSyncError = () => syncErrorStore.useValue().message;
+/** Aviso de que outra pessoa editou a missa ao mesmo tempo e as alterações foram juntadas. */
+const mergeNoticeStore = createStore<{ massId: string; message: string; at: number } | null>("psjb:merge-notice", null);
+export const useMassMergeNotice = mergeNoticeStore.useValue;
 
 function enqueue(id: string, task: () => Promise<unknown>) {
   const run = (queues.get(id) ?? Promise.resolve())
@@ -689,11 +695,13 @@ function fromApi(m: ApiMass): Mass {
     ownerId: m.owner.id,
     sharedWith: m.sharedWith.map((p) => p.id),
     shareToken: m.shareToken,
+    version: m.version,
   };
 }
 
 function fromServer(m: ApiMass) {
   serverMasses.set(m.id, m.sharedWith.map((p) => p.id));
+  serverBase.set(m.id, m);
   rememberPeople([m.owner, ...m.sharedWith]);
 }
 
@@ -704,12 +712,35 @@ function pushMass(m: Mass) {
   clearTimeout(timers.get(m.id));
   timers.delete(m.id);
   enqueue(m.id, async () => {
-    const saved = serverMasses.has(m.id) ? await api.masses.update(m.id, toBody(m)) : await api.masses.create(m.id, toBody(m));
+    // A cópia mais nova do aparelho (pode ter sido juntada com a de outra pessoa depois do enfileiramento).
+    const latest = getMass(m.id) ?? m;
+    const saved = serverMasses.has(m.id) ? await updateWithMerge(latest) : await api.masses.create(m.id, toBody(latest));
     fromServer(saved);
     // Missa criada já com pessoas (ex.: cópia offline): manda o compartilhamento junto.
     const wanted = m.sharedWith ?? [];
     if (wanted.length && !sameIds(wanted, serverMasses.get(m.id) ?? [])) fromServer(await api.masses.share(m.id, wanted));
   });
+}
+
+/**
+ * Grava conferindo a versão. Se outra pessoa salvou antes (409), junta as duas alterações
+ * (lib/massMerge.ts), grava o resultado e avisa; o editor reabre com a missa juntada.
+ */
+async function updateWithMerge(local: Mass): Promise<ApiMass> {
+  const base = serverBase.get(local.id);
+  try {
+    return await api.masses.update(local.id, toBody(local), base?.version);
+  } catch (err) {
+    const server = err instanceof ApiError && err.code === "MASS_CONFLICT" ? err.details?.mass : undefined;
+    if (!server || !(err instanceof ApiError)) throw err;
+    const merged = mergeMass(fromApi(base ?? server), local, fromApi(server));
+    fromServer(server);
+    const saved = await api.masses.update(local.id, toBody(merged), server.version);
+    upsertMass(fromApi(saved));
+    syncVersionStore.write(syncVersionStore.read() + 1);
+    mergeNoticeStore.write({ massId: local.id, message: `${err.message} Juntamos as alterações de vocês.`, at: Date.now() });
+    return saved;
+  }
 }
 
 /** Muda com quem a missa está compartilhada (só o dono). */
@@ -729,6 +760,7 @@ export async function syncMasses() {
   if (!API_ENABLED) return;
   const list = await api.masses.list();
   serverMasses.clear();
+  serverBase.clear();
   list.forEach(fromServer);
   // Missas criadas aqui e ainda não enviadas (sem conexão) não se perdem.
   const pending = allMasses().filter((m) => !list.some((x) => x.id === m.id) && queues.has(m.id));
@@ -773,6 +805,7 @@ export async function joinMassByToken(token: string) {
 
 function clearMassCache() {
   serverMasses.clear();
+  serverBase.clear();
   massesStore.write(null);
   peopleStore.write({});
 }

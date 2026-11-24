@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Container } from "../container.js";
 import {
   createMassSchema,
+  ifMatchSchema,
   joinBodySchema,
   listMassesQuerySchema,
   massBodySchema,
@@ -35,13 +36,18 @@ export class MassController {
 
   replace = async (req: FastifyRequest): Promise<{ mass: MassDTO }> => {
     const body = validate(massBodySchema, req.body);
-    return { mass: await this.c.actions.updateMass.execute(requireAuth(req).userId, this.id(req), body) };
+    return { mass: await this.c.actions.updateMass.execute(requireAuth(req).userId, this.id(req), body, this.version(req)) };
   };
 
   patch = async (req: FastifyRequest): Promise<{ mass: MassDTO }> => {
     const changes = validate(massPatchSchema, req.body);
-    return { mass: await this.c.actions.updateMass.execute(requireAuth(req).userId, this.id(req), changes) };
+    return { mass: await this.c.actions.updateMass.execute(requireAuth(req).userId, this.id(req), changes, this.version(req)) };
   };
+
+  private version(req: FastifyRequest) {
+    const header = req.headers["if-match"];
+    return header === undefined ? undefined : validate(ifMatchSchema, header);
+  }
 
   remove = async (req: FastifyRequest, reply: FastifyReply) => {
     await this.c.actions.deleteMass.execute(requireAuth(req).userId, this.id(req));

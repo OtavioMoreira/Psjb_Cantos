@@ -113,7 +113,6 @@ Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo 
 | 12 | `AuditLog` + `GET /api/admin/audit` | Admin | registrar as ações de admin |
 | 13 | Token de **upload direto para o Blob** (`POST /api/uploads`) | Admin › Cantos | arquivos acima de 4 MB |
 | 14 | Registro da última publicação (`GET /api/admin/site/status`) | Admin › Cantos | mostrar "alterações não publicadas" |
-| 16 | **Concorrência na edição de missa** (versão / `If-Match`) | Editor de missa | hoje, com dois convidados salvando juntos, vale o último |
 | 18 | Limite de tentativas **compartilhado entre instâncias** (ex.: Upstash Redis) | Segurança em produção | na Vercel cada instância tem o seu contador |
 | 19 | Limpeza periódica de sessões, tokens de e-mail e aparelhos confiáveis vencidos (cron) | — | `sessions`, `auth_tokens` e `trusted_devices` crescem com o tempo |
 

@@ -160,7 +160,8 @@ Os eixos:
   - os momentos e cantos (`slots`) são salvos **inteiros** num campo JSON, porque o editor salva tudo a cada alteração;
   - `PUT` substitui a missa inteira e `PATCH` muda só os campos enviados;
   - o tom de cada canto vai de −6 a +5, e `songId` é o id do canto na tabela `songs` (os mesmos ids do `data/songs.json`);
-  - a listagem filtra por `when=upcoming|past|all`, com "hoje" no fuso de Brasília; missa sem data conta como próxima.
+  - a listagem filtra por `when=upcoming|past|all`, com "hoje" no fuso de Brasília; missa sem data conta como próxima;
+  - **edição ao mesmo tempo (24/11/2026):** cada missa tem uma `version` que sobe a cada gravação (compartilhar não conta). O editor manda a versão que conhece (`If-Match`); se outra pessoa salvou antes, a API responde 409 `MASS_CONFLICT` com a missa atual e o front **junta as alterações** (`lib/massMerge.ts`): o que só um lado mudou (campo do cabeçalho, momento, tom) vale; se os dois mexeram no mesmo momento, fica a lista daqui mais os cantos que a outra pessoa acrescentou; momento novo de qualquer lado entra; momento removido só some se o outro lado não mexeu nele; a ordem é a de quem reordenou. Grava o resultado, o editor reabre com ele e avisa "{nome} alterou esta missa enquanto você editava. Juntamos as alterações de vocês." Sem `If-Match` (Postman, scripts), vale o último.
 - **Compartilhar com a equipe:**
   - **Quem compartilha:** o **dono** da missa (quem a criou), **qualquer que seja o papel** (Administrador ou Músico).
   - **Como:** o botão "Compartilhar" fica no editor (na barra de baixo, só o ícone no celular) e no card de "Minhas Missas". Ele abre um modal com **seleção múltipla e busca sem acento** por nome, e-mail, movimento ou papel. As pessoas escolhidas aparecem como chips removíveis ("Com acesso (N)"), e o botão salva com "Compartilhar com N pessoas".

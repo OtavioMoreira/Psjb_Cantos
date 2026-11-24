@@ -2094,7 +2094,7 @@
                 "{{massId}}"
               ]
             },
-            "description": "Manda a missa inteira. O que não vier volta ao padrão (`slots: []`, `date: null`...). É o que o editor usa no salvamento automático.",
+            "description": "Manda a missa inteira. O que não vier volta ao padrão (`slots: []`, `date: null`...). É o que o editor usa no salvamento automático.\n\n**Concorrência:** com o cabeçalho `If-Match: <version>` (a `version` da missa), só grava se ninguém salvou depois; senão, **409 `MASS_CONFLICT`** com a missa atual em `error.details.mass` (o front junta as alterações e grava de novo). Sem o cabeçalho, vale o último. Cada gravação soma 1 na `version`.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Domingo — Missa das 19h (revisada)\",\n  \"date\": \"2026-10-11\",\n  \"time\": \"19:00\",\n  \"season\": \"tempo-comum\",\n  \"year\": \"A\",\n  \"slots\": [\n    {\n      \"id\": \"s1\",\n      \"moment\": \"entrada\",\n      \"label\": \"Entrada\",\n      \"items\": [\n        {\n          \"songId\": 77,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s2\",\n      \"moment\": \"ato-penitencial\",\n      \"label\": \"Ato Penitencial\",\n      \"items\": [\n        {\n          \"songId\": 141,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s3\",\n      \"moment\": \"salmo\",\n      \"label\": \"Salmo\",\n      \"items\": [\n        {\n          \"songId\": 214,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s4\",\n      \"moment\": \"comunhao\",\n      \"label\": \"Comunhão\",\n      \"items\": [\n        {\n          \"songId\": 382,\n          \"transpose\": -2\n        }\n      ]\n    },\n    {\n      \"id\": \"s5\",\n      \"moment\": \"extra\",\n      \"label\": \"Ação de graças\",\n      \"items\": []\n    }\n  ]\n}",
@@ -2132,7 +2132,7 @@
                 "{{massId}}"
               ]
             },
-            "description": "Só os campos enviados mudam. Precisa de pelo menos um campo.",
+            "description": "Só os campos enviados mudam. Precisa de pelo menos um campo. Aceita o mesmo `If-Match` do PUT.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"time\": \"18:00\",\n  \"slots\": [\n    {\n      \"id\": \"s1\",\n      \"moment\": \"entrada\",\n      \"label\": \"Entrada\",\n      \"items\": [\n        {\n          \"songId\": 77,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s2\",\n      \"moment\": \"ato-penitencial\",\n      \"label\": \"Ato Penitencial\",\n      \"items\": [\n        {\n          \"songId\": 141,\n          \"transpose\": 0\n        }\n      ]\n    }\n  ]\n}",

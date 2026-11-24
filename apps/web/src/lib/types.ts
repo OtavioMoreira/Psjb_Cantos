@@ -117,4 +117,6 @@ export interface Mass {
   sharedWith?: string[];
   /** Com a API: token do link de convite (só o dono recebe). */
   shareToken?: string | null;
+  /** Com a API: versão no servidor (controle de concorrência na edição). */
+  version?: number;
 }

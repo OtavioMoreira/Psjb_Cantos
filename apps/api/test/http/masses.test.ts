@@ -172,6 +172,46 @@ describe("Permissões e compartilhamento", () => {
   });
 });
 
+describe("Concorrência na edição (If-Match)", () => {
+  const put = (key: string, id: string, version: number | string | null, payload: object) =>
+    app.inject({ method: "PUT", url: `/api/masses/${id}`, headers: { ...as(key), ...(version === null ? {} : { "if-match": String(version) }) }, payload });
+
+  it("a versão sobe a cada gravação; versão antiga recebe 409 com a missa atual e quem salvou", async () => {
+    const mass = await createMass();
+    await req("ana", "PUT", `/masses/${mass.id}/shares`, { userIds: [ids.bruno] });
+    const v1 = (await req("ana", "GET", `/masses/${mass.id}`)).json().mass.version;
+    expect(v1).toBe(1);
+
+    // Bruno salva primeiro, com a versão certa.
+    const bruno = await put("bruno", mass.id, v1, { ...MASS, name: "Do Bruno" });
+    expect(bruno.statusCode).toBe(200);
+    expect(bruno.json().mass).toMatchObject({ version: 2, updatedBy: { id: ids.bruno, name: "Bruno" } });
+
+    // Ana ainda estava na versão 1.
+    const ana = await put("ana", mass.id, v1, { ...MASS, name: "Da Ana" });
+    expect(ana.statusCode).toBe(409);
+    expect(ana.json().error).toMatchObject({ code: "MASS_CONFLICT", details: { mass: { name: "Do Bruno", version: 2 } } });
+    expect(ana.json().error.message).toMatch(/Bruno alterou/);
+
+    // Com a versão nova (ETag entre aspas também vale), grava.
+    expect((await put("ana", mass.id, '"2"', { ...MASS, name: "Juntas" })).json().mass.version).toBe(3);
+  });
+
+  it("sem If-Match grava sem conferir (vale o último); If-Match inválido é 400", async () => {
+    const mass = await createMass();
+    expect((await put("ana", mass.id, null, { ...MASS, name: "A" })).statusCode).toBe(200);
+    expect((await put("ana", mass.id, "abc", { ...MASS, name: "B" })).statusCode).toBe(400);
+    // Compartilhar não muda a versão (não é conteúdo).
+    await req("ana", "PUT", `/masses/${mass.id}/shares`, { userIds: [ids.bruno] });
+    expect((await req("ana", "GET", `/masses/${mass.id}`)).json().mass.version).toBe(2);
+  });
+
+  it("quem não tem acesso continua recebendo 403, mesmo com If-Match", async () => {
+    const mass = await createMass();
+    expect((await put("bruno", mass.id, 1, MASS)).statusCode).toBe(403);
+  });
+});
+
 describe("Link de convite", () => {
   it("dono gera o link (sempre o mesmo); quem entra pelo link vira convidado", async () => {
     const mass = await createMass();

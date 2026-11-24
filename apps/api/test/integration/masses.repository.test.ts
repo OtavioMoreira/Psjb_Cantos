@@ -81,6 +81,31 @@ describe.skipIf(!dbUrl)("PgMassRepository", () => {
     expect(await repos.masses.delete(m.id)).toBe(false);
   });
 
+  it("versão: começa em 1, sobe a cada update e só grava com a versão esperada (atômico)", async () => {
+    const [ana, bruno] = [await factory.user({ name: "Ana" }), await factory.user({ name: "Bruno" })];
+    const m = await repos.masses.create(ana.id, mass());
+    expect(m).toMatchObject({ version: 1, updatedBy: { id: ana.id, name: "Ana" } });
+
+    const v2 = await repos.masses.update(m.id, mass({ name: "B" }), bruno.id, 1);
+    expect(v2).toMatchObject({ version: 2, updatedBy: { id: bruno.id, name: "Bruno" } });
+    // Versão velha: não grava e não muda nada.
+    expect(await repos.masses.update(m.id, mass({ name: "A" }), ana.id, 1)).toBeNull();
+    expect(await repos.masses.findById(m.id)).toMatchObject({ name: "B", version: 2 });
+
+    // Duas gravações ao mesmo tempo com a mesma versão: só uma passa.
+    const results = await Promise.all([
+      repos.masses.update(m.id, mass({ name: "X" }), ana.id, 2),
+      repos.masses.update(m.id, mass({ name: "Y" }), bruno.id, 2),
+    ]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect((await repos.masses.findById(m.id))!.version).toBe(3);
+
+    // Sem versão: grava sempre. Compartilhar não muda a versão.
+    expect(await repos.masses.update(m.id, mass(), ana.id)).toMatchObject({ version: 4 });
+    await repos.masses.setShares(m.id, [bruno.id]);
+    expect((await repos.masses.findById(m.id))!.version).toBe(4);
+  });
+
   it("setShares substitui a lista; addShare não duplica; removeShare tira só a pessoa", async () => {
     const [dono, a, b, c] = [await factory.user(), await factory.user({ name: "A" }), await factory.user({ name: "B" }), await factory.user({ name: "C" })];
     const m = await repos.masses.create(dono.id, mass());

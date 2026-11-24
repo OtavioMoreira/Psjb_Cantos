@@ -103,7 +103,11 @@ export interface MassRepository {
   listForUser(userId: string, filters: MassFilters): Promise<Mass[]>;
   /** `id` opcional: o front gera o UUID para salvar offline e sincronizar depois. Lança MASS_EXISTS se já existe. */
   create(ownerId: string, data: MassData, id?: string): Promise<Mass>;
-  update(id: string, data: MassData, updatedBy: string): Promise<Mass | null>;
+  /**
+   * Grava e soma 1 na versão. Com `expectedVersion`, só grava se a missa ainda estiver nela
+   * (atômico); null = não existe ou outra pessoa salvou antes.
+   */
+  update(id: string, data: MassData, updatedBy: string, expectedVersion?: number): Promise<Mass | null>;
   delete(id: string): Promise<boolean>;
   /** Substitui a lista inteira de convidados. */
   setShares(id: string, userIds: string[]): Promise<Mass | null>;

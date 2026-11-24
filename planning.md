@@ -362,8 +362,8 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | GET | `/api/masses?when=upcoming\|past\|all&q=` | ✅ | missas que criei ou que foram compartilhadas comigo; `access` = `owner` ou `shared` |
 | POST | `/api/masses` | ✅ | cria `{ name, date, time, season, year, slots }` (tudo opcional) → 201 |
 | GET | `/api/masses/:id` | ✅ | dono ou convidado; 403 para os outros; 404 se não existe |
-| PUT | `/api/masses/:id` | ✅ | substitui a missa inteira (dono ou convidado) |
-| PATCH | `/api/masses/:id` | ✅ | muda só os campos enviados (dono ou convidado) |
+| PUT | `/api/masses/:id` | ✅ | substitui a missa inteira (dono ou convidado). `If-Match: <version>` opcional: se outra pessoa salvou antes, 409 `MASS_CONFLICT` com a missa atual |
+| PATCH | `/api/masses/:id` | ✅ | muda só os campos enviados (dono ou convidado); mesmo `If-Match` |
 | DELETE | `/api/masses/:id` | ✅ | só o dono → 204 |
 | POST | `/api/masses/:id/duplicate` | ✅ | cópia de quem duplicou: "Cópia de …", sem data e sem compartilhamento → 201 |
 | PUT | `/api/masses/:id/shares` | ✅ | só o dono: `{ userIds }` substitui a lista; só contas ativas (400 `invalidUserIds`) |
@@ -592,7 +592,7 @@ Modelos de e-mail (pt-BR; `apps/api/src/emails/templates.ts`):
 - ✅ API de missas: CRUD, duplicar, compartilhar, sair e busca de pessoas, com permissão no servidor.
 - [ ] Telas de missa (editor, Minhas Missas, Modo Missa, compartilhar) lendo e salvando pela API; sincronizar computador e tablet.
 - [x] E-mail "Uma missa foi compartilhada com você".
-- [ ] Controle de concorrência na edição (dois convidados salvando ao mesmo tempo: hoje vale o último).
+- [x] Controle de concorrência na edição: versão da missa + `If-Match`; no conflito, o front junta as alterações (`lib/massMerge.ts`).
 
 ---
 

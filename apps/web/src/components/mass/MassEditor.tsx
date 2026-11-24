@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, CloudOff, Eye, GripVertical, Loader2, Minus, Plus, RotateCcw, Tablet, Trash2, Users, X } from "lucide-react";
 import type { Mass, MassSlot, Song } from "@/lib/types";
-import { massAccess, saveMass, setMassShares, uid, useMassSyncError, useMasses, usePeopleLookup, usePrefs, useSession } from "@/lib/store";
+import { massAccess, saveMass, setMassShares, uid, useMassMergeNotice, useMassSyncError, useMasses, usePeopleLookup, usePrefs, useSession } from "@/lib/store";
 import { useSongIndex } from "@/lib/useSongIndex";
 import { SEASON_STYLE, formatNumber, liturgicalSeason, liturgicalYear } from "@/lib/liturgy";
 import { keyLabel, wrapSemitones } from "@/lib/chords";
@@ -18,6 +18,9 @@ import { toast } from "@/components/ui/Toast";
 import { massEditUrl, massModeUrl } from "@/lib/routes";
 
 type SaveState = "idle" | "saving" | "saved";
+
+/** Aviso de alterações juntadas já mostrado (o editor remonta com a missa nova e não pode repetir). */
+let shownMergeAt = 0;
 
 export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: boolean }) {
   const router = useRouter();
@@ -38,6 +41,12 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
   // Quem tem acesso vem do store (muda pelo modal ou pela sincronização), não da cópia do editor.
   const live = useMasses().find((m) => m.id === mass.id);
   const shared = (live ?? mass).sharedWith ?? [];
+  const mergeNotice = useMassMergeNotice();
+  useEffect(() => {
+    if (!mergeNotice || mergeNotice.massId !== mass.id || mergeNotice.at <= shownMergeAt || Date.now() - mergeNotice.at > 10_000) return;
+    shownMergeAt = mergeNotice.at;
+    toast(mergeNotice.message);
+  }, [mergeNotice, mass.id]);
   const touched = useRef(false);
   const persisted = useRef(!isNew);
 

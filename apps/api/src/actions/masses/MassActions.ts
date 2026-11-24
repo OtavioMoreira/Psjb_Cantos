@@ -43,11 +43,20 @@ export class CreateMassAction {
   }
 }
 
-/** PUT manda a missa inteira; PATCH só os campos que mudaram. Dono e convidados podem editar. */
+/**
+ * PUT manda a missa inteira; PATCH só os campos que mudaram. Dono e convidados podem editar.
+ * Com `expectedVersion` (If-Match), recusa com 409 MASS_CONFLICT se outra pessoa salvou antes,
+ * devolvendo a missa atual para o front juntar as alterações.
+ */
 export class UpdateMassAction {
   constructor(private readonly deps: Deps & { songs: SongRepository }) {}
-  async execute(userId: string, id: string, changes: MassBody | MassPatch): Promise<MassDTO> {
+  async execute(userId: string, id: string, changes: MassBody | MassPatch, expectedVersion?: number): Promise<MassDTO> {
     const { mass } = await loadMass(this.deps.masses, id, userId);
+    const conflict = (current: Mass) =>
+      new AppError("MASS_CONFLICT", `${current.updatedBy?.name ?? "Outra pessoa"} alterou esta missa enquanto você editava.`, {
+        mass: toMassDTO(current, userId),
+      });
+    if (expectedVersion !== undefined && expectedVersion !== mass.version) throw conflict(mass);
     const data: MassData = {
       name: changes.name ?? mass.name,
       date: changes.date !== undefined ? changes.date : mass.date,
@@ -57,8 +66,13 @@ export class UpdateMassAction {
       slots: changes.slots ?? mass.slots,
     };
     if (changes.slots) await assertSongs(this.deps.songs, changes.slots);
-    const updated = await this.deps.masses.update(id, data, userId);
-    if (!updated) throw new AppError("NOT_FOUND", "Missa não encontrada.");
+    const updated = await this.deps.masses.update(id, data, userId, expectedVersion);
+    if (!updated) {
+      // Alguém salvou entre a leitura e a gravação.
+      const current = await this.deps.masses.findById(id);
+      if (current && expectedVersion !== undefined) throw conflict(current);
+      throw new AppError("NOT_FOUND", "Missa não encontrada.");
+    }
     return toMassDTO(updated, userId);
   }
 }

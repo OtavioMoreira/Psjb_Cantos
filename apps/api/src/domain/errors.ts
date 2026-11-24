@@ -10,6 +10,7 @@ export type ErrorCode =
   | "MOVEMENT_TAKEN"
   | "MOVEMENT_IN_USE"
   | "MASS_EXISTS"
+  | "MASS_CONFLICT"
   | "SONG_TAKEN"
   | "SONG_IN_USE"
   | "FLAG_TAKEN"
@@ -38,6 +39,7 @@ const STATUS: Record<ErrorCode, number> = {
   MOVEMENT_TAKEN: 409,
   MOVEMENT_IN_USE: 409,
   MASS_EXISTS: 409,
+  MASS_CONFLICT: 409,
   SONG_TAKEN: 409,
   SONG_IN_USE: 409,
   FLAG_TAKEN: 409,

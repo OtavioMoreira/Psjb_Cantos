@@ -16,6 +16,10 @@ interface MassRow {
   slots: MassSlot[];
   shared_with: PersonRef[];
   share_token: string | null;
+  version: number;
+  updated_by: string | null;
+  updated_by_name: string | null;
+  updated_by_photo: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -24,14 +28,16 @@ interface MassRow {
 const SELECT = `
   SELECT ms.id, ms.owner_id, o.name AS owner_name, o.photo_url AS owner_photo, ms.name,
          to_char(ms.celebration_date, 'YYYY-MM-DD') AS date, to_char(ms.celebration_time, 'HH24:MI') AS time,
-         ms.season, ms.liturgical_year, ms.slots, ms.share_token, ms.created_at, ms.updated_at,
+         ms.season, ms.liturgical_year, ms.slots, ms.share_token, ms.version, ms.created_at, ms.updated_at,
+         ms.updated_by, ub.name AS updated_by_name, ub.photo_url AS updated_by_photo,
          COALESCE((
            SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'photoUrl', u.photo_url) ORDER BY u.name)
            FROM mass_shares s JOIN users u ON u.id = s.user_id
            WHERE s.mass_id = ms.id
          ), '[]') AS shared_with
   FROM masses ms
-  JOIN users o ON o.id = ms.owner_id`;
+  JOIN users o ON o.id = ms.owner_id
+  LEFT JOIN users ub ON ub.id = ms.updated_by`;
 
 const TODAY = "(now() AT TIME ZONE 'America/Sao_Paulo')::date";
 
@@ -46,6 +52,8 @@ const toMass = (r: MassRow): Mass => ({
   slots: r.slots,
   sharedWith: r.shared_with,
   shareToken: r.share_token,
+  version: r.version,
+  updatedBy: r.updated_by ? { id: r.updated_by, name: r.updated_by_name ?? "", photoUrl: r.updated_by_photo } : null,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -92,12 +100,12 @@ export class PgMassRepository implements MassRepository {
     }
   }
 
-  async update(id: string, data: MassData, updatedBy: string) {
+  async update(id: string, data: MassData, updatedBy: string, expectedVersion?: number) {
     const { rowCount } = await this.pool.query(
       `UPDATE masses SET name = $2, celebration_date = $3, celebration_time = $4, season = $5, liturgical_year = $6,
-         slots = $7::jsonb, updated_by = $8, updated_at = now()
-       WHERE id = $1`,
-      [id, ...values(data), updatedBy],
+         slots = $7::jsonb, updated_by = $8, updated_at = now(), version = version + 1
+       WHERE id = $1 AND ($9::int IS NULL OR version = $9)`,
+      [id, ...values(data), updatedBy, expectedVersion ?? null],
     );
     return rowCount ? this.findById(id) : null;
   }

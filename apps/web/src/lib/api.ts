@@ -59,6 +59,9 @@ export interface ApiMass {
   sharedWith: ApiPerson[];
   access: "owner" | "shared";
   shareToken: string | null;
+  /** Vai de volta no If-Match: se outra pessoa salvou antes, a API responde 409 MASS_CONFLICT. */
+  version: number;
+  updatedBy: ApiPerson | null;
   updatedAt: string;
 }
 
@@ -106,7 +109,7 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
-    readonly details?: { reason?: string | null; fields?: Record<string, string>; attemptsLeft?: number; retryAfter?: number },
+    readonly details?: { reason?: string | null; fields?: Record<string, string>; attemptsLeft?: number; retryAfter?: number; mass?: ApiMass },
   ) {
     super(message);
   }
@@ -282,7 +285,9 @@ export const api = {
     list: async () => (await authed<{ masses: ApiMass[] }>("/masses")).masses,
     get: async (id: string) => (await authed<{ mass: ApiMass }>(`/masses/${id}`)).mass,
     create: async (id: string, body: ApiMassBody) => (await authed<{ mass: ApiMass }>("/masses", { method: "POST", body: JSON.stringify({ id, ...body }) })).mass,
-    update: async (id: string, body: ApiMassBody) => (await authed<{ mass: ApiMass }>(`/masses/${id}`, { method: "PUT", body: JSON.stringify(body) })).mass,
+    /** Com `version`, só grava se ninguém salvou depois dela (senão, 409 MASS_CONFLICT com a missa atual). */
+    update: async (id: string, body: ApiMassBody, version?: number) =>
+      (await authed<{ mass: ApiMass }>(`/masses/${id}`, { method: "PUT", body: JSON.stringify(body), headers: version ? { "if-match": String(version) } : {} })).mass,
     remove: (id: string) => authed<void>(`/masses/${id}`, { method: "DELETE" }),
     share: async (id: string, userIds: string[]) =>
       (await authed<{ mass: ApiMass }>(`/masses/${id}/shares`, { method: "PUT", body: JSON.stringify({ userIds }) })).mass,
