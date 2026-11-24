@@ -375,6 +375,11 @@ Os eixos:
 - **Cifra na tela e no PDF:** as duas usam a mesma estrutura (`lib/sheet.ts`), então uma mudança na regra de quebra ou do refrão vale para as duas.
 - **Bibliotecas pesadas** (jsPDF) são carregadas sob demanda.
 
+## 15.1 Buscadores (SEO, 24/11/2026)
+- `sitemap.xml` (home, `/cantos`, `/sobre` e todos os cantos ativos) e `robots.txt` são gerados no build, como as páginas: canto novo entra no "Publicar no site". O robots tira dos buscadores a área logada, o Modo Missa, as páginas de links de e-mail, `/dados/` e `/api/`.
+- Cada canto tem `canonical` e **dados estruturados** (`MusicComposition` do schema.org: título, autor, tom, áudio), **sem a letra**.
+- O endereço vem de `SITE_URL` (padrão `https://cantos.psjb.org.br`). A **demonstração do GitHub Pages fica fora dos buscadores** (`noindex` em todas as páginas, sitemap vazio), para não competir com o site oficial.
+
 ## 16. Documentação
 - Esta skill é a **fonte das regras de negócio**. `planning.md` traz o produto, o roadmap e a API (com status ✅/🟡/🔜), `ux.md` traz as telas e os componentes, e `README.md` a visão geral e as contas de demonstração.
 - Ao combinar uma regra nova ou mudar uma existente, atualize esta skill e, conforme o caso, o `planning.md` (escopo, rotas, API) e o `ux.md` (telas).

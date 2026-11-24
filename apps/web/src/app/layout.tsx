@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { IS_DEMO } from "@/lib/site";
 import { Cormorant_Garamond, Cormorant_SC, Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/Toast";
 import { BASE_PATH } from "@/lib/routes";
@@ -25,6 +26,8 @@ export const metadata: Metadata = {
   // iOS não tem tela cheia via navegador: instalado na tela de início, abre sem barras.
   appleWebApp: { capable: true, title: "Cantos PSJB", statusBarStyle: "black-translucent" },
   icons: { apple: `${BASE_PATH}/apple-touch-icon.png` },
+  // A demonstração (GitHub Pages) fica fora dos buscadores; o robots.txt dela não vale, porque está numa subpasta.
+  ...(IS_DEMO && { robots: { index: false, follow: false } }),
 };
 
 export const viewport: Viewport = {

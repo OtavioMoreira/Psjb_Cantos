@@ -9,6 +9,7 @@ import { Tag } from "@/components/ui/Chip";
 import { Divider } from "@/components/ui/Ornament";
 import { SongViewer } from "@/components/song/SongViewer";
 import { AddToMass } from "@/components/mass/AddToMass";
+import { siteUrl } from "@/lib/site";
 
 // Todas as páginas de canto são geradas estaticamente no build (SSG).
 export async function generateStaticParams() {
@@ -24,6 +25,7 @@ export async function generateMetadata(props: PageProps<"/cantos/[slug]">): Prom
   return {
     title: song.title,
     description: `${song.title}${song.composer ? ` — ${song.composer}` : ""}. Letra, cifra, partitura e áudio.`,
+    alternates: { canonical: siteUrl(`/cantos/${song.slug}`) },
   };
 }
 
@@ -42,8 +44,24 @@ export default async function SongPage(props: PageProps<"/cantos/[slug]">) {
     { href: song.media.audio, label: "Áudio (MP3)", Icon: Headphones },
   ].filter((d) => d.href);
 
+  // Dados estruturados (schema.org) para os buscadores. Sem a letra: só título, autor, tom e mídias.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "MusicComposition",
+    name: song.title,
+    url: siteUrl(`/cantos/${song.slug}`),
+    inLanguage: "pt-BR",
+    genre: "Música litúrgica católica",
+    ...(song.composer && { composer: { "@type": "Person", name: song.composer } }),
+    ...(song.key && { musicalKey: song.key }),
+    ...(song.media.audio && { audio: { "@type": "AudioObject", contentUrl: song.media.audio, encodingFormat: "audio/mpeg" } }),
+    publisher: { "@type": "Church", name: "Paróquia Catedral São João Batista" },
+  };
+
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10">
+      {/* "<" escapado: um título com </script> não fecha a tag. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <Link href="/cantos" className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-ink-muted hover:text-primary">
         <ArrowLeft size={16} /> Voltar aos cantos
       </Link>
