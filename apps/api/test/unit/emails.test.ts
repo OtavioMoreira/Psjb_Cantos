@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { escapeHtml, inviteEmail, loginCodeEmail, passwordResetEmail } from "../../src/emails/templates.js";
+import { escapeHtml, inviteEmail, loginCodeEmail, massSharedEmail, massWhen, passwordResetEmail } from "../../src/emails/templates.js";
 import { ResendEmailSender } from "../../src/services/ResendEmailSender.js";
 
 describe("Modelos de e-mail", () => {
+  it("data da missa por extenso: dia da semana, mês e horário", () => {
+    expect(massWhen("2026-12-24", "19:30")).toBe("quinta-feira, 24 de dezembro de 2026, 19h30");
+    expect(massWhen("2026-09-27", null)).toBe("domingo, 27 de setembro de 2026");
+    expect(massWhen(null, "07:00")).toBe("7h");
+    expect(massWhen(null, null)).toBeNull();
+  });
+
+  it("missa compartilhada escapa o nome da missa no HTML", () => {
+    const m = massSharedEmail({ to: "a@x.com", name: "Ana", sharedBy: "Bruno", massName: "<b>Natal</b>", when: null, url: "https://site/m" });
+    expect(m.html).toContain("&lt;b&gt;Natal");
+    expect(m.text).toContain("Abrir a missa: https://site/m");
+  });
+
   it("escapa o nome da pessoa no HTML (o nome vem do cadastro)", () => {
     const m = inviteEmail({ to: "a@x.com", name: '<img src=x onerror="alert(1)">', invitedBy: "Pe. João & equipe", url: "https://site/x?token=abc" });
     expect(m.html).not.toContain("<img src=x");

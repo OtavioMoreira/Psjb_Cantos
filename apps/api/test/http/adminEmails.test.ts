@@ -116,3 +116,18 @@ describe("Ativar conta avisa a pessoa por e-mail", () => {
     expect(res.json().user.status).toBe("active");
   });
 });
+
+describe("Bloquear avisa a pessoa por e-mail", () => {
+  it("conta ativa recebe o aviso com o motivo; pendente não recebe", async () => {
+    const ativo = await addUser("ativo@x.com");
+    const res = await app.inject({ method: "POST", url: `/api/admin/users/${ativo.id}/block`, headers: as(), payload: { reason: "Conta duplicada" } });
+    expect(res.statusCode).toBe(200);
+    const mail = adapters.email.last("ativo@x.com")!;
+    expect(mail.subject).toMatch(/bloqueado/);
+    expect(mail.text).toContain("Motivo: Conta duplicada");
+
+    const pend = await addUser("pend@x.com", "pending");
+    await app.inject({ method: "POST", url: `/api/admin/users/${pend.id}/block`, headers: as(), payload: {} });
+    expect(adapters.email.last("pend@x.com")).toBeUndefined();
+  });
+});

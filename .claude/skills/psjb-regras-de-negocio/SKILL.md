@@ -182,7 +182,7 @@ Os eixos:
     - a permissão é conferida no servidor: 403 para quem não é dono nem convidado (**inclusive admin**, porque a missa é pessoal) e 404 se a missa não existe;
     - `PUT /api/masses/:id/shares { userIds }` substitui a lista, recusa contas não ativas (400 com `invalidUserIds`) e ignora o próprio dono;
     - quem recebeu sai com `DELETE /api/masses/:id/shares/me`; o dono recebe 403 nessa rota.
-  - **(futuro)** Avisar por e-mail quem recebeu a missa.
+  - **Aviso por e-mail (24/11/2026):** quem **entra** na lista recebe "{dono} compartilhou uma missa com você", com nome, data por extenso e o link do editor. Quem já estava não recebe de novo; quem entra pelo link de convite não recebe (entrou sozinho). Falha no envio não desfaz o compartilhamento.
 
 ## 8. Modo Missa (`/missa?id=`): modo de apresentação na missa
 - **Objetivo:** tela cheia e visual objetivo, com **letra preta, fundo branco e refrão em negrito**. Não tem capitular nem cores de destaque na letra; o número da estrofe é só negrito.
@@ -302,7 +302,7 @@ Os eixos:
   - A lista mostra primeiro os pendentes, depois os bloqueados e por fim os ativos.
 - **Ações:**
   - **Editar** nome, e-mail, movimento e papel.
-  - **Bloquear** com motivo (opcional), com "Desfazer". Com a API, bloquear **derruba as sessões** da pessoa na hora. **Liberar** volta para ativo (na demonstração: ativo se o e-mail já foi confirmado, senão pendente).
+  - **Bloquear** com motivo (opcional), com "Desfazer". Com a API, bloquear **derruba as sessões** da pessoa na hora e manda o e-mail "Seu acesso foi bloqueado" (com o motivo) para quem estava **ativo** (pendente nunca entrou, então não recebe). Falha no aviso não desfaz o bloqueio. **Liberar** volta para ativo (na demonstração: ativo se o e-mail já foi confirmado, senão pendente).
   - **Ativar sem confirmação** e **reenviar confirmação**: só para pendentes.
   - **Redefinir senha:** "Enviar link por e-mail" (recomendado; com a API, só para conta ativa: `POST /api/admin/users/:id/reset-link`) ou "Gerar senha temporária", exibida **uma única vez** (formato `abcd-23x4`, sem caracteres ambíguos). A senha temporária **derruba as sessões**, tira a confiança dos aparelhos do 2FA e **obriga a troca** no próximo acesso.
   - **Convidar:** nome, e-mail e papel (`POST /api/admin/users/invite`). O convidado nasce **pendente, sem senha utilizável**, e recebe um e-mail ("{admin} convidou você") com o link de 7 dias para **criar a senha** (`/redefinir-senha?token=…&convite=1`, com textos de boas-vindas). Ao criar a senha, a conta fica **ativa**, sem precisar de outra liberação.
@@ -338,9 +338,8 @@ Os eixos:
 - **E-mail transacional (15/10/2026): Resend**, escolhido pelo plano grátis (3.000/mês, **100/dia**), pela integração com a Vercel (Marketplace, região `sa-east-1`) e pela API simples. Precisa de SPF/DKIM/DMARC em `psjb.org.br`.
   - Porta `EmailSender` na API: `ResendEmailSender` (com `RESEND_API_KEY`) ou `ConsoleEmailSender` (sem a chave: imprime no terminal). **Em produção a chave é obrigatória** (a API não sobe sem ela), a não ser com a trava ligada. Remetente em `EMAIL_FROM`; links montados com `APP_URL`.
   - **Trava do envio:** `EMAIL_ENABLED=false` não manda e-mail nenhum, nem com a chave (a API sobe sem `RESEND_API_KEY`), e o 2FA passa a vir desligado; em produção, `LOGIN_2FA=true` com o e-mail travado é recusado, e o log registra só destinatário e assunto (nunca link ou código). Usada nos testes de aprovação, antes de o domínio ser verificado: o login é só com senha, e para quem esqueceu vale a senha temporária do admin. (18/11/2026)
-  - Modelos (`apps/api/src/emails/templates.ts`, HTML com estilos inline + texto puro, nome escapado): Redefinir senha · Você foi convidado · Confirme seu novo e-mail · Seu e-mail foi alterado · Seu código de acesso · Sua conta foi liberada.
+  - Modelos (`apps/api/src/emails/templates.ts`, HTML com estilos inline + texto puro, nome escapado): Redefinir senha · Você foi convidado · Confirme seu novo e-mail · Seu e-mail foi alterado · Seu código de acesso · Sua conta foi liberada · Seu acesso foi bloqueado · Compartilhou uma missa com você (24/11/2026).
   - Rotas que não podem revelar se a conta existe (`forgot`) engolem a falha de envio; nas outras, a falha vira 502 `EMAIL_FAILED`.
-  - **(futuro)** "Acesso bloqueado" e "Uma missa foi compartilhada com você".
 - **LGPD:** consentimento no cadastro e exportação ou exclusão dos dados a pedido.
 
 ## 14. Regras de UX e acessibilidade

@@ -1,8 +1,10 @@
 import { randomInt } from "node:crypto";
 import { AppError } from "../../domain/errors.js";
 import { hasRole, type User } from "../../domain/user.js";
+import { sendQuietly } from "../auth/emailTokens.js";
 import { toUserDTO, type AdminUpdateUserInput, type UserDTO } from "../../dtos/user.dto.js";
-import type { FileStorage, MovementRepository, PasswordHasher, SessionRepository, TrustedDeviceRepository, UserRepository } from "../../interfaces/index.js";
+import { accountBlockedEmail } from "../../emails/templates.js";
+import type { EmailSender, FileStorage, MovementRepository, PasswordHasher, SessionRepository, TrustedDeviceRepository, UserRepository } from "../../interfaces/index.js";
 
 interface Deps {
   users: UserRepository;
@@ -11,6 +13,7 @@ interface Deps {
   movements: MovementRepository;
   hasher: PasswordHasher;
   storage: FileStorage;
+  email: EmailSender;
 }
 
 async function find(users: UserRepository, id: string): Promise<User> {
@@ -50,7 +53,7 @@ export class AdminUpdateUserAction {
   }
 }
 
-/** Bloqueia com motivo (a pessoa vê ao tentar entrar) e derruba as sessões abertas. */
+/** Bloqueia com motivo (a pessoa vê ao tentar entrar), derruba as sessões abertas e avisa por e-mail. */
 export class BlockUserAction {
   constructor(private readonly deps: Deps) {}
 
@@ -60,6 +63,8 @@ export class BlockUserAction {
     await ensureAnotherAdmin(this.deps.users, target);
     const user = await this.deps.users.updateStatus(id, "blocked", reason);
     await this.deps.sessions.revokeAllForUser(id);
+    // Só avisa quem usava o site (conta pendente nunca entrou) e só na primeira vez.
+    if (target.status === "active") await sendQuietly(this.deps.email, accountBlockedEmail({ to: target.email, name: target.name, reason }));
     return toUserDTO(user!);
   }
 }

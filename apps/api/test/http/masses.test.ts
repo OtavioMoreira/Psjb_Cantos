@@ -125,6 +125,24 @@ describe("Permissões e compartilhamento", () => {
     expect((await req("ana", "GET", `/masses/${mass.id}`)).json().mass.name).toBe("Editado pelo Bruno");
   });
 
+  it("quem entra na lista recebe o e-mail \"compartilhou uma missa\"; quem já estava não recebe de novo", async () => {
+    const mass = await createMass();
+    await req("ana", "PUT", `/masses/${mass.id}/shares`, { userIds: [ids.bruno] });
+    const mail = adapters.email.last("bruno@psjb.org.br")!;
+    expect(mail.subject).toMatch(/Ana compartilhou uma missa/);
+    expect(mail.text).toContain("domingo, 11 de outubro de 2026, 19h");
+    expect(mail.text).toContain(`/painel/missas/editar?id=${mass.id}`);
+
+    adapters.email.sent = [];
+    await req("ana", "PUT", `/masses/${mass.id}/shares`, { userIds: [ids.bruno, ids.admin] });
+    expect(adapters.email.sent.map((m) => m.to)).toEqual(["admin@psjb.org.br"]);
+
+    // Falha no envio não desfaz o compartilhamento.
+    adapters.email.fail = true;
+    const res = await req("ana", "PUT", `/masses/${mass.id}/shares`, { userIds: [ids.admin] });
+    expect(res.statusCode).toBe(200);
+  });
+
   it("só compartilha com contas ativas", async () => {
     const mass = await createMass();
     const res = await req("ana", "PUT", `/masses/${mass.id}/shares`, { userIds: [ids.bruno, ids.pendente] });

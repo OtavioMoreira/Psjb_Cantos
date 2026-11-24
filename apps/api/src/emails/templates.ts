@@ -128,3 +128,47 @@ export function accountActivatedEmail(d: { to: string; name: string; url: string
     footnote: "Esqueceu a senha? Na tela de entrar, use \"Esqueci a senha\".",
   });
 }
+
+const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+/** "domingo, 28 de setembro de 2026, 19h" (data aaaa-mm-dd e horário HH:mm da missa). */
+export function massWhen(date: string | null, time: string | null): string | null {
+  const parts: string[] = [];
+  if (date) {
+    const [y, m, d] = date.split("-").map(Number);
+    const weekday = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+    parts.push(`${weekday}, ${d} de ${MONTHS[m - 1]} de ${y}`);
+  }
+  if (time) {
+    const [h, min] = time.split(":");
+    parts.push(`${Number(h)}h${min === "00" ? "" : min}`);
+  }
+  return parts.length ? parts.join(", ") : null;
+}
+
+export function massSharedEmail(d: { to: string; name: string; sharedBy: string; massName: string; when: string | null; url: string }): EmailMessage {
+  return render({
+    to: d.to,
+    subject: `${d.sharedBy} compartilhou uma missa com você · Cantos PSJB`,
+    paragraphs: [
+      `Olá, ${firstName(d.name)}!`,
+      `${d.sharedBy} compartilhou com você a missa "${d.massName}"${d.when ? ` (${d.when})` : ""}. Você pode ver e editar os cantos, abrir no Modo Missa e baixar o PDF.`,
+    ],
+    action: { label: "Abrir a missa", url: d.url },
+    footnote: "A missa também aparece em \"Minhas Missas\", no painel. Se não quiser participar, use \"Sair desta missa\" no menu dela.",
+  });
+}
+
+export function accountBlockedEmail(d: { to: string; name: string; reason: string | null }): EmailMessage {
+  return render({
+    to: d.to,
+    subject: "Seu acesso foi bloqueado · Cantos PSJB",
+    paragraphs: [
+      `Olá, ${firstName(d.name)}!`,
+      "A coordenação bloqueou o seu acesso ao Cantos PSJB.",
+      ...(d.reason ? [`Motivo: ${d.reason}`] : []),
+    ],
+    footnote: "Se acha que foi um engano, procure a coordenação da paróquia.",
+  });
+}

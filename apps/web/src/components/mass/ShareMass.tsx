@@ -234,7 +234,9 @@ function ShareModal({ mass, onClose, onSave }: { mass: Mass; onClose: () => void
           <li className="px-3 py-6 text-center text-sm text-ink-muted">{q ? `Ninguém encontrado com “${q}”.` : "Nenhuma outra pessoa com conta ativa."}</li>
         )}
       </ul>
-      <p className="mt-2 text-xs text-ink-muted">Só aparecem pessoas com conta ativa.</p>
+      <p className="mt-2 text-xs text-ink-muted">
+        Só aparecem pessoas com conta ativa.{API_ENABLED ? " Quem você incluir agora recebe um aviso por e-mail." : ""}
+      </p>
 
       {!API_ENABLED && (
         <p className="mt-4 rounded-[10px] border border-dashed border-gold bg-gold-soft px-3 py-2 text-xs text-gold-ink">

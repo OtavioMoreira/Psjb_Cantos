@@ -537,7 +537,7 @@ Modelos de e-mail (pt-BR; `apps/api/src/emails/templates.ts`):
 - ✅ Você foi convidado
 - ✅ Confirme seu novo e-mail · Seu e-mail foi alterado
 - ✅ Sua conta foi liberada
-- 🔜 Seu acesso foi bloqueado · Uma missa foi compartilhada com você
+- ✅ Seu acesso foi bloqueado · Uma missa foi compartilhada com você
 
 ---
 
@@ -591,7 +591,7 @@ Modelos de e-mail (pt-BR; `apps/api/src/emails/templates.ts`):
 - [ ] Service worker: cantos das missas em cache para o Modo Missa sem internet (hoje, o PDF cobre o uso offline).
 - ✅ API de missas: CRUD, duplicar, compartilhar, sair e busca de pessoas, com permissão no servidor.
 - [ ] Telas de missa (editor, Minhas Missas, Modo Missa, compartilhar) lendo e salvando pela API; sincronizar computador e tablet.
-- [ ] E-mail "Uma missa foi compartilhada com você".
+- [x] E-mail "Uma missa foi compartilhada com você".
 - [ ] Controle de concorrência na edição (dois convidados salvando ao mesmo tempo: hoje vale o último).
 
 ---

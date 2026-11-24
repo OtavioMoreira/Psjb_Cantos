@@ -1,7 +1,9 @@
 import { AppError } from "../../domain/errors.js";
 import { toMassDTO, type MassBody, type MassDTO, type MassPatch } from "../../dtos/mass.dto.js";
-import type { MassSlot } from "../../domain/mass.js";
-import type { MassData, MassFilters, MassRepository, SongRepository, UserRepository } from "../../interfaces/index.js";
+import type { Mass, MassSlot } from "../../domain/mass.js";
+import { massSharedEmail, massWhen } from "../../emails/templates.js";
+import type { EmailSender, MassData, MassFilters, MassRepository, SongRepository, UserRepository } from "../../interfaces/index.js";
+import { sendQuietly } from "../auth/emailTokens.js";
 import { loadMass } from "./access.js";
 
 // Casos de uso das missas. Todos recebem o id de quem está logado e conferem a permissão aqui,
@@ -88,19 +90,35 @@ export class DuplicateMassAction {
 
 /**
  * Define com quem a missa está compartilhada (substitui a lista). Só o dono.
- * Só contas ativas entram; o próprio dono é ignorado.
+ * Só contas ativas entram; o próprio dono é ignorado. Quem entrou agora recebe um aviso por e-mail.
  */
 export class ShareMassAction {
-  constructor(private readonly deps: Deps & { users: UserRepository }) {}
+  constructor(private readonly deps: Deps & { users: UserRepository; email: EmailSender; appUrl: string }) {}
   async execute(userId: string, id: string, userIds: string[]): Promise<MassDTO> {
-    await loadMass(this.deps.masses, id, userId, { ownerOnly: true, action: "compartilhar a missa" });
+    const { mass } = await loadMass(this.deps.masses, id, userId, { ownerOnly: true, action: "compartilhar a missa" });
     const wanted = [...new Set(userIds)].filter((u) => u !== userId);
     const active = new Set(await this.deps.users.filterActiveIds(wanted));
     const invalid = wanted.filter((u) => !active.has(u));
     if (invalid.length)
       throw new AppError("VALIDATION_ERROR", "Só dá para compartilhar com pessoas que têm conta ativa.", { invalidUserIds: invalid });
-    const updated = await this.deps.masses.setShares(id, wanted);
-    return toMassDTO(updated!, userId);
+    const updated = (await this.deps.masses.setShares(id, wanted))!;
+    const before = new Set(mass.sharedWith.map((p) => p.id));
+    await this.notify(updated, wanted.filter((u) => !before.has(u)));
+    return toMassDTO(updated, userId);
+  }
+
+  /** O aviso é cortesia: falha no envio não desfaz o compartilhamento. */
+  private async notify(mass: Mass, newIds: string[]) {
+    const url = `${this.deps.appUrl}/painel/missas/editar?id=${mass.id}`;
+    const massName = mass.name || (mass.date ? `Missa de ${mass.date.slice(8, 10)}/${mass.date.slice(5, 7)}` : "Missa");
+    for (const uid of newIds) {
+      const user = await this.deps.users.findById(uid);
+      if (user)
+        await sendQuietly(
+          this.deps.email,
+          massSharedEmail({ to: user.email, name: user.name, sharedBy: mass.owner.name, massName, when: massWhen(mass.date, mass.time), url }),
+        );
+    }
   }
 }
 

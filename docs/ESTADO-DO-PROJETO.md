@@ -116,7 +116,6 @@ Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo 
 | 14 | Registro da última publicação (`GET /api/admin/site/status`) | Admin › Cantos | mostrar "alterações não publicadas" |
 | 15 | Paginação em `GET /api/admin/users` | Admin › Usuários | `?page=&pageSize=` |
 | 16 | **Concorrência na edição de missa** (versão / `If-Match`) | Editor de missa | hoje, com dois convidados salvando juntos, vale o último |
-| 17 | E-mail "Uma missa foi compartilhada com você" (e "Acesso bloqueado") | Compartilhar | o serviço de e-mail já existe; falta o modelo e a chamada |
 | 18 | Limite de tentativas **compartilhado entre instâncias** (ex.: Upstash Redis) | Segurança em produção | na Vercel cada instância tem o seu contador |
 | 19 | Limpeza periódica de sessões, tokens de e-mail e aparelhos confiáveis vencidos (cron) | — | `sessions`, `auth_tokens` e `trusted_devices` crescem com o tempo |
 
