@@ -1,5 +1,6 @@
 "use client";
 
+import type { AuditEntry, AuditTarget } from "./audit";
 import { BASE_PATH } from "./routes";
 import type { ApiFlag, ApiSong, FlagGroup } from "./apiSongs";
 
@@ -288,6 +289,13 @@ export const api = {
     renameMovement: (id: number, name: string) => authed<unknown>(`/admin/movements/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
     deleteMovement: (id: number) => authed<void>(`/admin/movements/${id}`, { method: "DELETE" }),
     publishSite: async () => (await authed<{ ok: true; status: ApiSiteStatus }>("/admin/site/publish", { method: "POST" })).status,
+    audit: (q: { targetType?: AuditTarget; page?: number; pageSize?: number } = {}) => {
+      const sp = new URLSearchParams();
+      if (q.targetType) sp.set("targetType", q.targetType);
+      sp.set("page", String(q.page ?? 1));
+      sp.set("pageSize", String(q.pageSize ?? 50));
+      return authed<{ entries: AuditEntry[]; total: number; page: number; pageSize: number }>(`/admin/audit?${sp}`);
+    },
     siteStatus: async () => (await authed<{ status: ApiSiteStatus }>("/admin/site/status")).status,
     imports: (status?: ImportStatus) => authed<{ items: ApiImportItem[]; runs: ApiImportRun[] }>(`/admin/imports${status ? `?status=${status}` : ""}`),
     runImport: (days = 10) =>

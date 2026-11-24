@@ -1744,6 +1744,61 @@
           ]
         },
         {
+          "name": "Auditoria",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit?targetType=&targetId=&page=1&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "targetType",
+                  "value": "",
+                  "description": "user | movement | song | flag | site | import",
+                  "disabled": true
+                },
+                {
+                  "key": "targetId",
+                  "value": "",
+                  "description": "id do alvo",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "a partir de 1",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50",
+                  "description": "1 a 100",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Quem fez o quê na área de admin, mais recentes primeiro: `{ entries: [{ actorName, action, targetType, targetId, targetLabel, details, createdAt }], total, page, pageSize }`. Toda alteração de admin que deu certo é registrada (hook nas rotas /admin); nunca guarda senha nem letra."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Status da publicação",
           "request": {
             "method": "GET",

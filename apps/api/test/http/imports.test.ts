@@ -235,7 +235,7 @@ describe("Cron da Vercel", () => {
     expect((await req("GET", "/cron/cleanup", undefined, {})).statusCode).toBe(401);
     expect((await req("GET", "/cron/cleanup")).statusCode).toBe(401);
     const ok = await req("GET", "/cron/cleanup", undefined, { authorization: `Bearer ${SECRET}` });
-    expect(ok.json()).toEqual({ ok: true, removed: { sessions: 1, authTokens: 2, trustedDevices: 3 } });
+    expect(ok.json()).toEqual({ ok: true, removed: { sessions: 1, authTokens: 2, trustedDevices: 3, auditLog: 4 } });
     expect(adapters.maintenance.calls[0].graceDays).toBe(7);
   });
 

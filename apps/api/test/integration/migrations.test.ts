@@ -19,6 +19,7 @@ describe.skipIf(!dbUrl)("Migrations", () => {
       "008_psalm_imports.sql",
       "009_mass_version.sql",
       "010_site_state.sql",
+      "011_audit_log.sql",
     ]);
   });
 

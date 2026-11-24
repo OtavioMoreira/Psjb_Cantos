@@ -9,6 +9,9 @@ import { SongController } from "../controllers/SongController.js";
 import { UserController } from "../controllers/UserController.js";
 import { authenticate, requireRole } from "../middlewares/auth.js";
 import { cronGuard } from "../middlewares/cron.js";
+import { registerAudit } from "../http/audit.js";
+import { auditQuerySchema } from "../dtos/audit.dto.js";
+import { validate } from "../http/validate.js";
 import { healthRoutes } from "./health.js";
 
 /** Todas as rotas da API, sob o prefixo /api. Cada rota só liga middleware → controller. */
@@ -82,6 +85,8 @@ export async function routes(app: FastifyInstance, { container }: { container: C
   await app.register(async (adminScope) => {
     adminScope.addHook("preHandler", isAuthenticated);
     adminScope.addHook("preHandler", requireRole("admin"));
+    registerAudit(adminScope, container);
+    adminScope.get("/audit", async (req) => container.actions.listAudit.execute(validate(auditQuerySchema, req.query)));
     adminScope.get("/users", admin.list);
     adminScope.post("/users/invite", strict(30), admin.invite);
     adminScope.post("/users/:id/invite", strict(30), admin.resendInvite);

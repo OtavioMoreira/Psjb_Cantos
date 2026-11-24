@@ -28,11 +28,18 @@ describe.skipIf(!dbUrl)("PgMaintenanceRepository (faxina do cron)", () => {
     await repos.trustedDevices.create({ userId: u.id, tokenHash: hash("g"), expiresAt: days(-30), userAgent: null });
     await repos.trustedDevices.create({ userId: u.id, tokenHash: hash("h"), expiresAt: days(10), userAgent: null });
 
-    expect(await repos.maintenance.purgeExpired(new Date(), 7)).toEqual({ sessions: 1, authTokens: 2, trustedDevices: 1 });
+    // Auditoria: mais de 2 anos sai; 1 ano fica.
+    await repos.audit.record({ actorId: u.id, actorName: "Admin", action: "user.block", targetType: "user", targetId: u.id, targetLabel: "X", details: {} });
+    await repos.audit.record({ actorId: u.id, actorName: "Admin", action: "user.unblock", targetType: "user", targetId: u.id, targetLabel: "X", details: {} });
+    await pool.query("UPDATE audit_log SET created_at = now() - interval '25 months' WHERE action = 'user.block'");
+    await pool.query("UPDATE audit_log SET created_at = now() - interval '12 months' WHERE action = 'user.unblock'");
+
+    expect(await repos.maintenance.purgeExpired(new Date(), 7)).toEqual({ sessions: 1, authTokens: 2, trustedDevices: 1, auditLog: 1 });
     expect(await count(pool, "sessions")).toBe(2);
     expect(await count(pool, "auth_tokens")).toBe(1);
     expect(await count(pool, "trusted_devices")).toBe(1);
     // Rodar de novo não apaga mais nada.
-    expect(await repos.maintenance.purgeExpired(new Date(), 7)).toEqual({ sessions: 0, authTokens: 0, trustedDevices: 0 });
+    expect(await count(pool, "audit_log")).toBe(1);
+    expect(await repos.maintenance.purgeExpired(new Date(), 7)).toEqual({ sessions: 0, authTokens: 0, trustedDevices: 0, auditLog: 0 });
   });
 });

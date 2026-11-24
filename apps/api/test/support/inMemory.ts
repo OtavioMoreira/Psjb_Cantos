@@ -3,6 +3,7 @@ import { loadEnv } from "../../src/config/env.js";
 import { buildContainer, type Adapters } from "../../src/container.js";
 import { AppError } from "../../src/domain/errors.js";
 import type { Mass } from "../../src/domain/mass.js";
+import type { AuditEntry, AuditEntryData } from "../../src/domain/audit.js";
 import type { Movement } from "../../src/domain/movement.js";
 import type { Flag, Song } from "../../src/domain/song.js";
 import type { User, UserWithPassword } from "../../src/domain/user.js";
@@ -18,6 +19,8 @@ import type {
   ImportRepository,
   ImportRun,
   MaintenanceRepository,
+  AuditFilters,
+  AuditRepository,
   SiteState,
   SiteStateRepository,
   ImportStatus,
@@ -563,7 +566,20 @@ export class FakeMaintenance implements MaintenanceRepository {
   calls: { now: Date; graceDays: number }[] = [];
   async purgeExpired(now: Date, graceDays: number) {
     this.calls.push({ now, graceDays });
-    return { sessions: 1, authTokens: 2, trustedDevices: 3 };
+    return { sessions: 1, authTokens: 2, trustedDevices: 3, auditLog: 4 };
+  }
+}
+
+export class InMemoryAudit implements AuditRepository {
+  rows: AuditEntry[] = [];
+  fail = false;
+  async record(e: AuditEntryData) {
+    if (this.fail) throw new Error("falha simulada");
+    this.rows.push({ ...structuredClone(e), id: this.rows.length + 1, createdAt: new Date() });
+  }
+  async list(f: AuditFilters) {
+    const rows = [...this.rows].reverse().filter((r) => (!f.targetType || r.targetType === f.targetType) && (!f.targetId || r.targetId === f.targetId));
+    return { entries: structuredClone(rows.slice((f.page - 1) * f.pageSize, f.page * f.pageSize)), total: rows.length };
   }
 }
 
@@ -589,6 +605,7 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     imports: InMemoryImports;
     maintenance: FakeMaintenance;
     siteState: InMemorySiteState;
+    audit: InMemoryAudit;
   } = {
     users,
     sessions: new InMemorySessions(),
@@ -605,6 +622,7 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     imports: new InMemoryImports(),
     maintenance: new FakeMaintenance(),
     siteState: new InMemorySiteState(),
+    audit: new InMemoryAudit(),
     hasher: fakeHasher,
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: new MemoryStorage(),

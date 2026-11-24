@@ -289,7 +289,7 @@ Estado do cliente em `localStorage`:
   - **convidar** e excluir (sugere bloquear).
 - ✅ Proteções: o admin não pode bloquear, excluir nem rebaixar a si mesmo.
 - ✅ Com a API: bloquear ou redefinir senha revoga as sessões ativas; a senha temporária obriga a troca no próximo login; sempre há pelo menos 1 admin ativo.
-- 🔜 `AuditLog` para as ações de admin.
+- ✅ Auditoria das ações de admin (`audit_log`, hook nas rotas `/api/admin`) e tela Admin › Auditoria.
 
 ### E9. Responsividade (celular e tablet são o uso principal) ✅
 - ✅ Auditoria automática em 9 aparelhos (Android 360px, iPhone SE, iPhone 14, Pixel 7, iPad Mini e iPad Pro 11" em retrato e paisagem, Galaxy Tab S4), cobrindo todas as páginas:
@@ -380,6 +380,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | POST · PUT · DELETE | `/api/admin/flags[/:id]` | ✅ | admin: `{ group, slug, name, color?, position? }`. 409 `FLAG_TAKEN` |
 | POST | `/api/admin/site/publish` | ✅ | admin: pede um novo build do site (Deploy Hook em `SITE_DEPLOY_HOOK_URL`) → 202; sem hook → 501 `NOT_CONFIGURED` |
 | GET | `/api/cron/import-psalms` | ✅ | Cron da Vercel (seg–qui 3h): importa os salmos e aclamações da semana da Diocese de Montenegro. Sem login; exige `Authorization: Bearer <CRON_SECRET>` (401; sem o segredo configurado, 501) |
+| GET | `/api/admin/audit?targetType=&targetId=&page=&pageSize=` | ✅ | admin: quem fez o quê (mais recentes primeiro). Gravado por hook em toda alteração de admin que deu certo (migration 011); nunca guarda senha nem letra |
 | GET | `/api/admin/site/status` | ✅ | admin: `{ enabled, pending, contentChangedAt, publishedAt, publishedBy }`. `pending` = cantos ou flags mudaram depois do último "Publicar no site" (gatilhos do banco, migration 010) |
 | GET | `/api/cron/cleanup` | ✅ | Cron da Vercel (todo dia às 4h): apaga sessões, tokens de e-mail e aparelhos confiáveis vencidos ou usados há mais de 7 dias (sessão revogada no prazo fica, para detectar reuso). Mesmo `CRON_SECRET` |
 | GET | `/api/admin/imports` | ✅ | admin: itens lidos (`?status=review`...) e as últimas execuções |
@@ -467,7 +468,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 
 ### 6.6 Segurança e autenticação
 
-**Já implementado:** argon2id; login → access JWT de 15 min + refresh rotativo em cookie httpOnly; **2FA por e-mail** com aparelho confiável (15/10/2026, ligado por padrão em produção, `LOGIN_2FA`; `EMAIL_ENABLED=false` trava o envio e desliga o 2FA); detecção de reuso; papéis no JWT e `requireRole` no servidor; rate limit em login, 2FA, recuperação, cadastro e refresh; tokens de e-mail de uso único guardados como hash (`auth_tokens`); `@fastify/helmet`; CORS restrito; validação com Zod; respostas de erro no formato `{ error: { code, message, details } }`. Faltam reCAPTCHA, `AuditLog` e a parte de LGPD.
+**Já implementado:** argon2id; login → access JWT de 15 min + refresh rotativo em cookie httpOnly; **2FA por e-mail** com aparelho confiável (15/10/2026, ligado por padrão em produção, `LOGIN_2FA`; `EMAIL_ENABLED=false` trava o envio e desliga o 2FA); detecção de reuso; papéis no JWT e `requireRole` no servidor; rate limit em login, 2FA, recuperação, cadastro e refresh; tokens de e-mail de uso único guardados como hash (`auth_tokens`); `@fastify/helmet`; CORS restrito; validação com Zod; respostas de erro no formato `{ error: { code, message, details } }`. Também: auditoria das ações de admin (`audit_log`). Faltam reCAPTCHA e a parte de LGPD.
 
 **Senhas**
 - Hash com **argon2id**. Política: 8 ou mais caracteres, com letras e números (a mesma da UI); se possível, checar contra listas de senhas vazadas.
@@ -495,7 +496,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 - Rate limit (`@fastify/rate-limit`) em login, cadastro, reenvios e 2FA; `@fastify/helmet`; CORS restrito; validação de entrada por schema (Zod/TypeBox).
 - Tokens de e-mail de **uso único**, guardados como hash: confirmação 24 h, redefinição 1 h, convite 7 dias.
 - Respostas que não revelam se um e-mail está cadastrado.
-- `AuditLog` das ações de admin. LGPD: consentimento no cadastro e exportação/exclusão dos dados a pedido.
+- ✅ Auditoria das ações de admin. LGPD: consentimento no cadastro e exportação/exclusão dos dados a pedido.
 
 ### 6.7 Qualidade
 - ✅ TypeScript `strict`, ESLint (config Next e React 19), `tsc` + `eslint` antes de cada entrega; build estático validado.

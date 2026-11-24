@@ -1,6 +1,7 @@
 // Portas da arquitetura hexagonal: as actions só conhecem estes contratos.
 // As implementações (Postgres, argon2, jose, Vercel Blob) ficam em repositories/ e services/.
 
+import type { AuditEntry, AuditEntryData, AuditTarget } from "../domain/audit.js";
 import type { Mass, MassSlot, PersonRef, SeasonId, YearId } from "../domain/mass.js";
 import type { Movement } from "../domain/movement.js";
 import type { Flag, FlagGroup, Song, SongMedia, SongSource } from "../domain/song.js";
@@ -229,6 +230,8 @@ export interface PurgeResult {
   sessions: number;
   authTokens: number;
   trustedDevices: number;
+  /** Registros de auditoria com mais de 2 anos. */
+  auditLog: number;
 }
 
 /** Faxina periódica das tabelas que só crescem. */
@@ -248,6 +251,20 @@ export interface SiteState {
 export interface SiteStateRepository {
   get(): Promise<SiteState>;
   markPublished(byName: string): Promise<SiteState>;
+}
+
+export interface AuditFilters {
+  targetType?: AuditTarget;
+  targetId?: string;
+  page: number;
+  pageSize: number;
+}
+
+/** Registro de auditoria das ações de admin. */
+export interface AuditRepository {
+  record(entry: AuditEntryData): Promise<void>;
+  /** Mais recentes primeiro. */
+  list(filters: AuditFilters): Promise<{ entries: AuditEntry[]; total: number }>;
 }
 
 export interface Clock {

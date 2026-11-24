@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BookOpen, ChevronRight, Flag, Music, UserCog, Users } from "lucide-react";
+import { BookOpen, ChevronRight, Flag, History, Music, UserCog, Users } from "lucide-react";
 import { api, API_ENABLED } from "@/lib/api";
 import { AdminGuard, AdminTitle } from "@/components/admin/AdminShell";
 
@@ -68,6 +68,7 @@ function AdminHome() {
       badge: counts?.review ? `${counts.review} a revisar` : null,
     },
     { href: "/painel/admin/movimentos", title: "Movimentos", Icon: UserCog, text: "Pastorais e movimentos que aparecem no cadastro.", stat: API_ENABLED ? `${n(counts?.movements)} movimentos` : "Com servidor" },
+    { href: "/painel/admin/auditoria", title: "Auditoria", Icon: History, text: "Quem fez o quê na administração, e quando.", stat: API_ENABLED ? "Guardada por 2 anos" : "Com servidor" },
   ];
 
   return (

@@ -44,6 +44,8 @@ import {
 import { GetSiteStatusAction, PublishSiteAction } from "./actions/songs/PublishSiteAction.js";
 import { PgSiteStateRepository } from "./repositories/PgSiteStateRepository.js";
 import { CleanupAction } from "./actions/maintenance/CleanupAction.js";
+import { AuditTargetLabelAction, ListAuditAction, RecordAuditAction } from "./actions/admin/AuditActions.js";
+import { PgAuditRepository } from "./repositories/PgAuditRepository.js";
 import { PgMaintenanceRepository } from "./repositories/PgMaintenanceRepository.js";
 import { ImportPsalmsAction, ListImportsAction, ResolveImportAction } from "./actions/imports/ImportPsalmsActions.js";
 import { DioceseMontenegroSource } from "./services/DioceseMontenegroSource.js";
@@ -72,6 +74,7 @@ import type {
   ImportRepository,
   MaintenanceRepository,
   SiteStateRepository,
+  AuditRepository,
   PdfReader,
   PsalmSource,
 } from "./interfaces/index.js";
@@ -107,6 +110,7 @@ export interface Adapters {
   imports: ImportRepository;
   maintenance: MaintenanceRepository;
   siteState: SiteStateRepository;
+  audit: AuditRepository;
   hasher: PasswordHasher;
   tokens: TokenService;
   storage: FileStorage;
@@ -177,6 +181,9 @@ export function buildContainer(env: Env, adapters: Adapters) {
       listImports: new ListImportsAction(deps),
       resolveImport: new ResolveImportAction(deps),
       cleanup: new CleanupAction(deps),
+      recordAudit: new RecordAuditAction(deps),
+      auditTargetLabel: new AuditTargetLabelAction(deps),
+      listAudit: new ListAuditAction(deps),
     },
   };
 }
@@ -208,6 +215,7 @@ export function createAdapters(env: Env): Adapters & { pool: Pool } {
     imports: new PgImportRepository(pool),
     maintenance: new PgMaintenanceRepository(pool),
     siteState: new PgSiteStateRepository(pool),
+    audit: new PgAuditRepository(pool),
     hasher: new Argon2PasswordHasher(),
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: env.BLOB_READ_WRITE_TOKEN

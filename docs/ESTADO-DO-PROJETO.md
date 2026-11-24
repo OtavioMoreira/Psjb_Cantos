@@ -94,7 +94,6 @@ Todas ficaram prontas em 15/10/2026: trocar o próprio e-mail, recuperar senha, 
 | Telas de **termos de uso e privacidade** (LGPD) | Média | O cadastro já pede o aceite |
 | **Modo offline (PWA)**: missas do dia em cache para o Modo Missa | Média | Hoje o PDF cobre o uso sem internet |
 | Player de áudio no Modo Missa | Baixa | |
-| Admin › Auditoria (quem fez o quê) | Baixa | Depende do `AuditLog` |
 | SEO: `sitemap.xml`, JSON-LD, redirecionamentos das URLs antigas | Baixa | |
 | **Testes de tela (Playwright) no CI**: login, editor, convite, admin | Média | Hoje os testes de tela são manuais (scripts locais) |
 
@@ -109,7 +108,6 @@ Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo 
 | # | Rota ou recurso | Para qual tela | Detalhes |
 |---|---|---|---|
 | 11 | **reCAPTCHA** validado no servidor | Criar conta | também na recuperação e no login depois de 3 falhas |
-| 12 | `AuditLog` + `GET /api/admin/audit` | Admin | registrar as ações de admin |
 | 13 | Token de **upload direto para o Blob** (`POST /api/uploads`) | Admin › Cantos | arquivos acima de 4 MB |
 | 18 | Limite de tentativas **compartilhado entre instâncias** (ex.: Upstash Redis) | Segurança em produção | na Vercel cada instância tem o seu contador |
 

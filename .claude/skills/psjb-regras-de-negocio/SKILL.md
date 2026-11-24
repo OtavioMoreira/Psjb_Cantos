@@ -314,7 +314,7 @@ Os eixos:
 - **Proteções:**
   - O admin **não pode bloquear, excluir nem rebaixar a si mesmo** (403). Editar os próprios dados pode.
   - Precisa existir sempre **pelo menos 1 admin ativo** (409 `LAST_ADMIN`). Admin pendente ou bloqueado não conta.
-- **(futuro)** Toda ação de admin gera um registro de auditoria (`AuditLog`).
+- **Auditoria (24/11/2026):** toda alteração de admin que **deu certo** (rotas `/api/admin`, menos as de leitura) vira um registro em `audit_log`, por um hook só: quem fez, a ação, o alvo (com o **nome copiado**, legível mesmo depois de excluído) e detalhes seguros (motivo do bloqueio, **nomes** dos campos alterados, papel, tipo de arquivo, decisão da importação). **Nunca** guarda senha, senha temporária ou letra. Ação recusada não é registrada; falha ao gravar a auditoria não desfaz a ação. Rota de admin nova sem regra de auditoria faz o teste falhar. Tela **Admin › Auditoria** (`/painel/admin/auditoria`): do mais recente ao mais antigo, filtro por tipo, 50 por vez. A faxina diária apaga registros com mais de **2 anos**.
 - Mudar o papel de alguém só pesa no próximo refresh do token (até 15 min), porque os papéis vão no JWT.
 
 ## 13. Autenticação JWT
