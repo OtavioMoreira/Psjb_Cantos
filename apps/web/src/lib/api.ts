@@ -15,6 +15,15 @@ export const API_ENABLED = process.env.NEXT_PUBLIC_USE_API === "true";
 export type ApiRole = "admin" | "musico";
 export type ApiStatus = "pending" | "active" | "blocked";
 
+/** "Há alterações não publicadas" (cantos e flags mudaram depois do último "Publicar no site"). */
+export interface ApiSiteStatus {
+  enabled: boolean;
+  pending: boolean;
+  contentChangedAt: string;
+  publishedAt: string | null;
+  publishedBy: string | null;
+}
+
 export interface ApiUserPage {
   users: ApiUser[];
   total: number;
@@ -160,16 +169,23 @@ function refresh(): Promise<boolean> {
   return refreshing;
 }
 
+/** Disparado quando o admin muda cantos ou flags: o botão "Publicar no site" confere o status de novo. */
+export const SITE_CONTENT_EVENT = "psjb:site-content-changed";
+const changesSiteContent = (path: string, method = "GET") => method !== "GET" && /^\/admin\/(songs|flags|imports)\b/.test(path);
+
 /** Chamada autenticada: renova o token se preciso e tenta de novo uma vez em caso de 401. */
 async function authed<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!accessToken || Date.now() >= accessExpiresAt) await refresh();
   const withToken = () => call<T>(path, { ...init, headers: { ...init.headers, authorization: `Bearer ${accessToken}` } });
+  let result: T;
   try {
-    return await withToken();
+    result = await withToken();
   } catch (err) {
-    if (err instanceof ApiError && err.status === 401 && (await refresh())) return withToken();
-    throw err;
+    if (!(err instanceof ApiError && err.status === 401 && (await refresh()))) throw err;
+    result = await withToken();
   }
+  if (changesSiteContent(path, init.method)) window.dispatchEvent(new Event(SITE_CONTENT_EVENT));
+  return result;
 }
 
 export const api = {
@@ -271,7 +287,8 @@ export const api = {
     createMovement: (name: string) => authed<unknown>("/admin/movements", { method: "POST", body: JSON.stringify({ name }) }),
     renameMovement: (id: number, name: string) => authed<unknown>(`/admin/movements/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
     deleteMovement: (id: number) => authed<void>(`/admin/movements/${id}`, { method: "DELETE" }),
-    publishSite: () => authed<{ ok: true }>("/admin/site/publish", { method: "POST" }),
+    publishSite: async () => (await authed<{ ok: true; status: ApiSiteStatus }>("/admin/site/publish", { method: "POST" })).status,
+    siteStatus: async () => (await authed<{ status: ApiSiteStatus }>("/admin/site/status")).status,
     imports: (status?: ImportStatus) => authed<{ items: ApiImportItem[]; runs: ApiImportRun[] }>(`/admin/imports${status ? `?status=${status}` : ""}`),
     runImport: (days = 10) =>
       authed<{ runId: number; summary: Record<string, number>; items: { title: string; date: string; outcome: string; songId: number | null; message: string | null }[] }>(

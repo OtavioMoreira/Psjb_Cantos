@@ -288,6 +288,7 @@ Os eixos:
   - Os arquivos só podem ser enviados **depois de criar o canto**.
   - Excluir um canto que está em missa é recusado: a tela mostra o motivo e sugere ocultar.
 - **Publicar no site:** as páginas dos cantos são **estáticas** (rápidas e disponíveis no Modo Missa com internet ruim). Mudanças em cantos e flags só aparecem no site público depois de **"Publicar no site"**, que gera o site de novo em alguns minutos. A página de um canto já mostra o nome das flags novas; filtros e etiquetas das listas atualizam no build.
+  - **Alterações não publicadas (24/11/2026):** o botão fica em destaque, com uma bolinha dourada e "Há alterações não publicadas", quando cantos, flags ou etiquetas mudaram depois da última publicação; senão mostra "Publicado em 24 nov, 14:03 por {nome}". Quem marca a mudança são **gatilhos do banco** em `songs`, `flags` e `song_flags` (vale para admin, importação dos salmos e scripts), na tabela de uma linha `site_state` (`GET /api/admin/site/status`). Missas e usuários não contam.
 - **Flags:** o identificador é gerado a partir do nome (pode ser editado); cor e ordem são opcionais.
 - **Movimentos:** criar e renomear (nome único); o botão de excluir fica desabilitado quando há pessoas.
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { EyeOff, FileMusic, Guitar, Headphones, Loader2, Plus, Search, UploadCloud } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, SITE_CONTENT_EVENT, type ApiSiteStatus } from "@/lib/api";
 import type { ApiSong } from "@/lib/apiSongs";
 import { formatNumber } from "@/lib/liturgy";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -135,14 +135,50 @@ export function SongsAdmin() {
 }
 
 /** Pede um novo build do site para as mudanças em cantos e flags aparecerem nas páginas públicas. */
+/** Status da publicação, atualizado ao abrir, ao voltar para a aba e a cada mudança em cantos ou flags. */
+function useSiteStatus() {
+  const [status, setStatus] = useState<ApiSiteStatus | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () => void api.admin.siteStatus().then((s) => alive && setStatus(s), () => undefined);
+    load();
+    const onVisible = () => document.visibilityState === "visible" && load();
+    window.addEventListener(SITE_CONTENT_EVENT, load);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      alive = false;
+      window.removeEventListener(SITE_CONTENT_EVENT, load);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  return [status, setStatus] as const;
+}
+
+const when = (iso: string) =>
+  new Date(iso).toLocaleString("pt-BR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+
 export function PublishSiteButton() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useSiteStatus();
+  const pending = Boolean(status?.enabled && status.pending);
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        <UploadCloud size={18} /> Publicar no site
-      </Button>
+      <span className="flex flex-col items-stretch gap-1 sm:items-end">
+        <Button variant={pending ? "primary" : "secondary"} onClick={() => setOpen(true)}>
+          <UploadCloud size={18} /> Publicar no site
+          {pending && <span aria-hidden className="h-2 w-2 rounded-full bg-gold" />}
+        </Button>
+        {status && (
+          <span role="status" className={`text-xs ${pending ? "font-medium text-gold-ink" : "text-ink-muted"}`}>
+            {pending
+              ? "Há alterações não publicadas"
+              : status.publishedAt
+                ? `Publicado em ${when(status.publishedAt)}${status.publishedBy ? ` por ${status.publishedBy.split(" ")[0]}` : ""}`
+                : null}
+          </span>
+        )}
+      </span>
       {open && (
         <Modal
           title="Publicar no site"
@@ -157,7 +193,7 @@ export function PublishSiteButton() {
                 onClick={async () => {
                   setBusy(true);
                   try {
-                    await api.admin.publishSite();
+                    setStatus(await api.admin.publishSite());
                     toast("Publicação pedida. O site atualiza em alguns minutos.");
                     setOpen(false);
                   } catch (e) {
@@ -176,6 +212,18 @@ export function PublishSiteButton() {
             As páginas dos cantos são geradas de antemão, para abrirem rápido e funcionarem no Modo Missa mesmo com internet ruim. Depois de
             criar ou editar cantos e flags, publique para o site ser gerado de novo. Leva alguns minutos.
           </p>
+          {status && (
+            <p className="mt-3 text-sm">
+              {status.pending ? (
+                <>
+                  <strong className="text-gold-ink">Há alterações não publicadas</strong> (a última em {when(status.contentChangedAt)}).
+                </>
+              ) : (
+                "Nenhuma alteração desde a última publicação."
+              )}
+              {status.publishedAt && ` Última publicação: ${when(status.publishedAt)}${status.publishedBy ? `, por ${status.publishedBy}` : ""}.`}
+            </p>
+          )}
         </Modal>
       )}
     </>

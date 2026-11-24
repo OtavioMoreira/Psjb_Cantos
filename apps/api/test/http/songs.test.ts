@@ -153,4 +153,20 @@ describe("Publicar no site", () => {
     expect((await req("admin", "POST", "/admin/site/publish")).json().error.code).toBe("NOT_CONFIGURED");
     expect(adapters.site.calls).toBe(1);
   });
+
+  it("status: alterações pendentes até publicar; publicar registra quem publicou", async () => {
+    const status = async () => (await req("admin", "GET", "/admin/site/status")).json().status;
+    expect(await status()).toMatchObject({ enabled: true, pending: false });
+    adapters.siteState.touch(); // o gatilho do banco faria isso ao editar um canto
+    expect(await status()).toMatchObject({ pending: true });
+
+    const res = await req("admin", "POST", "/admin/site/publish");
+    expect(res.json().status).toMatchObject({ pending: false, publishedBy: "admin" });
+    expect(await status()).toMatchObject({ pending: false, publishedBy: "admin" });
+
+    expect((await req("ana", "GET", "/admin/site/status")).statusCode).toBe(403);
+    // Sem hook: o status avisa que a publicação não está configurada.
+    adapters.site.enabled = false;
+    expect(await status()).toMatchObject({ enabled: false });
+  });
 });

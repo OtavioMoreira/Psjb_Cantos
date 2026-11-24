@@ -18,6 +18,8 @@ import type {
   ImportRepository,
   ImportRun,
   MaintenanceRepository,
+  SiteState,
+  SiteStateRepository,
   ImportStatus,
   PdfReader,
   PsalmSource,
@@ -541,6 +543,21 @@ export class FakePdfReader implements PdfReader {
   }
 }
 
+/** Estado da publicação em memória; `touch()` faz o papel dos gatilhos do banco. */
+export class InMemorySiteState implements SiteStateRepository {
+  state: SiteState = { contentChangedAt: new Date(Date.now() - 60_000), publishedAt: new Date(Date.now() - 60_000), publishedByName: null };
+  touch() {
+    this.state.contentChangedAt = new Date(Date.now() + 1);
+  }
+  async get() {
+    return { ...this.state };
+  }
+  async markPublished(byName: string) {
+    this.state = { ...this.state, publishedAt: new Date(this.state.contentChangedAt.getTime() + 1), publishedByName: byName };
+    return { ...this.state };
+  }
+}
+
 /** Faxina falsa: registra as chamadas. */
 export class FakeMaintenance implements MaintenanceRepository {
   calls: { now: Date; graceDays: number }[] = [];
@@ -571,6 +588,7 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     pdf: FakePdfReader;
     imports: InMemoryImports;
     maintenance: FakeMaintenance;
+    siteState: InMemorySiteState;
   } = {
     users,
     sessions: new InMemorySessions(),
@@ -586,6 +604,7 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     pdf: new FakePdfReader(),
     imports: new InMemoryImports(),
     maintenance: new FakeMaintenance(),
+    siteState: new InMemorySiteState(),
     hasher: fakeHasher,
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: new MemoryStorage(),

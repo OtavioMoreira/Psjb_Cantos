@@ -1744,6 +1744,36 @@
           ]
         },
         {
+          "name": "Status da publicação",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/site/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "site",
+                "status"
+              ]
+            },
+            "description": "`{ status: { enabled, pending, contentChangedAt, publishedAt, publishedBy } }`. `pending` = há mudanças em cantos ou flags depois do último \"Publicar no site\" (os gatilhos do banco marcam a mudança). `enabled: false` = sem SITE_DEPLOY_HOOK_URL."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Publicar no site",
           "request": {
             "method": "POST",

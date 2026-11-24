@@ -110,6 +110,7 @@ export async function routes(app: FastifyInstance, { container }: { container: C
     adminScope.delete("/flags/:id", songs.removeFlag);
 
     adminScope.post("/site/publish", strict(10), songs.publishSite);
+    adminScope.get("/site/status", songs.siteStatus);
 
     adminScope.get("/imports", imports.list);
     adminScope.post("/imports/run", strict(10), imports.run);

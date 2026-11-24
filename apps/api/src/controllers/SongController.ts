@@ -71,10 +71,12 @@ export class SongController {
     flag: await this.c.actions.updateFlag.execute(validate(flagIdParamSchema, req.params).id, validate(flagBodySchema, req.body)),
   });
   /** 202: o build foi pedido; o site leva alguns minutos para atualizar. */
-  publishSite = async (_req: FastifyRequest, reply: FastifyReply) => {
-    await this.c.actions.publishSite.execute();
-    return reply.status(202).send({ ok: true });
+  publishSite = async (req: FastifyRequest, reply: FastifyReply) => {
+    const status = await this.c.actions.publishSite.execute(requireAuth(req).userId);
+    return reply.status(202).send({ ok: true, status });
   };
+
+  siteStatus = async () => ({ status: await this.c.actions.siteStatus.execute() });
 
   removeFlag = async (req: FastifyRequest, reply: FastifyReply) => {
     await this.c.actions.deleteFlag.execute(validate(flagIdParamSchema, req.params).id);

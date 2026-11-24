@@ -380,6 +380,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | POST · PUT · DELETE | `/api/admin/flags[/:id]` | ✅ | admin: `{ group, slug, name, color?, position? }`. 409 `FLAG_TAKEN` |
 | POST | `/api/admin/site/publish` | ✅ | admin: pede um novo build do site (Deploy Hook em `SITE_DEPLOY_HOOK_URL`) → 202; sem hook → 501 `NOT_CONFIGURED` |
 | GET | `/api/cron/import-psalms` | ✅ | Cron da Vercel (seg–qui 3h): importa os salmos e aclamações da semana da Diocese de Montenegro. Sem login; exige `Authorization: Bearer <CRON_SECRET>` (401; sem o segredo configurado, 501) |
+| GET | `/api/admin/site/status` | ✅ | admin: `{ enabled, pending, contentChangedAt, publishedAt, publishedBy }`. `pending` = cantos ou flags mudaram depois do último "Publicar no site" (gatilhos do banco, migration 010) |
 | GET | `/api/cron/cleanup` | ✅ | Cron da Vercel (todo dia às 4h): apaga sessões, tokens de e-mail e aparelhos confiáveis vencidos ou usados há mais de 7 dias (sessão revogada no prazo fica, para detectar reuso). Mesmo `CRON_SECRET` |
 | GET | `/api/admin/imports` | ✅ | admin: itens lidos (`?status=review`...) e as últimas execuções |
 | POST | `/api/admin/imports/run` | ✅ | admin: "Buscar agora" (`{ days }`, padrão 10); 502 `IMPORT_FAILED` se a fonte estiver fora do ar |

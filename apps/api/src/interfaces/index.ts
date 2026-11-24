@@ -237,6 +237,19 @@ export interface MaintenanceRepository {
   purgeExpired(now: Date, graceDays: number): Promise<PurgeResult>;
 }
 
+export interface SiteState {
+  /** Última mudança em cantos ou flags (marcada pelos gatilhos do banco). */
+  contentChangedAt: Date;
+  publishedAt: Date | null;
+  publishedByName: string | null;
+}
+
+/** Quando o conteúdo mudou e quando foi o último "Publicar no site". */
+export interface SiteStateRepository {
+  get(): Promise<SiteState>;
+  markPublished(byName: string): Promise<SiteState>;
+}
+
 export interface Clock {
   now(): Date;
 }

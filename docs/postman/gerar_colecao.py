@@ -191,6 +191,8 @@ items = [  # na ordem em que faz sentido rodar
         req("Enviar áudio", "PUT", "/admin/songs/{{songId}}/files/audio",
             formdata=[{"key": "file", "type": "file", "src": "audio-exemplo.mp3"}], desc="MP3, M4A ou OGG."),
         req("Remover áudio", "DELETE", "/admin/songs/{{songId}}/files/audio", desc="`kind`: cifra-pdf, partitura-pdf ou audio."),
+        req("Status da publicação", "GET", "/admin/site/status",
+            desc="`{ status: { enabled, pending, contentChangedAt, publishedAt, publishedBy } }`. `pending` = há mudanças em cantos ou flags depois do último \"Publicar no site\" (os gatilhos do banco marcam a mudança). `enabled: false` = sem SITE_DEPLOY_HOOK_URL."),
         req("Publicar no site", "POST", "/admin/site/publish",
             desc="Pede um novo build do site (Deploy Hook da Vercel em SITE_DEPLOY_HOOK_URL) para cantos e flags alterados aparecerem nas páginas. 202 = pedido aceito; 501 NOT_CONFIGURED se o hook não estiver configurado (normal no ambiente local).",
             tests=["pm.test('202 ou 501 (sem hook local)', () => pm.expect([202, 501]).to.include(pm.response.code));"]),

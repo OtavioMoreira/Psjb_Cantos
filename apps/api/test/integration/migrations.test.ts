@@ -18,6 +18,7 @@ describe.skipIf(!dbUrl)("Migrations", () => {
       "007_auth_tokens.sql",
       "008_psalm_imports.sql",
       "009_mass_version.sql",
+      "010_site_state.sql",
     ]);
   });
 
