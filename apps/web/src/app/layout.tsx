@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IS_DEMO } from "@/lib/site";
 import { Cormorant_Garamond, Cormorant_SC, Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/Toast";
+import { ServiceWorker } from "@/components/layout/ServiceWorker";
 import { BASE_PATH } from "@/lib/routes";
 import "./globals.css";
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster />
+        <ServiceWorker />
       </body>
     </html>
   );

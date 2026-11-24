@@ -13,6 +13,7 @@ import { formatNumber } from "@/lib/liturgy";
 import { ChordSheet } from "@/components/song/ChordSheet";
 import { Cross } from "@/components/ui/Ornament";
 import { massEditUrl } from "@/lib/routes";
+import { useOffline, useOfflineReady } from "@/lib/offline";
 
 // Paletas próprias de alto contraste (ux.md §2.1)
 const PALETTES = {
@@ -48,6 +49,10 @@ export function MassMode() {
   const [audioOpen, setAudioOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Guarda esta missa para abrir sem internet (página, scripts e índice de cantos; as missas já estão no aparelho).
+  const offlineReady = useOfflineReady(Boolean(mass && songs));
+  const offline = useOffline();
 
   const pal = PALETTES[prefs.massPalette];
   const fontSize = prefs.massFontSize;
@@ -430,6 +435,16 @@ export function MassMode() {
           <ChevronRight size={28} className="shrink-0" />
         </button>
       </footer>
+
+      {offline && (
+        <p
+          role="status"
+          className="pointer-events-none absolute left-3 top-[76px] rounded-full px-3 py-1 text-xs font-semibold shadow-card"
+          style={{ background: pal.ui, color: pal.muted }}
+        >
+          {offlineReady === "pronto" ? "Sem internet · disponível offline ✓" : "Sem internet"}
+        </p>
+      )}
 
       {wakeLockOk === false && controls && !wakeDismissed && (
         <button

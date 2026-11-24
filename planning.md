@@ -257,7 +257,7 @@ Estado do cliente em `localStorage`:
 - ✅ Tela sempre acesa (Wake Lock), com um aviso que fecha com um toque quando o aparelho não suporta.
 - ✅ Controles somem após 4 s; tela final "Missa concluída. Deus seja louvado!".
 - ✅ Player de áudio do canto atual (botão de fone; no celular, no rodapé).
-- 🔜 Offline por service worker.
+- ✅ Offline por service worker (`public/sw.js`): a missa aberta uma vez no Modo Missa abre sem internet.
 
 ### E7. API: usuários, papéis e autenticação JWT 🟡
 - ✅ `apps/api` com Fastify + TypeScript em **arquitetura hexagonal** (§6.1).

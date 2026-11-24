@@ -91,7 +91,6 @@ Todas ficaram prontas em 15/10/2026: trocar o próprio e-mail, recuperar senha, 
 | **Deploy na Vercel** (front + API) com Neon, Blob e **Resend** | Alta | Configuração descrita no README; criar o Deploy Hook do front e pôr em `SITE_DEPLOY_HOOK_URL`; instalar o Resend pelo Marketplace e configurar SPF/DKIM/DMARC no DNS do `psjb.org.br` |
 | **Chaves do desafio "não sou um robô"** (Cloudflare Turnstile) | Alta | Código pronto e testado contra o Turnstile (24/11/2026), desligado até criar as chaves: `CAPTCHA_SECRET` na API e `NEXT_PUBLIC_CAPTCHA_SITE_KEY` no front (depende de uma conta Cloudflare) |
 | **Revisar** os termos de uso e a política de privacidade com a paróquia | Média | Páginas `/termos` e `/privacidade` prontas (24/11/2026), escritas a partir do que o sistema faz de fato; precisam do aval da paróquia (contato usado: secretaria@psjb.org.br) |
-| **Modo offline (PWA)**: missas do dia em cache para o Modo Missa | Média | Hoje o PDF cobre o uso sem internet |
 | SEO: redirecionamentos das URLs antigas | Baixa | `sitemap.xml`, `robots.txt`, canonical e JSON-LD prontos (24/11/2026). Falta saber o formato das URLs do site antigo (o banco legado não registra; o servidor antigo recusa leitura automática) |
 | **Testes de tela (Playwright) no CI**: login, editor, convite, admin | Média | Hoje os testes de tela são manuais (scripts locais) |
 

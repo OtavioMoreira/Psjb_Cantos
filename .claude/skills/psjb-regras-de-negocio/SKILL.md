@@ -212,7 +212,7 @@ Os eixos:
 - **Fim:** tela "Missa concluída. Deus seja louvado!", com Recomeçar e Voltar ao painel.
 - **Alvos de toque:** ≥ 56 px.
 - **Áudio do canto atual (24/11/2026):** quando o canto tem MP3, o botão de fone (🎧) abre uma barra com o player e as velocidades 0,75×, 1× e 1,25×, nas cores da paleta, logo abaixo do cabeçalho. Ela não some com os controles e continua aberta ao trocar de canto (trocar de canto para o áudio anterior). No celular o botão fica no rodapé, entre Anterior e Próximo; do tablet em diante, no cabeçalho.
-- **(futuro)** Funcionar offline (PWA).
+- **Sem internet (PWA, 24/11/2026):** um service worker (`public/sw.js`, registrado só no build de produção) guarda a página, os scripts e o índice de cantos **quando a missa é aberta no Modo Missa**; as missas já ficam no aparelho (`localStorage`). Depois disso, a missa abre e funciona sem conexão (áudios e PDFs não são guardados). Sem internet, aparece o selo "Sem internet · disponível offline ✓". Páginas sempre tentam a rede primeiro (o site nunca fica preso numa versão velha); `/api` nunca é guardada. **Orientação para a equipe:** abra a missa uma vez com internet antes da celebração (o PDF continua sendo a alternativa).
 
 ## 9. Usuários: papéis e status
 - **Papéis:** só dois (o papel Coordenador foi removido em 03/10/2026). Ficam na tabela `roles` e se ligam ao usuário por `user_roles`, então uma pessoa pode ter mais de um.

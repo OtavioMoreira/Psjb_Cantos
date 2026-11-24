@@ -591,7 +591,7 @@ Comportamento:
 - **Tablet em retrato e celular:** o controle de tom vai para uma **segunda linha** abaixo do cabeçalho, para o título não ser cortado. O tom fica no cabeçalho só a partir de 1024px.
 - **Controles**: somem após 4s sem interação (sobra só a barra inferior em 40% de opacidade); um toque os traz de volta.
 - ✕ sai com confirmação apenas se a missa não terminou.
-- **Offline**: ao abrir, todos os cantos da missa ficam em cache (Service Worker). Sem conexão, aparece o selo "Disponível offline ✓".
+- **Offline** (implementado em 24/11/2026): ao abrir, a página, os scripts e o índice de cantos ficam em cache (Service Worker). Sem conexão, aparece no canto superior esquerdo, abaixo do cabeçalho, a pílula "Sem internet · disponível offline ✓" (ou só "Sem internet", se ainda não deu tempo de guardar), no fundo `ui` da paleta.
 - Todos os alvos têm no mínimo 56×56px e espaçamento mínimo de 12px entre eles.
 - **🎧 Áudio:** só aparece quando o canto tem MP3 (no cabeçalho do tablet em diante; no celular, no rodapé, entre Anterior e Próximo, porque o cabeçalho não comporta mais um botão em 360 px). Abre uma barra abaixo do cabeçalho, no fundo `ui` da paleta, com o player e as velocidades 0,75× · 1× · 1,25× (a ativa em `soft`/`chord`). A barra não some com os controles e segue aberta ao trocar de canto.
 
