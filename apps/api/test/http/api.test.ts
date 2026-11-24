@@ -110,6 +110,29 @@ describe("Papéis: rotas /api/admin", () => {
   });
 });
 
+describe("Lista de usuários do admin (paginada)", () => {
+  it("página, total, resumo por status e busca sem acento", async () => {
+    const { accessToken } = (await login(ADMIN)).json();
+    for (let i = 1; i <= 5; i++)
+      await adapters.users.create({ name: `Músico ${i}`, email: `m${i}@x.com`, passwordHash: "x", phone: null, movementId: null, status: i === 5 ? "pending" : "active", roles: ["musico"] });
+    const get = (qs: string) => app.inject({ method: "GET", url: `/api/admin/users?${qs}`, headers: { authorization: `Bearer ${accessToken}` } });
+
+    const p1 = (await get("page=1&pageSize=2")).json();
+    expect(p1).toMatchObject({ total: 6, page: 1, pageSize: 2, counts: { all: 6, active: 5, pending: 1, blocked: 0 } });
+    // Pendentes primeiro.
+    expect(p1.users.map((u: { name: string }) => u.name)[0]).toBe("Músico 5");
+    expect((await get("page=3&pageSize=2")).json().users).toHaveLength(2);
+    expect((await get("page=4&pageSize=2")).json().users).toHaveLength(0);
+
+    const found = (await get("q=musico%203")).json();
+    expect(found.total).toBe(1);
+    // O resumo não muda com os filtros.
+    expect(found.counts.all).toBe(6);
+
+    expect((await get("pageSize=500")).statusCode).toBe(400);
+  });
+});
+
 describe("Refresh token", () => {
   it("rotaciona; reusar o token antigo derruba a família inteira", async () => {
     const first = refreshCookie(await login(ADMIN))!;

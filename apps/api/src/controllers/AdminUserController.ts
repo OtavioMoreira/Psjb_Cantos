@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Container } from "../container.js";
 import { adminUpdateUserSchema, blockUserSchema, inviteUserSchema, listUsersQuerySchema, userIdParamSchema, type UserDTO } from "../dtos/user.dto.js";
+import type { UserPage } from "../actions/admin/ListUsersAction.js";
 import { validate } from "../http/validate.js";
 import { requireAuth } from "../middlewares/auth.js";
 
@@ -8,8 +9,8 @@ import { requireAuth } from "../middlewares/auth.js";
 export class AdminUserController {
   constructor(private readonly c: Container) {}
 
-  list = async (req: FastifyRequest): Promise<{ users: UserDTO[] }> => {
-    return { users: await this.c.actions.listUsers.execute(validate(listUsersQuerySchema, req.query)) };
+  list = async (req: FastifyRequest): Promise<UserPage> => {
+    return this.c.actions.listUsers.execute(validate(listUsersQuerySchema, req.query));
   };
 
   activate = async (req: FastifyRequest): Promise<{ user: UserDTO }> => {

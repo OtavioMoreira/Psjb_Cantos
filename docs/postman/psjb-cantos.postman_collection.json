@@ -812,7 +812,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/admin/users?status=pending&role=musico&q=",
+              "raw": "{{baseUrl}}/admin/users?status=pending&role=musico&q=&page=1&pageSize=50",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -836,12 +836,24 @@
                 {
                   "key": "q",
                   "value": "",
-                  "description": "nome, e-mail ou movimento",
+                  "description": "nome, e-mail ou movimento (sem acento)",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "a partir de 1",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50",
+                  "description": "1 a 100",
                   "disabled": true
                 }
               ]
             },
-            "description": "Pendentes primeiro, depois bloqueados e ativos."
+            "description": "Pendentes primeiro, depois bloqueados e ativos. Paginada: devolve `users`, `total` (com os filtros), `page`, `pageSize` e `counts` (todas as contas por status, para o resumo)."
           },
           "event": [
             {

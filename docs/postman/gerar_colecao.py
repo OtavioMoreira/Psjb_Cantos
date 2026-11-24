@@ -133,8 +133,8 @@ items = [  # na ordem em que faz sentido rodar
     ]),
     folder("Admin › Usuários", "Só o papel **admin** (músico recebe 403).", [
         req("Listar usuários", "GET", "/admin/users",
-            query=[("status", "pending", "pending | active | blocked", True), ("role", "musico", "admin | musico", True), ("q", "", "nome, e-mail ou movimento", True)],
-            desc="Pendentes primeiro, depois bloqueados e ativos."),
+            query=[("status", "pending", "pending | active | blocked", True), ("role", "musico", "admin | musico", True), ("q", "", "nome, e-mail ou movimento (sem acento)", True), ("page", "1", "a partir de 1", True), ("pageSize", "50", "1 a 100", True)],
+            desc="Pendentes primeiro, depois bloqueados e ativos. Paginada: devolve `users`, `total` (com os filtros), `page`, `pageSize` e `counts` (todas as contas por status, para o resumo)."),
         req("Convidar", "POST", "/admin/users/invite", {"name": "Convidado de Teste", "email": "{{inviteEmail}}", "roles": ["musico"], "movementId": None},
             desc="Cria a conta **pendente** e manda o convite por e-mail: link de 7 dias para criar a senha (`/redefinir-senha?token=…&convite=1`). Ao criar a senha (**Autenticação › Redefinir a senha**), a conta fica ativa. `roles` padrão: `[\"musico\"]`. 409 EMAIL_TAKEN; 502 EMAIL_FAILED se o e-mail não saiu (a conta fica criada; use **Reenviar convite**).",
             prereq=["pm.collectionVariables.set('inviteEmail', `convidado+${Date.now()}@exemplo.com`);"],

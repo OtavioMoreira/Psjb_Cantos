@@ -108,7 +108,8 @@ export class PgUserRepository implements UserRepository {
     }
   }
 
-  async list(filters: UserFilters) {
+  /** WHERE dos filtros do admin (sem paginação). */
+  private filterSql(filters: UserFilters) {
     const where: string[] = [];
     const params: unknown[] = [];
     if (filters.status) {
@@ -120,18 +121,45 @@ export class PgUserRepository implements UserRepository {
       where.push(`EXISTS (SELECT 1 FROM user_roles x JOIN roles y ON y.id = x.role_id WHERE x.user_id = u.id AND y.name = $${params.length})`);
     }
     if (filters.q) {
-      // Sem diferenciar maiúsculas. Ignorar acento depende da extensão unaccent (Fase 2).
+      // Sem diferenciar maiúsculas nem acentos; %, _ e \ digitados valem como texto.
       params.push(`%${filters.q.replace(/[\\%_]/g, "\\$&")}%`);
-      const p = `$${params.length}`;
-      where.push(`(u.name ILIKE ${p} OR u.email ILIKE ${p} OR m.name ILIKE ${p})`);
+      const p = `unaccent($${params.length})`;
+      where.push(`(unaccent(u.name) ILIKE ${p} OR unaccent(u.email) ILIKE ${p} OR unaccent(coalesce(m.name, '')) ILIKE ${p})`);
+    }
+    return { where: where.length ? `WHERE ${where.join(" AND ")}` : "", params };
+  }
+
+  async list(filters: UserFilters) {
+    const { where, params } = this.filterSql(filters);
+    let page = "";
+    if (filters.page && filters.pageSize) {
+      params.push(filters.pageSize, (filters.page - 1) * filters.pageSize);
+      page = `LIMIT $${params.length - 1} OFFSET $${params.length}`;
     }
     const { rows } = await this.pool.query<UserRow>(
-      `${SELECT} ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      `${SELECT} ${where}
        ${GROUP}
-       ORDER BY CASE u.status WHEN 'pending' THEN 0 WHEN 'blocked' THEN 1 ELSE 2 END, u.name`,
+       ORDER BY CASE u.status WHEN 'pending' THEN 0 WHEN 'blocked' THEN 1 ELSE 2 END, u.name, u.id
+       ${page}`,
       params,
     );
     return rows.map(toUser);
+  }
+
+  async count(filters: UserFilters) {
+    const { where, params } = this.filterSql(filters);
+    const { rows } = await this.pool.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM users u LEFT JOIN movements m ON m.id = u.movement_id ${where}`,
+      params,
+    );
+    return rows[0].n;
+  }
+
+  async countByStatus() {
+    const { rows } = await this.pool.query<{ status: UserStatus; n: number }>("SELECT status, count(*)::int AS n FROM users GROUP BY status");
+    const out: Record<UserStatus, number> = { pending: 0, active: 0, blocked: 0 };
+    for (const r of rows) out[r.status] = r.n;
+    return out;
   }
 
   async updateStatus(id: string, status: UserStatus, blockedReason: string | null = null) {

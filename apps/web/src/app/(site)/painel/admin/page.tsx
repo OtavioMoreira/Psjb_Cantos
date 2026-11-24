@@ -29,13 +29,13 @@ function AdminHome() {
   useEffect(() => {
     if (!API_ENABLED) return;
     let alive = true;
-    Promise.all([api.admin.users(), api.admin.songs({ pageSize: 1 }), api.admin.flags(), api.admin.movements(), api.admin.imports("review").catch(() => ({ items: [] }))])
+    Promise.all([api.admin.users({ pageSize: 1 }), api.admin.songs({ pageSize: 1 }), api.admin.flags(), api.admin.movements(), api.admin.imports("review").catch(() => ({ items: [] }))])
       .then(([users, songs, flags, movements, imports]) => {
         if (!alive) return;
         setCounts({
           review: imports.items.length,
-          pending: users.filter((u) => u.status === "pending").length,
-          users: users.length,
+          pending: users.counts.pending,
+          users: users.counts.all,
           songs: songs.total,
           flags: flags.length,
           movements: movements.length,

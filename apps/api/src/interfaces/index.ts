@@ -37,7 +37,11 @@ export interface AdminUserData {
 export interface UserFilters {
   status?: UserStatus;
   role?: Role;
+  /** Nome, e-mail ou movimento, sem diferenciar maiúsculas nem acentos. */
   q?: string;
+  /** Paginação (a partir de 1). Sem ela, vem tudo. */
+  page?: number;
+  pageSize?: number;
 }
 
 export interface UserRepository {
@@ -47,6 +51,10 @@ export interface UserRepository {
   emailExists(email: string): Promise<boolean>;
   create(data: CreateUserData): Promise<User>;
   list(filters: UserFilters): Promise<User[]>;
+  /** Quantas contas atendem aos filtros (ignora a paginação). */
+  count(filters: UserFilters): Promise<number>;
+  /** Contas por status, para o resumo do admin. */
+  countByStatus(): Promise<Record<UserStatus, number>>;
   updateStatus(id: string, status: UserStatus, blockedReason?: string | null): Promise<User | null>;
   updatePhoto(id: string, photoUrl: string | null): Promise<User | null>;
   updateProfile(id: string, data: ProfileData): Promise<User | null>;

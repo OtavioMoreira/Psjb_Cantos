@@ -92,7 +92,6 @@ Todas ficaram prontas em 15/10/2026: trocar o próprio e-mail, recuperar senha, 
 | **reCAPTCHA real** (Google ou Turnstile) no cadastro | Alta | Hoje é só visual; precisa da validação no servidor |
 | Aviso "há alterações não publicadas" no admin de cantos e flags | Média | Precisa de um registro da última publicação (API) |
 | Upload de arquivos **acima de 4 MB** direto para o Blob | Média | MP3 longo passa de 4 MB; depende do token de upload (API) |
-| Admin › Usuários: paginação no servidor | Média | Hoje carrega tudo (ok para poucas centenas) |
 | Telas de **termos de uso e privacidade** (LGPD) | Média | O cadastro já pede o aceite |
 | **Modo offline (PWA)**: missas do dia em cache para o Modo Missa | Média | Hoje o PDF cobre o uso sem internet |
 | Player de áudio no Modo Missa | Baixa | |
@@ -114,7 +113,6 @@ Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo 
 | 12 | `AuditLog` + `GET /api/admin/audit` | Admin | registrar as ações de admin |
 | 13 | Token de **upload direto para o Blob** (`POST /api/uploads`) | Admin › Cantos | arquivos acima de 4 MB |
 | 14 | Registro da última publicação (`GET /api/admin/site/status`) | Admin › Cantos | mostrar "alterações não publicadas" |
-| 15 | Paginação em `GET /api/admin/users` | Admin › Usuários | `?page=&pageSize=` |
 | 16 | **Concorrência na edição de missa** (versão / `If-Match`) | Editor de missa | hoje, com dois convidados salvando juntos, vale o último |
 | 18 | Limite de tentativas **compartilhado entre instâncias** (ex.: Upstash Redis) | Segurança em produção | na Vercel cada instância tem o seu contador |
 | 19 | Limpeza periódica de sessões, tokens de e-mail e aparelhos confiáveis vencidos (cron) | — | `sessions`, `auth_tokens` e `trusted_devices` crescem com o tempo |

@@ -86,8 +86,27 @@ export class InMemoryUsers implements UserRepository {
     this.rows.push(u);
     return this.pub(u);
   }
+  private filtered(f: UserFilters) {
+    const plain = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+    const q = f.q ? plain(f.q) : "";
+    const order = { pending: 0, blocked: 1, active: 2 };
+    return this.rows
+      .filter((r) => (!f.status || r.status === f.status) && (!f.role || r.roles.includes(f.role)))
+      .filter((r) => !q || plain(`${r.name} ${r.email} ${r.movement?.name ?? ""}`).includes(q))
+      .sort((a, b) => order[a.status] - order[b.status] || a.name.localeCompare(b.name));
+  }
   async list(f: UserFilters) {
-    return this.rows.filter((r) => (!f.status || r.status === f.status) && (!f.role || r.roles.includes(f.role))).map(this.pub);
+    const rows = this.filtered(f);
+    const page = f.page && f.pageSize ? rows.slice((f.page - 1) * f.pageSize, f.page * f.pageSize) : rows;
+    return page.map(this.pub);
+  }
+  async count(f: UserFilters) {
+    return this.filtered(f).length;
+  }
+  async countByStatus() {
+    const out = { pending: 0, active: 0, blocked: 0 };
+    for (const r of this.rows) out[r.status]++;
+    return out;
   }
   async updateStatus(id: string, status: User["status"], blockedReason: string | null = null) {
     const u = this.rows.find((r) => r.id === id);

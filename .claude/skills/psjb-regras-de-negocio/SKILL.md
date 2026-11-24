@@ -298,7 +298,8 @@ Os eixos:
 - **Acesso:** o menu "Usuários" só aparece para admins. Outros papéis veem "Acesso restrito". A API também recusa com 403, porque esconder o menu não é segurança.
 - **Visão geral:**
   - Resumo clicável: Total, Ativos, Aguardando e-mail e Bloqueados.
-  - Busca por nome, e-mail ou movimento, e filtro por papel.
+  - Busca por nome, e-mail ou movimento (sem acento), e filtro por papel.
+  - **Com a API (24/11/2026):** busca, filtros e paginação são feitos no servidor, 50 por vez com "Mostrar mais"; o resumo conta todas as contas.
   - A lista mostra primeiro os pendentes, depois os bloqueados e por fim os ativos.
 - **Ações:**
   - **Editar** nome, e-mail, movimento e papel.

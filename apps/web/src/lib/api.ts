@@ -15,6 +15,14 @@ export const API_ENABLED = process.env.NEXT_PUBLIC_USE_API === "true";
 export type ApiRole = "admin" | "musico";
 export type ApiStatus = "pending" | "active" | "blocked";
 
+export interface ApiUserPage {
+  users: ApiUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: { all: number; pending: number; active: number; blocked: number };
+}
+
 export interface ApiUser {
   id: string;
   name: string;
@@ -211,7 +219,16 @@ export const api = {
     return (await authed<{ user: ApiUser }>("/me/photo", { method: "PUT", body })).user;
   },
   admin: {
-    users: async () => (await authed<{ users: ApiUser[] }>("/admin/users")).users,
+    /** Uma página da lista (pendentes primeiro), o total com os filtros e o resumo por status de todas as contas. */
+    users: (q: { q?: string; status?: ApiUser["status"]; role?: ApiUser["roles"][number]; page?: number; pageSize?: number } = {}) => {
+      const sp = new URLSearchParams();
+      if (q.q) sp.set("q", q.q);
+      if (q.status) sp.set("status", q.status);
+      if (q.role) sp.set("role", q.role);
+      sp.set("page", String(q.page ?? 1));
+      sp.set("pageSize", String(q.pageSize ?? 50));
+      return authed<ApiUserPage>(`/admin/users?${sp}`);
+    },
     activate: async (id: string) => (await authed<{ user: ApiUser }>(`/admin/users/${id}/activate`, { method: "PATCH" })).user,
     updateUser: async (id: string, body: AdminUserInput) =>
       (await authed<{ user: ApiUser }>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) })).user,

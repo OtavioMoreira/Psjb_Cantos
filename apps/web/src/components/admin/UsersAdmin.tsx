@@ -16,6 +16,7 @@ import {
   Users,
   Clock,
   Info,
+  Loader2,
 } from "lucide-react";
 import type { User, UserRole, UserStatus } from "@/lib/types";
 import { admin, initials, syncAdminUsers, useUser, useUsers } from "@/lib/store";
@@ -36,6 +37,13 @@ const STATUS: Record<UserStatus, { label: string; cls: string; dot: string }> = 
   bloqueado: { label: "Bloqueado", cls: "bg-danger/10 text-danger", dot: "bg-danger" },
 };
 
+const countsFrom = (c: { all: number; active: number; pending: number; blocked: number }) => ({
+  todos: c.all,
+  ativo: c.active,
+  pendente: c.pending,
+  bloqueado: c.blocked,
+});
+
 function relative(iso: string | null) {
   if (!iso) return "Nunca";
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -54,29 +62,59 @@ type Dialog =
 
 const errorText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
+const PAGE = 50;
+const TO_API_STATUS = { ativo: "active", pendente: "pending", bloqueado: "blocked" } as const;
+
+type ServerPage = { key: string; ids: string[]; total: number; page: number; counts: Record<UserStatus | "todos", number> };
+
 export function UsersAdmin() {
   const users = useUsers();
   const me = useUser();
-  const [loading, setLoading] = useState(API_ENABLED);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  // Com a API, a lista vem do servidor ao abrir a tela.
-  useEffect(() => {
-    if (!API_ENABLED) return;
-    let alive = true;
-    syncAdminUsers()
-      .catch((e) => alive && setLoadError(e instanceof ApiError ? e.message : "Não foi possível carregar os usuários."))
-      .finally(() => alive && setLoading(false));
-    return () => {
-      alive = false;
-    };
-  }, []);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<UserStatus | "todos">("todos");
   const [role, setRole] = useState<UserRole | "todos">("todos");
   const [dialog, setDialog] = useState<Dialog | null>(null);
 
-  const counts = useMemo(
+  // Com a API, filtros, busca e paginação são feitos no servidor; a cópia local de cada conta fica no store.
+  const [server, setServer] = useState<ServerPage | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [more, setMore] = useState(false);
+  const [reload, setReload] = useState(0);
+  const query = useMemo(
+    () => ({ q: q.trim() || undefined, status: status === "todos" ? undefined : TO_API_STATUS[status], role: role === "todos" ? undefined : role }),
+    [q, status, role],
+  );
+  const key = JSON.stringify(query);
+
+  useEffect(() => {
+    if (!API_ENABLED) return;
+    let alive = true;
+    // Espera 300 ms: não chama a API a cada letra digitada.
+    const t = setTimeout(() => {
+      syncAdminUsers({ ...query, page: 1, pageSize: PAGE })
+        .then((r) => alive && (setServer({ key, ids: r.ids, total: r.total, page: 1, counts: countsFrom(r.counts) }), setLoadError(null)))
+        .catch((e) => alive && setLoadError(e instanceof ApiError ? e.message : "Não foi possível carregar os usuários."));
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [query, key, reload]);
+
+  const loadMore = async () => {
+    if (!server) return;
+    setMore(true);
+    try {
+      const r = await syncAdminUsers({ ...query, page: server.page + 1, pageSize: PAGE });
+      setServer({ ...server, ids: [...server.ids, ...r.ids.filter((id) => !server.ids.includes(id))], page: server.page + 1, total: r.total });
+    } catch (e) {
+      toast(errorText(e, "Não foi possível carregar mais usuários."));
+    } finally {
+      setMore(false);
+    }
+  };
+
+  const localCounts = useMemo(
     () => ({
       todos: users.length,
       ativo: users.filter((u) => u.status === "ativo").length,
@@ -86,7 +124,8 @@ export function UsersAdmin() {
     [users],
   );
 
-  const list = useMemo(() => {
+  const localList = useMemo(() => {
+    if (API_ENABLED) return [];
     const nq = normalize(q.trim());
     return users
       .filter((u) => status === "todos" || u.status === status)
@@ -98,7 +137,22 @@ export function UsersAdmin() {
       });
   }, [users, q, status, role]);
 
-  const close = () => setDialog(null);
+  // Excluídos somem do store, então somem daqui também (e voltam no "Desfazer").
+  const serverList = useMemo(() => {
+    const byId = new Map(users.map((u) => [u.id, u]));
+    return (server?.ids ?? []).map((id) => byId.get(id)).filter((u): u is User => Boolean(u));
+  }, [server, users]);
+
+  const list = API_ENABLED ? serverList : localList;
+  const counts = API_ENABLED ? (server?.counts ?? { todos: 0, ativo: 0, pendente: 0, bloqueado: 0 }) : localCounts;
+  const total = API_ENABLED ? (server?.total ?? 0) : localList.length;
+  const loading = API_ENABLED && (!server || server.key !== key) && !loadError;
+
+  const close = () => {
+    setDialog(null);
+    // Convite, bloqueio e edição mudam a lista e o resumo: busca de novo.
+    if (API_ENABLED) setReload((n) => n + 1);
+  };
 
   return (
     <div>
@@ -179,7 +233,7 @@ export function UsersAdmin() {
       </div>
 
       <p className="mt-4 text-sm text-ink-muted" aria-live="polite">
-        {loading ? "Carregando…" : `${list.length} ${list.length === 1 ? "usuário" : "usuários"}`}
+        {loading ? "Carregando…" : `${total} ${total === 1 ? "usuário" : "usuários"}`}
       </p>
       {loadError && (
         <p role="alert" className="mt-2 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -220,7 +274,7 @@ export function UsersAdmin() {
             ))}
           </tbody>
         </table>
-        {list.length === 0 && <p className="px-4 py-10 text-center text-ink-muted">Nenhum usuário com esses filtros.</p>}
+        {!loading && list.length === 0 && <p className="px-4 py-10 text-center text-ink-muted">Nenhum usuário com esses filtros.</p>}
       </div>
 
       {/* Cards (mobile/tablet) */}
@@ -238,8 +292,16 @@ export function UsersAdmin() {
             </div>
           </li>
         ))}
-        {list.length === 0 && <li className="py-10 text-center text-ink-muted">Nenhum usuário com esses filtros.</li>}
+        {!loading && list.length === 0 && <li className="py-10 text-center text-ink-muted">Nenhum usuário com esses filtros.</li>}
       </ul>
+
+      {API_ENABLED && server && server.ids.length < server.total && (
+        <div className="mt-4 flex justify-center">
+          <Button variant="secondary" onClick={loadMore} disabled={more}>
+            {more && <Loader2 size={16} className="animate-spin" />} Mostrar mais ({server.total - server.ids.length})
+          </Button>
+        </div>
+      )}
 
       {dialog?.kind === "edit" && <EditDialog user={dialog.user} isMe={dialog.user.id === me.id} onClose={close} />}
       {dialog?.kind === "block" && <BlockDialog user={dialog.user} onClose={close} />}

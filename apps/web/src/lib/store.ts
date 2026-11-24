@@ -293,10 +293,16 @@ export function resetPassword(t: string, password: string) {
 
 /* Administração — com a API, tudo vai para o servidor; sem ela, fica no localStorage (demonstração). */
 
-/** Admin: traz todas as contas do servidor (substitui a lista local). */
-export async function syncAdminUsers() {
-  const list = await api.admin.users();
-  usersStore.write(list.map(mirror));
+/**
+ * Admin: traz uma página de contas do servidor e atualiza a cópia local de cada uma (as telas e as
+ * ações leem o store). Devolve os ids na ordem do servidor, o total e o resumo por status.
+ */
+export async function syncAdminUsers(query: Parameters<typeof api.admin.users>[0] = {}) {
+  const page = await api.admin.users(query);
+  const fresh = new Map(page.users.map((u) => [u.id, mirror(u)]));
+  const list = usersStore.read();
+  usersStore.write([...list.map((u) => fresh.get(u.id) ?? u), ...[...fresh.values()].filter((u) => !list.some((x) => x.id === u.id))]);
+  return { ids: page.users.map((u) => u.id), total: page.total, counts: page.counts };
 }
 
 /** Troca a foto do perfil (só com a API). */

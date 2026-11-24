@@ -36,6 +36,22 @@ describe.skipIf(!dbUrl)("PgUserRepository", () => {
     expect((await repos.users.list({ q: "juventude" })).map((u) => u.name)).toEqual(["Caio"]);
   });
 
+  it("pagina mantendo a ordem, conta com os filtros e resume por status; busca ignora acento", async () => {
+    await factory.user({ name: "Zeca", status: "active" });
+    await factory.user({ name: "Bia", status: "blocked" });
+    await factory.user({ name: "Caio", status: "pending" });
+    await factory.user({ name: "José Antônio", status: "active" });
+
+    expect((await repos.users.list({ page: 1, pageSize: 2 })).map((u) => u.name)).toEqual(["Caio", "Bia"]);
+    expect((await repos.users.list({ page: 2, pageSize: 2 })).map((u) => u.name)).toEqual(["José Antônio", "Zeca"]);
+    expect(await repos.users.list({ page: 3, pageSize: 2 })).toEqual([]);
+    expect(await repos.users.count({})).toBe(4);
+    expect(await repos.users.count({ status: "active" })).toBe(2);
+    expect(await repos.users.countByStatus()).toEqual({ pending: 1, active: 2, blocked: 1 });
+    expect((await repos.users.list({ q: "jose antonio" })).map((u) => u.name)).toEqual(["José Antônio"]);
+    expect(await repos.users.count({ q: "ANTÔNIO" })).toBe(1);
+  });
+
   it("busca trata %, _ e aspas como texto (sem curinga nem SQL injection)", async () => {
     await factory.user({ name: "100% Música" });
     await factory.user({ name: "Outra pessoa" });

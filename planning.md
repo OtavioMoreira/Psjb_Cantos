@@ -345,7 +345,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | POST | `/api/auth/logout` | ✅ | revoga a sessão e apaga o cookie (204) |
 | GET | `/api/me` | ✅ | `Authorization: Bearer` → `{ user }` |
 | PUT | `/api/me/photo` | ✅ | multipart, campo `photo` (JPG/PNG/WebP, até 2 MB) → `{ user }` com a nova `photoUrl` |
-| GET | `/api/admin/users?status=&role=&q=` | ✅ | listagem (admin): pendentes, depois bloqueados e ativos. 🔜 paginação |
+| GET | `/api/admin/users?status=&role=&q=&page=&pageSize=` | ✅ | listagem (admin): pendentes, depois bloqueados e ativos. Paginada (50 por página, máx. 100), busca sem acento; devolve `total` e `counts` por status |
 | PATCH | `/api/admin/users/:id/activate` | ✅ | admin ativa (ou desbloqueia) a conta. Pendente → ativo manda o e-mail "Sua conta foi liberada" |
 | POST | `/api/admin/users/invite` | ✅ | admin: `{ name, email, roles?, movementId? }` → 201 com a conta pendente e o convite (link de 7 dias para criar a senha). 409 `EMAIL_TAKEN`; 502 `EMAIL_FAILED` (a conta fica criada) |
 | POST | `/api/admin/users/:id/invite` | ✅ | admin: reenvia o convite (só conta pendente) → 202 |
