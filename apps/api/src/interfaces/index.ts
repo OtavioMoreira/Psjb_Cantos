@@ -225,6 +225,18 @@ export interface SitePublisher {
   publish(): Promise<void>;
 }
 
+export interface PurgeResult {
+  sessions: number;
+  authTokens: number;
+  trustedDevices: number;
+}
+
+/** Faxina periódica das tabelas que só crescem. */
+export interface MaintenanceRepository {
+  /** Apaga o que venceu (ou foi usado) antes de `now - graceDays`. */
+  purgeExpired(now: Date, graceDays: number): Promise<PurgeResult>;
+}
+
 export interface Clock {
   now(): Date;
 }

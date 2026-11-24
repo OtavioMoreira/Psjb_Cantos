@@ -17,6 +17,7 @@ import type {
   ImportItemData,
   ImportRepository,
   ImportRun,
+  MaintenanceRepository,
   ImportStatus,
   PdfReader,
   PsalmSource,
@@ -540,6 +541,15 @@ export class FakePdfReader implements PdfReader {
   }
 }
 
+/** Faxina falsa: registra as chamadas. */
+export class FakeMaintenance implements MaintenanceRepository {
+  calls: { now: Date; graceDays: number }[] = [];
+  async purgeExpired(now: Date, graceDays: number) {
+    this.calls.push({ now, graceDays });
+    return { sessions: 1, authTokens: 2, trustedDevices: 3 };
+  }
+}
+
 export function makeTestContainer(envOverrides: Record<string, string> = {}) {
   const env = loadEnv({ NODE_ENV: "test", ...envOverrides });
   const movements = new InMemoryMovements();
@@ -560,6 +570,7 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     psalmSource: FakePsalmSource;
     pdf: FakePdfReader;
     imports: InMemoryImports;
+    maintenance: FakeMaintenance;
   } = {
     users,
     sessions: new InMemorySessions(),
@@ -574,6 +585,7 @@ export function makeTestContainer(envOverrides: Record<string, string> = {}) {
     psalmSource: new FakePsalmSource(),
     pdf: new FakePdfReader(),
     imports: new InMemoryImports(),
+    maintenance: new FakeMaintenance(),
     hasher: fakeHasher,
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: new MemoryStorage(),

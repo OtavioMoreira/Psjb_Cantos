@@ -3,6 +3,7 @@ import { createPool, type Pool } from "../../src/database/pool.js";
 import { PgAuthTokenRepository } from "../../src/repositories/PgAuthTokenRepository.js";
 import { PgTrustedDeviceRepository } from "../../src/repositories/PgTrustedDeviceRepository.js";
 import { PgFlagRepository } from "../../src/repositories/PgFlagRepository.js";
+import { PgMaintenanceRepository } from "../../src/repositories/PgMaintenanceRepository.js";
 import { PgImportRepository } from "../../src/repositories/PgImportRepository.js";
 import { PgMassRepository } from "../../src/repositories/PgMassRepository.js";
 import { PgMovementRepository } from "../../src/repositories/PgMovementRepository.js";
@@ -31,6 +32,7 @@ export function useTestDb() {
     authTokens: new PgAuthTokenRepository(pool),
     trustedDevices: new PgTrustedDeviceRepository(pool),
     imports: new PgImportRepository(pool),
+    maintenance: new PgMaintenanceRepository(pool),
   };
 
   beforeEach(async () => {

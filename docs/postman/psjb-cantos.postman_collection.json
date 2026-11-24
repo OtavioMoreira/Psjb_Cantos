@@ -1964,6 +1964,38 @@
               }
             }
           ]
+        },
+        {
+          "name": "Cron: faxina diária (sem o segredo: 401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cron/cleanup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cron",
+                "cleanup"
+              ]
+            },
+            "description": "Todo dia às 4h (Cron da Vercel). Apaga sessões, tokens de e-mail e aparelhos confiáveis vencidos (ou usados) há mais de 7 dias e devolve `{ ok, removed: { sessions, authTokens, trustedDevices } }`. Mesmo segredo do cron dos salmos.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401 ou 501', () => pm.expect(pm.response.code).to.be.oneOf([401, 501]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

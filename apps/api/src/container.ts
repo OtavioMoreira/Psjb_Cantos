@@ -42,6 +42,8 @@ import {
   UploadSongFileAction,
 } from "./actions/songs/SongActions.js";
 import { PublishSiteAction } from "./actions/songs/PublishSiteAction.js";
+import { CleanupAction } from "./actions/maintenance/CleanupAction.js";
+import { PgMaintenanceRepository } from "./repositories/PgMaintenanceRepository.js";
 import { ImportPsalmsAction, ListImportsAction, ResolveImportAction } from "./actions/imports/ImportPsalmsActions.js";
 import { DioceseMontenegroSource } from "./services/DioceseMontenegroSource.js";
 import { UnpdfReader } from "./services/UnpdfReader.js";
@@ -67,6 +69,7 @@ import type {
   TrustedDeviceRepository,
   UserRepository,
   ImportRepository,
+  MaintenanceRepository,
   PdfReader,
   PsalmSource,
 } from "./interfaces/index.js";
@@ -100,6 +103,7 @@ export interface Adapters {
   psalmSource: PsalmSource;
   pdf: PdfReader;
   imports: ImportRepository;
+  maintenance: MaintenanceRepository;
   hasher: PasswordHasher;
   tokens: TokenService;
   storage: FileStorage;
@@ -168,6 +172,7 @@ export function buildContainer(env: Env, adapters: Adapters) {
       importPsalms: new ImportPsalmsAction(deps),
       listImports: new ListImportsAction(deps),
       resolveImport: new ResolveImportAction(deps),
+      cleanup: new CleanupAction(deps),
     },
   };
 }
@@ -197,6 +202,7 @@ export function createAdapters(env: Env): Adapters & { pool: Pool } {
     psalmSource: new DioceseMontenegroSource(env.PSALM_SOURCE_URL),
     pdf: new UnpdfReader(),
     imports: new PgImportRepository(pool),
+    maintenance: new PgMaintenanceRepository(pool),
     hasher: new Argon2PasswordHasher(),
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: env.BLOB_READ_WRITE_TOKEN

@@ -209,6 +209,9 @@ items = [  # na ordem em que faz sentido rodar
         req("Cron (sem o segredo: 401)", "GET", "/cron/import-psalms", auth="none",
             desc="Chamado pelo Cron da Vercel com `Authorization: Bearer <CRON_SECRET>`. Sem o segredo: 401; sem CRON_SECRET configurado: 501.",
             status=(401, 501)),
+        req("Cron: faxina diária (sem o segredo: 401)", "GET", "/cron/cleanup", auth="none",
+            desc="Todo dia às 4h (Cron da Vercel). Apaga sessões, tokens de e-mail e aparelhos confiáveis vencidos (ou usados) há mais de 7 dias e devolve `{ ok, removed: { sessions, authTokens, trustedDevices } }`. Mesmo segredo do cron dos salmos.",
+            status=(401, 501)),
     ]),
     folder("Missas", "Monte sua Missa. Dono e convidados veem e editam; **só o dono** exclui e compartilha. Quem não é dono nem convidado recebe 403.", [
         req("Listar minhas missas", "GET", "/masses",

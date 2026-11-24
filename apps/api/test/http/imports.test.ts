@@ -231,6 +231,14 @@ describe("Cron da Vercel", () => {
     expect(adapters.imports.runs[0].trigger).toBe("cron");
   });
 
+  it("faxina diária: só com o CRON_SECRET; apaga o que venceu há mais de 7 dias", async () => {
+    expect((await req("GET", "/cron/cleanup", undefined, {})).statusCode).toBe(401);
+    expect((await req("GET", "/cron/cleanup")).statusCode).toBe(401);
+    const ok = await req("GET", "/cron/cleanup", undefined, { authorization: `Bearer ${SECRET}` });
+    expect(ok.json()).toEqual({ ok: true, removed: { sessions: 1, authTokens: 2, trustedDevices: 3 } });
+    expect(adapters.maintenance.calls[0].graceDays).toBe(7);
+  });
+
   it("sem CRON_SECRET configurado, a rota responde 501", async () => {
     const t = makeTestContainer();
     const other = await buildApp({ container: t.container, logger: false });

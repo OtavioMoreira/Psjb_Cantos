@@ -8,6 +8,7 @@ import { MovementController } from "../controllers/MovementController.js";
 import { SongController } from "../controllers/SongController.js";
 import { UserController } from "../controllers/UserController.js";
 import { authenticate, requireRole } from "../middlewares/auth.js";
+import { cronGuard } from "../middlewares/cron.js";
 import { healthRoutes } from "./health.js";
 
 /** Todas as rotas da API, sob o prefixo /api. Cada rota só liga middleware → controller. */
@@ -52,8 +53,10 @@ export async function routes(app: FastifyInstance, { container }: { container: C
   app.get("/songs/:ref", songs.get);
   app.get("/flags", songs.listFlags);
 
-  // Cron da Vercel (segunda a quinta, 3h): protegido pelo CRON_SECRET, não pelo login.
-  app.get("/cron/import-psalms", strict(10), imports.cron);
+  // Cron da Vercel: protegido pelo CRON_SECRET, não pelo login. Salmos de segunda a quinta às 3h; faxina todo dia às 4h.
+  const cron = { preHandler: cronGuard(container.env.CRON_SECRET), ...strict(10) };
+  app.get("/cron/import-psalms", cron, imports.cron);
+  app.get("/cron/cleanup", cron, async () => ({ ok: true, removed: await container.actions.cleanup.execute() }));
 
   // Rotas de quem está logado (qualquer papel)
   await app.register(async (logged) => {
