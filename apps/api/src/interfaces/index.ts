@@ -232,6 +232,8 @@ export interface PurgeResult {
   trustedDevices: number;
   /** Registros de auditoria com mais de 2 anos. */
   auditLog: number;
+  /** Janelas do limite de tentativas já vencidas. */
+  rateLimits: number;
 }
 
 /** Faxina periódica das tabelas que só crescem. */
@@ -265,6 +267,12 @@ export interface AuditRepository {
   record(entry: AuditEntryData): Promise<void>;
   /** Mais recentes primeiro. */
   list(filters: AuditFilters): Promise<{ entries: AuditEntry[]; total: number }>;
+}
+
+/** Contador do limite de tentativas, compartilhado entre instâncias (janela fixa). */
+export interface RateLimitCounter {
+  /** Soma 1 na chave e devolve o total na janela atual e quanto falta para ela acabar. */
+  hit(key: string, windowMs: number): Promise<{ hits: number; ttlMs: number }>;
 }
 
 export interface Clock {

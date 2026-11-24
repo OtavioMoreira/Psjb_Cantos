@@ -8,6 +8,7 @@ import { SONG_FILE_MAX_BYTES } from "./actions/songs/SongActions.js";
 import { PHOTO_MAX_BYTES } from "./actions/users/UpdateMyPhotoAction.js";
 import type { Container } from "./container.js";
 import { errorHandler } from "./http/errorHandler.js";
+import { counterStore } from "./http/rateLimitStore.js";
 import { routes } from "./routes/index.js";
 
 export interface AppOptions {
@@ -28,7 +29,13 @@ export async function buildApp({ container, uploadsDir, logger = true }: AppOpti
     credentials: true,
   });
   await app.register(cookie);
-  await app.register(rateLimit, { global: false });
+  // Com o contador no Postgres, o limite vale somado entre as instâncias da Vercel. Se o banco falhar,
+  // o limite é ignorado (skipOnError) em vez de derrubar o login.
+  await app.register(rateLimit, {
+    global: false,
+    skipOnError: true,
+    ...(container.rateLimits && { store: counterStore(container.rateLimits) }),
+  });
   // Teto geral; cada action confere o limite do seu tipo (foto 2 MB, arquivos de canto 4 MB).
   await app.register(multipart, { limits: { fileSize: Math.max(PHOTO_MAX_BYTES, SONG_FILE_MAX_BYTES) + 1, files: 1 } });
   // Import sob demanda: só serve a pasta local em desenvolvimento. Na Vercel (com Blob) o plugin nem carrega,

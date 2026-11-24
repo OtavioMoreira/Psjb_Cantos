@@ -566,7 +566,7 @@ export class FakeMaintenance implements MaintenanceRepository {
   calls: { now: Date; graceDays: number }[] = [];
   async purgeExpired(now: Date, graceDays: number) {
     this.calls.push({ now, graceDays });
-    return { sessions: 1, authTokens: 2, trustedDevices: 3, auditLog: 4 };
+    return { sessions: 1, authTokens: 2, trustedDevices: 3, auditLog: 4, rateLimits: 5 };
   }
 }
 

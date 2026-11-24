@@ -46,6 +46,7 @@ import { PgSiteStateRepository } from "./repositories/PgSiteStateRepository.js";
 import { CleanupAction } from "./actions/maintenance/CleanupAction.js";
 import { AuditTargetLabelAction, ListAuditAction, RecordAuditAction } from "./actions/admin/AuditActions.js";
 import { PgAuditRepository } from "./repositories/PgAuditRepository.js";
+import { PgRateLimitCounter } from "./repositories/PgRateLimitCounter.js";
 import { PgMaintenanceRepository } from "./repositories/PgMaintenanceRepository.js";
 import { ImportPsalmsAction, ListImportsAction, ResolveImportAction } from "./actions/imports/ImportPsalmsActions.js";
 import { DioceseMontenegroSource } from "./services/DioceseMontenegroSource.js";
@@ -75,6 +76,7 @@ import type {
   MaintenanceRepository,
   SiteStateRepository,
   AuditRepository,
+  RateLimitCounter,
   PdfReader,
   PsalmSource,
 } from "./interfaces/index.js";
@@ -111,6 +113,8 @@ export interface Adapters {
   maintenance: MaintenanceRepository;
   siteState: SiteStateRepository;
   audit: AuditRepository;
+  /** Sem ele (testes), o limite de tentativas fica em memória. */
+  rateLimits?: RateLimitCounter;
   hasher: PasswordHasher;
   tokens: TokenService;
   storage: FileStorage;
@@ -123,6 +127,7 @@ export function buildContainer(env: Env, adapters: Adapters) {
   return {
     env,
     tokens: adapters.tokens,
+    rateLimits: adapters.rateLimits,
     actions: {
       login: new LoginAction(deps),
       verifyLoginCode: new VerifyLoginCodeAction(deps),
@@ -216,6 +221,7 @@ export function createAdapters(env: Env): Adapters & { pool: Pool } {
     maintenance: new PgMaintenanceRepository(pool),
     siteState: new PgSiteStateRepository(pool),
     audit: new PgAuditRepository(pool),
+    rateLimits: new PgRateLimitCounter(pool),
     hasher: new Argon2PasswordHasher(),
     tokens: new JoseTokenService(env.JWT_SECRET, env.ACCESS_TOKEN_TTL_SECONDS),
     storage: env.BLOB_READ_WRITE_TOKEN

@@ -20,6 +20,7 @@ describe.skipIf(!dbUrl)("Migrations", () => {
       "009_mass_version.sql",
       "010_site_state.sql",
       "011_audit_log.sql",
+      "012_rate_limits.sql",
     ]);
   });
 

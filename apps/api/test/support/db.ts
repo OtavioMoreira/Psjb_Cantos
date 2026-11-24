@@ -3,6 +3,7 @@ import { createPool, type Pool } from "../../src/database/pool.js";
 import { PgAuthTokenRepository } from "../../src/repositories/PgAuthTokenRepository.js";
 import { PgTrustedDeviceRepository } from "../../src/repositories/PgTrustedDeviceRepository.js";
 import { PgFlagRepository } from "../../src/repositories/PgFlagRepository.js";
+import { PgRateLimitCounter } from "../../src/repositories/PgRateLimitCounter.js";
 import { PgAuditRepository } from "../../src/repositories/PgAuditRepository.js";
 import { PgSiteStateRepository } from "../../src/repositories/PgSiteStateRepository.js";
 import { PgMaintenanceRepository } from "../../src/repositories/PgMaintenanceRepository.js";
@@ -37,10 +38,11 @@ export function useTestDb() {
     maintenance: new PgMaintenanceRepository(pool),
     siteState: new PgSiteStateRepository(pool),
     audit: new PgAuditRepository(pool),
+    rateLimits: new PgRateLimitCounter(pool),
   };
 
   beforeEach(async () => {
-    await pool.query("TRUNCATE users, user_roles, sessions, auth_tokens, trusted_devices, movements, masses, mass_shares, songs, flags, song_flags, import_items, import_runs, audit_log RESTART IDENTITY CASCADE");
+    await pool.query("TRUNCATE users, user_roles, sessions, auth_tokens, trusted_devices, movements, masses, mass_shares, songs, flags, song_flags, import_items, import_runs, audit_log, rate_limits RESTART IDENTITY CASCADE");
   });
   afterAll(() => pool.end());
 

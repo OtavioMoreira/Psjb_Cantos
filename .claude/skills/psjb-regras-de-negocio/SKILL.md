@@ -328,6 +328,7 @@ Os eixos:
 - O front guarda o access token **só em memória** e renova pelo cookie quando precisa. O front e a API ficam no mesmo site, porque o Next repassa `/api/*` para a API.
 - Os papéis vão no JWT. Mudar o papel de alguém só passa a valer no próximo refresh (até 15 min).
 - **Senhas:** argon2id. **Rate limit** por IP: login 10, cadastro 5 e refresh 60 a cada 15 min.
+  - **Compartilhado entre instâncias (24/11/2026):** os contadores ficam no próprio Postgres (tabela `rate_limits`, UNLOGGED, chave = rota + IP, janela fixa, UPSERT atômico), então o limite é o mesmo em todas as instâncias da Vercel, sem serviço extra (Upstash). Se o banco falhar, o limite é ignorado (não derruba o login). A faxina diária apaga as janelas vencidas.
 
 **Dois fatores por e-mail (implementado em 15/10/2026)**
 - **Quando vale:** ligado por padrão **só em produção** (`LOGIN_2FA`; `false` desliga, `true` liga fora de produção). Vale para todos os papéis.

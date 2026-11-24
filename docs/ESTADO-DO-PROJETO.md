@@ -108,7 +108,6 @@ Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo 
 |---|---|---|---|
 | 11 | **reCAPTCHA** validado no servidor | Criar conta | também na recuperação e no login depois de 3 falhas |
 | 13 | Token de **upload direto para o Blob** (`POST /api/uploads`) | Admin › Cantos | arquivos acima de 4 MB |
-| 18 | Limite de tentativas **compartilhado entre instâncias** (ex.: Upstash Redis) | Segurança em produção | na Vercel cada instância tem o seu contador |
 
 ## 5. Próximos passos sugeridos
 1. **Deploy na Vercel + Neon + Blob + Resend**, seguindo o roteiro e o checklist de [`docs/DEPLOY.md`](DEPLOY.md), com o Deploy Hook ligado ao "Publicar no site". Para o e-mail: instalar o Resend pelo Marketplace (`RESEND_API_KEY`), definir `EMAIL_FROM` e `APP_URL` e cadastrar SPF/DKIM/DMARC no DNS do `psjb.org.br` (o domínio precisa continuar ativo mesmo sem a HostGator). Antes de desligar a HostGator, rodar `npm run db:migrate-files -w api` contra o Neon e o Blob (README, Deploy, passo 4).

@@ -34,12 +34,12 @@ describe.skipIf(!dbUrl)("PgMaintenanceRepository (faxina do cron)", () => {
     await pool.query("UPDATE audit_log SET created_at = now() - interval '25 months' WHERE action = 'user.block'");
     await pool.query("UPDATE audit_log SET created_at = now() - interval '12 months' WHERE action = 'user.unblock'");
 
-    expect(await repos.maintenance.purgeExpired(new Date(), 7)).toEqual({ sessions: 1, authTokens: 2, trustedDevices: 1, auditLog: 1 });
+    expect(await repos.maintenance.purgeExpired(new Date(), 7)).toEqual({ sessions: 1, authTokens: 2, trustedDevices: 1, auditLog: 1, rateLimits: 0 });
     expect(await count(pool, "sessions")).toBe(2);
     expect(await count(pool, "auth_tokens")).toBe(1);
     expect(await count(pool, "trusted_devices")).toBe(1);
     // Rodar de novo não apaga mais nada.
     expect(await count(pool, "audit_log")).toBe(1);
-    expect(await repos.maintenance.purgeExpired(new Date(), 7)).toEqual({ sessions: 0, authTokens: 0, trustedDevices: 0, auditLog: 0 });
+    expect(await repos.maintenance.purgeExpired(new Date(), 7)).toEqual({ sessions: 0, authTokens: 0, trustedDevices: 0, auditLog: 0, rateLimits: 0 });
   });
 });

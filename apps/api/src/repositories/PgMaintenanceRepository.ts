@@ -12,7 +12,9 @@ export class PgMaintenanceRepository implements MaintenanceRepository {
     const authTokens = await this.pool.query("DELETE FROM auth_tokens WHERE expires_at < $1 OR used_at < $1", [limit]);
     const trustedDevices = await this.pool.query("DELETE FROM trusted_devices WHERE expires_at < $1", [limit]);
     const auditLog = await this.pool.query("DELETE FROM audit_log WHERE created_at < $1::timestamptz - interval '2 years'", [now]);
+    const rateLimits = await this.pool.query("DELETE FROM rate_limits WHERE window_start < $1::timestamptz - interval '1 day'", [now]);
     return {
+      rateLimits: rateLimits.rowCount ?? 0,
       sessions: sessions.rowCount ?? 0,
       authTokens: authTokens.rowCount ?? 0,
       trustedDevices: trustedDevices.rowCount ?? 0,
