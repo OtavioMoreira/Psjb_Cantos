@@ -219,6 +219,18 @@ export interface FileStorage {
   delete(url: string): Promise<void>;
 }
 
+/** Storage que aceita envio direto do navegador (Vercel Blob): arquivos maiores que o corpo das Functions. */
+export interface DirectUploadStorage extends FileStorage {
+  /** Token de uso único que só grava `path`, com estes tipos e até este tamanho. */
+  createUploadToken(path: string, opts: { contentTypes: string[]; maxBytes: number }): Promise<string>;
+  /** Caminho do arquivo se a URL é deste storage; null se for de outro lugar. */
+  pathOf(url: string): string | null;
+  /** Tamanho e primeiros bytes, para conferir o tipo de verdade. */
+  inspect(url: string): Promise<{ size: number; firstBytes: Buffer }>;
+}
+
+export const supportsDirectUpload = (s: FileStorage): s is DirectUploadStorage => "createUploadToken" in s;
+
 /** Publica o site de novo (build), para cantos e flags alterados aparecerem nas páginas estáticas. */
 export interface SitePublisher {
   /** false = publicação não configurada neste ambiente. */

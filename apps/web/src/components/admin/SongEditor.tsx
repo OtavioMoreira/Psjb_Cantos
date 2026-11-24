@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ExternalLink, Eye, FileMusic, Guitar, Headphones, Loader2, Pencil, Trash2, Upload, X } from "lucide-react";
-import { api, ApiError, type SongFileKind, type SongInput } from "@/lib/api";
+import { api, ApiError, DIRECT_UPLOAD_MAX, type SongFileKind, type SongInput } from "@/lib/api";
 import type { ApiFlag, ApiSong, FlagGroup } from "@/lib/apiSongs";
 import { parseSheet } from "@/lib/chords";
 import { Button } from "@/components/ui/Button";
@@ -22,7 +22,7 @@ const FILES: { kind: SongFileKind; field: keyof ApiSong["media"]; label: string;
   { kind: "partitura-pdf", field: "partituraPdf", label: "Partitura (PDF)", accept: "application/pdf", Icon: FileMusic, max: "PDF" },
   { kind: "audio", field: "audio", label: "Áudio", accept: "audio/mpeg,audio/mp4,audio/ogg,.mp3,.m4a,.ogg", Icon: Headphones, max: "MP3, M4A ou OGG" },
 ];
-const MAX_FILE = 4 * 1024 * 1024; // limite das Functions da Vercel (ver API)
+// Até 4 MB pela API; acima, direto para o Blob (até 25 MB). Ver api.admin.uploadSongFile.
 
 type Form = { number: string; title: string; composer: string; key: string; lyrics: string; audiomack: string; flagIds: number[]; active: boolean };
 
@@ -271,6 +271,7 @@ function SheetPreview({ lyrics }: { lyrics: string }) {
 function FileRow({ song, file, onChange }: { song: ApiSong; file: (typeof FILES)[number]; onChange: (s: ApiSong) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const url = song.media[file.field];
 
   const run = async (task: () => Promise<ApiSong>, done: string) => {
@@ -282,6 +283,7 @@ function FileRow({ song, file, onChange }: { song: ApiSong; file: (typeof FILES)
       toast(e instanceof ApiError ? e.message : "Não foi possível agora.");
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -296,7 +298,7 @@ function FileRow({ song, file, onChange }: { song: ApiSong; file: (typeof FILES)
           </a>
         )}
       </div>
-      <p className="mt-1 truncate text-xs text-ink-muted">{url ? url.split("/").pop() : `Nenhum arquivo · ${file.max}, até 4 MB`}</p>
+      <p className="mt-1 truncate text-xs text-ink-muted">{url ? url.split("/").pop() : `Nenhum arquivo · ${file.max}, até 25 MB`}</p>
       <input
         ref={input}
         type="file"
@@ -307,13 +309,14 @@ function FileRow({ song, file, onChange }: { song: ApiSong; file: (typeof FILES)
           const f = e.target.files?.[0];
           e.target.value = "";
           if (!f) return;
-          if (f.size > MAX_FILE) return toast("O arquivo pode ter no máximo 4 MB.");
-          void run(() => api.admin.uploadSongFile(song.id, file.kind, f), `${file.label} enviado.`);
+          if (f.size > DIRECT_UPLOAD_MAX) return toast("O arquivo pode ter no máximo 25 MB.");
+          void run(() => api.admin.uploadSongFile(song.id, file.kind, f, setProgress), `${file.label} enviado.`);
         }}
       />
       <div className="mt-2 flex gap-2">
         <Button variant="secondary" disabled={busy} className="min-h-10 flex-1" onClick={() => input.current?.click()}>
-          {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} {url ? "Trocar" : "Enviar"}
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}{" "}
+          {progress !== null ? <span className="[font-variant-numeric:tabular-nums]">Enviando {progress}%</span> : url ? "Trocar" : "Enviar"}
         </Button>
         {url && (
           <Button variant="ghost" disabled={busy} className="min-h-10 text-danger" onClick={() => run(() => api.admin.removeSongFile(song.id, file.kind), `${file.label} removido.`)}>

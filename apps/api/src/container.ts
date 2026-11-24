@@ -41,6 +41,7 @@ import {
   UpdateSongAction,
   UploadSongFileAction,
 } from "./actions/songs/SongActions.js";
+import { AttachSongUploadAction, CreateSongUploadAction } from "./actions/songs/DirectUploadActions.js";
 import { GetSiteStatusAction, PublishSiteAction } from "./actions/songs/PublishSiteAction.js";
 import { PgSiteStateRepository } from "./repositories/PgSiteStateRepository.js";
 import { CleanupAction } from "./actions/maintenance/CleanupAction.js";
@@ -179,6 +180,8 @@ export function buildContainer(env: Env, adapters: Adapters) {
       deleteSong: new DeleteSongAction(deps),
       uploadSongFile: new UploadSongFileAction(deps),
       removeSongFile: new RemoveSongFileAction(deps),
+      createSongUpload: new CreateSongUploadAction(deps),
+      attachSongUpload: new AttachSongUploadAction(deps),
       listFlags: new ListFlagsAction(deps),
       createFlag: new CreateFlagAction(deps),
       updateFlag: new UpdateFlagAction(deps),

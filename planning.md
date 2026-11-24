@@ -379,6 +379,8 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | GET | `/api/admin/songs` · `/api/admin/songs/:id` | ✅ | admin: inclui cantos ocultos |
 | POST · PUT · PATCH · DELETE | `/api/admin/songs[/:id]` | ✅ | admin: CRUD. `flagIds` (várias), `media` (links), `active`. 409 `SONG_TAKEN` (número ou slug) e `SONG_IN_USE` (está em missa) |
 | PUT · DELETE | `/api/admin/songs/:id/files/:kind` | ✅ | admin: `kind` = `cifra-pdf`, `partitura-pdf` ou `audio`. multipart, campo `file`, até 4 MB |
+| POST | `/api/admin/songs/:id/files/:kind/upload` | ✅ | admin, arquivos grandes: `{ contentType, size }` → `{ mode: "direct", token, pathname, maxBytes }` (token de uso único do Blob, 10 min, até 25 MB) ou `{ mode: "server" }` sem Blob |
+| PUT | `/api/admin/songs/:id/files/:kind/blob` | ✅ | admin: `{ url }` depois do envio direto. Confere store, caminho e bytes; troca o arquivo do canto |
 | POST · PUT · DELETE | `/api/admin/flags[/:id]` | ✅ | admin: `{ group, slug, name, color?, position? }`. 409 `FLAG_TAKEN` |
 | POST | `/api/admin/site/publish` | ✅ | admin: pede um novo build do site (Deploy Hook em `SITE_DEPLOY_HOOK_URL`) → 202; sem hook → 501 `NOT_CONFIGURED` |
 | GET | `/api/cron/import-psalms` | ✅ | Cron da Vercel (seg–qui 3h): importa os salmos e aclamações da semana da Diocese de Montenegro. Sem login; exige `Authorization: Bearer <CRON_SECRET>` (401; sem o segredo configurado, 501) |
@@ -388,7 +390,6 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | GET | `/api/admin/imports` | ✅ | admin: itens lidos (`?status=review`...) e as últimas execuções |
 | POST | `/api/admin/imports/run` | ✅ | admin: "Buscar agora" (`{ days }`, padrão 10); 502 `IMPORT_FAILED` se a fonte estiver fora do ar |
 | PATCH | `/api/admin/imports/:id` | ✅ | admin: resolve a revisão (`link` + `songId`, `create` ou `ignore`); 409 `IMPORT_RESOLVED` se já resolvido |
-| POST | `/api/uploads` | 4 | token de upload direto para o Vercel Blob (arquivos acima de 4 MB) |
 
 ---
 
@@ -588,7 +589,7 @@ Modelos de e-mail (pt-BR; `apps/api/src/emails/templates.ts`):
 - ✅ Telas de admin de cantos, flags e movimentos, com pré-visualização da cifra e marcação de refrão.
 - ✅ Site público lendo os cantos e as flags da API no build (`lib/data` e `next.config`) quando há `API_URL`; "Publicar no site" gera de novo.
 - [ ] Aviso de "alterações não publicadas" no admin.
-- [ ] Arquivos acima de 4 MB: upload direto do navegador para o Blob (token do cliente), sem passar pela Function.
+- [x] Arquivos acima de 4 MB: upload direto do navegador para o Blob (token do cliente), sem passar pela Function (até 25 MB).
 - ✅ Os 623 cantos do banco legado (`audios`) convertidos para `data/songs.json` (`db/postgres/importar_cantos.py`) e carregados em `songs` (`npm run db:import-songs -w api`), com 11 temas novos. Falta a revisão das flags pela equipe de liturgia.
 - ✅ Arquivos do site antigo (PDFs e MP3) copiados para o storage da API por `npm run db:migrate-files -w api`, com os MP3 a 64 kbps mono (518 MB no total) para caber no plano grátis do Blob e os erros de cadastro do site antigo corrigidos. Falta rodar contra o Neon e o Blob de produção antes de desligar a HostGator.
 

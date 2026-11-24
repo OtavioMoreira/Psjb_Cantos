@@ -171,6 +171,18 @@ function refresh(): Promise<boolean> {
 }
 
 /** Disparado quando o admin muda cantos ou flags: o botão "Publicar no site" confere o status de novo. */
+/** Acima disso, o arquivo de canto vai direto para o Blob (ver uploadSongFile). */
+export const SERVER_UPLOAD_MAX = 4 * 1024 * 1024;
+/** Teto do envio direto (igual ao da API). */
+export const DIRECT_UPLOAD_MAX = 25 * 1024 * 1024;
+
+/** Tipo pelo nome quando o navegador não informa (ou informa "audio/mp3"). A API confere os bytes de qualquer jeito. */
+function fileContentType(file: File) {
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  const byExt: Record<string, string> = { pdf: "application/pdf", mp3: "audio/mpeg", m4a: "audio/mp4", ogg: "audio/ogg" };
+  return byExt[ext ?? ""] ?? (file.type === "audio/mp3" ? "audio/mpeg" : file.type);
+}
+
 export const SITE_CONTENT_EVENT = "psjb:site-content-changed";
 const changesSiteContent = (path: string, method = "GET") => method !== "GET" && /^\/admin\/(songs|flags|imports)\b/.test(path);
 
@@ -274,10 +286,34 @@ export const api = {
     updateSong: async (id: number, body: Partial<SongInput>) =>
       (await authed<{ song: ApiSong }>(`/admin/songs/${id}`, { method: "PATCH", body: JSON.stringify(body) })).song,
     deleteSong: (id: number) => authed<void>(`/admin/songs/${id}`, { method: "DELETE" }),
-    uploadSongFile: async (id: number, kind: SongFileKind, file: File) => {
-      const body = new FormData();
-      body.append("file", file);
-      return (await authed<{ song: ApiSong }>(`/admin/songs/${id}/files/${kind}`, { method: "PUT", body })).song;
+    /**
+     * Até 4 MB, o arquivo passa pela API (limite do corpo das Functions da Vercel). Acima disso, vai
+     * direto do navegador para o Blob com um token de uso único, e a API só confere e liga ao canto.
+     */
+    uploadSongFile: async (id: number, kind: SongFileKind, file: File, onProgress?: (percent: number) => void) => {
+      if (file.size <= SERVER_UPLOAD_MAX) {
+        const body = new FormData();
+        body.append("file", file);
+        return (await authed<{ song: ApiSong }>(`/admin/songs/${id}/files/${kind}`, { method: "PUT", body })).song;
+      }
+      const contentType = fileContentType(file);
+      const ticket = await authed<{ mode: "server"; maxBytes: number } | { mode: "direct"; token: string; pathname: string; maxBytes: number }>(
+        `/admin/songs/${id}/files/${kind}/upload`,
+        { method: "POST", body: JSON.stringify({ contentType, size: file.size }) },
+      );
+      if (ticket.mode === "server") throw new ApiError(415, "INVALID_FILE", `O arquivo pode ter no máximo ${ticket.maxBytes / 1024 / 1024} MB.`);
+      // Biblioteca do Blob só quando precisa (arquivo grande, no admin).
+      const { put } = await import("@vercel/blob/client");
+      const blob = await put(ticket.pathname, file, {
+        access: "public",
+        token: ticket.token,
+        contentType,
+        multipart: file.size > 8 * 1024 * 1024,
+        onUploadProgress: (e) => onProgress?.(Math.round(e.percentage)),
+      }).catch(() => {
+        throw new ApiError(0, "UPLOAD_FAILED", "O envio do arquivo falhou. Confira a conexão e tente de novo.");
+      });
+      return (await authed<{ song: ApiSong }>(`/admin/songs/${id}/files/${kind}/blob`, { method: "PUT", body: JSON.stringify({ url: blob.url }) })).song;
     },
     removeSongFile: async (id: number, kind: SongFileKind) => (await authed<{ song: ApiSong }>(`/admin/songs/${id}/files/${kind}`, { method: "DELETE" })).song,
     flags: async () => (await call<{ flags: (ApiFlag & { songs: number })[] }>("/flags")).flags,

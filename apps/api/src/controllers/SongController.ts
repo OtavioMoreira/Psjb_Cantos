@@ -7,6 +7,8 @@ import {
   listSongsQuerySchema,
   songBodySchema,
   songFileParamSchema,
+  uploadRequestSchema,
+  attachUploadSchema,
   songIdParamSchema,
   songPatchSchema,
   songRefParamSchema,
@@ -47,6 +49,19 @@ export class SongController {
   };
 
   /** multipart/form-data com o campo "file". kind = cifra-pdf | partitura-pdf | audio. */
+  /** Envio direto ao Blob, 1ª etapa: token de uso único (ou `mode: "server"` sem Blob). */
+  uploadTicket = async (req: FastifyRequest) => {
+    const { id, kind } = validate(songFileParamSchema, req.params);
+    return this.c.actions.createSongUpload.execute(id, kind, validate(uploadRequestSchema, req.body));
+  };
+
+  /** Envio direto ao Blob, 2ª etapa: confere o arquivo e liga ao canto. */
+  attachUpload = async (req: FastifyRequest) => {
+    const { id, kind } = validate(songFileParamSchema, req.params);
+    const { url } = validate(attachUploadSchema, req.body);
+    return { song: await this.c.actions.attachSongUpload.execute(requireAuth(req).userId, id, kind, url) };
+  };
+
   uploadFile = async (req: FastifyRequest) => {
     const { id, kind } = validate(songFileParamSchema, req.params);
     const file = await req.file();

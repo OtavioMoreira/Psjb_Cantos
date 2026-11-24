@@ -82,6 +82,15 @@ export const songIdParamSchema = z.object({ id: z.coerce.number().int().positive
 export const songRefParamSchema = z.object({ ref: z.string().trim().min(1).max(160) });
 export const songFileParamSchema = songIdParamSchema.extend({ kind: z.enum(SONG_FILE_KINDS) });
 
+/** Pedido de envio direto (arquivos grandes): o tipo e o tamanho que o navegador vai mandar. */
+export const uploadRequestSchema = z.object({
+  contentType: z.enum(["application/pdf", "audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/ogg"], "Envie um PDF ou um áudio MP3, M4A ou OGG."),
+  size: z.number().int().positive(),
+});
+
+/** Depois do envio direto: a URL que o Blob devolveu. */
+export const attachUploadSchema = z.object({ url: z.url().max(500) });
+
 export const flagBodySchema = z.object({
   group: z.enum(FLAG_GROUPS),
   slug: z

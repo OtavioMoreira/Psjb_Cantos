@@ -8,6 +8,8 @@ import type { AuditTarget } from "../domain/audit.js";
 interface Rule {
   action: string;
   target: AuditTarget;
+  /** Rota que não muda nada (ex.: só emite um token): fica de fora da auditoria. */
+  skip?: boolean;
   /** Detalhes vindos do corpo da requisição (só campos seguros). */
   details?: (body: Record<string, unknown>, params: Record<string, string>) => Record<string, unknown>;
 }
@@ -33,6 +35,8 @@ export const AUDIT_RULES: Record<string, Rule> = {
   "PATCH /songs/:id": { action: "song.update", target: "song", details: fieldsOf },
   "DELETE /songs/:id": { action: "song.delete", target: "song" },
   "PUT /songs/:id/files/:kind": { action: "song.upload-file", target: "song", details: (_b, p) => ({ kind: p.kind }) },
+  "POST /songs/:id/files/:kind/upload": { action: "song.upload-token", target: "song", skip: true },
+  "PUT /songs/:id/files/:kind/blob": { action: "song.upload-file", target: "song", details: (_b, p) => ({ kind: p.kind, direct: true }) },
   "DELETE /songs/:id/files/:kind": { action: "song.remove-file", target: "song", details: (_b, p) => ({ kind: p.kind }) },
   "POST /flags": { action: "flag.create", target: "flag" },
   "PUT /flags/:id": { action: "flag.update", target: "flag" },
@@ -73,7 +77,7 @@ export function registerAudit(scope: FastifyInstance, c: Container) {
   scope.addHook("onSend", async (req, reply, payload) => {
     if (req.method === "GET" || reply.statusCode >= 300 || !req.auth) return payload;
     const rule = AUDIT_RULES[ruleKey(req)];
-    if (!rule) return payload;
+    if (!rule || rule.skip) return payload;
     const params = (req.params ?? {}) as Record<string, string>;
     let targetId: string | null = params.id ?? null;
     if (!targetId) {

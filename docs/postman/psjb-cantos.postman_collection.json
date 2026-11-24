@@ -1712,6 +1712,90 @@
           ]
         },
         {
+          "name": "Envio direto (arquivo grande): pedir o token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}/files/audio/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}",
+                "files",
+                "audio",
+                "upload"
+              ]
+            },
+            "description": "Para arquivos acima de 4 MB (limite do corpo das Functions da Vercel). Com o Vercel Blob: `{ mode: \"direct\", token, pathname, maxBytes }` (25 MB); o navegador manda o arquivo direto ao Blob com `put(pathname, file, { access: \"public\", token })` de `@vercel/blob/client` e depois chama **Envio direto: ligar ao canto**. Sem Blob (local): `{ mode: \"server\", maxBytes }`, e o envio é pelo PUT de sempre.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"audio/mpeg\",\n  \"size\": 9000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Envio direto: ligar ao canto",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/songs/{{songId}}/files/audio/blob",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "songs",
+                "{{songId}}",
+                "files",
+                "audio",
+                "blob"
+              ]
+            },
+            "description": "Confere que a URL é do nosso Blob, no caminho deste canto e tipo, e que os bytes são mesmo PDF ou áudio (senão apaga e responde 415). Troca o arquivo do canto e apaga o anterior. Local (sem Blob): 501 NOT_CONFIGURED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://exemplo.public.blob.vercel-storage.com/songs/1/audio-00000000-0000-0000-0000-000000000000.mp3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400 ou 501', () => pm.expect(pm.response.code).to.be.oneOf([400, 501]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Remover áudio",
           "request": {
             "method": "DELETE",
