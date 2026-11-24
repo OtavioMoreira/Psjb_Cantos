@@ -347,6 +347,7 @@ Os eixos:
   - Modelos (`apps/api/src/emails/templates.ts`, HTML com estilos inline + texto puro, nome escapado): Redefinir senha · Você foi convidado · Confirme seu novo e-mail · Seu e-mail foi alterado · Seu código de acesso · Sua conta foi liberada · Seu acesso foi bloqueado · Compartilhou uma missa com você (24/11/2026).
   - Rotas que não podem revelar se a conta existe (`forgot`) engolem a falha de envio; nas outras, a falha vira 502 `EMAIL_FAILED`.
 - **LGPD:** consentimento no cadastro e exportação ou exclusão dos dados a pedido.
+  - **Termos de uso (`/termos`) e Política de privacidade (`/privacidade`)** (24/11/2026): links no aceite do cadastro (abrem em outra aba, sem perder o formulário) e no rodapé. A política descreve o que o sistema faz de fato: dados do cadastro e opcionais, os 2 cookies necessários (sessão e aparelho confiável), operadores (Vercel, Neon em São Paulo, Resend), prazos (sessões e links: 7 dias após vencer; IP do limite de tentativas: 1 dia; auditoria: 2 anos) e os direitos do titular, pedidos pelo e-mail **secretaria@psjb.org.br**. A data da versão fica em `LEGAL_VERSION` (`components/layout/LegalPage.tsx`). **Mudou uma regra de dados (novo dado, novo operador, novo prazo)? Atualize a política e a data.** Texto ainda a ser revisado pela paróquia.
 
 ## 14. Regras de UX e acessibilidade
 - **Celular e tablet primeiro:** validar sempre em 360–430 px e em tablet de 768–1194 px, em retrato e paisagem.

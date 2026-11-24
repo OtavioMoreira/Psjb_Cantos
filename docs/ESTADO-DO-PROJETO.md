@@ -91,7 +91,7 @@ Todas ficaram prontas em 15/10/2026: trocar o próprio e-mail, recuperar senha, 
 | **Deploy na Vercel** (front + API) com Neon, Blob e **Resend** | Alta | Configuração descrita no README; criar o Deploy Hook do front e pôr em `SITE_DEPLOY_HOOK_URL`; instalar o Resend pelo Marketplace e configurar SPF/DKIM/DMARC no DNS do `psjb.org.br` |
 | **reCAPTCHA real** (Google ou Turnstile) no cadastro | Alta | Hoje é só visual; precisa da validação no servidor |
 | Upload de arquivos **acima de 4 MB** direto para o Blob | Média | MP3 longo passa de 4 MB; depende do token de upload (API) |
-| Telas de **termos de uso e privacidade** (LGPD) | Média | O cadastro já pede o aceite |
+| **Revisar** os termos de uso e a política de privacidade com a paróquia | Média | Páginas `/termos` e `/privacidade` prontas (24/11/2026), escritas a partir do que o sistema faz de fato; precisam do aval da paróquia (contato usado: secretaria@psjb.org.br) |
 | **Modo offline (PWA)**: missas do dia em cache para o Modo Missa | Média | Hoje o PDF cobre o uso sem internet |
 | SEO: redirecionamentos das URLs antigas | Baixa | `sitemap.xml`, `robots.txt`, canonical e JSON-LD prontos (24/11/2026). Falta saber o formato das URLs do site antigo (o banco legado não registra; o servidor antigo recusa leitura automática) |
 | **Testes de tela (Playwright) no CI**: login, editor, convite, admin | Média | Hoje os testes de tela são manuais (scripts locais) |

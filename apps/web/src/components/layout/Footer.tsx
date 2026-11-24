@@ -25,7 +25,12 @@ export function Footer() {
         </div>
         <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-border pt-6 sm:flex-row">
           <p className="font-serif text-base italic">“Quem canta reza duas vezes.” — Sto. Agostinho</p>
-          <p>© {new Date().getFullYear()} Paróquia Catedral São João Batista</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-1">
+            <span>© {new Date().getFullYear()} Paróquia Catedral São João Batista ·</span>
+            <Link href="/termos" className="inline-flex min-h-11 items-center px-1 hover:text-primary">Termos de uso</Link>
+            <span aria-hidden>·</span>
+            <Link href="/privacidade" className="inline-flex min-h-11 items-center px-1 hover:text-primary">Privacidade</Link>
+          </p>
         </div>
       </div>
     </footer>

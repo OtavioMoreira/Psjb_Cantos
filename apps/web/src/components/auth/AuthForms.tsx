@@ -374,7 +374,15 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary-solid)]" />
           <span>
-            Li e aceito os termos de uso e a política de privacidade (LGPD). Meus dados serão usados apenas para o acesso ao repertório.
+            Li e aceito os{" "}
+            <Link href="/termos" target="_blank" className="font-medium text-primary underline underline-offset-2">
+              termos de uso
+            </Link>{" "}
+            e a{" "}
+            <Link href="/privacidade" target="_blank" className="font-medium text-primary underline underline-offset-2">
+              política de privacidade
+            </Link>{" "}
+            (LGPD). Meus dados serão usados apenas para o acesso ao repertório e às missas.
           </span>
         </label>
         {submitted && !accepted && <p className="-mt-2 text-sm text-danger">É preciso aceitar os termos.</p>}

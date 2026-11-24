@@ -12,6 +12,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: siteUrl("/"), changeFrequency: "daily", priority: 1 },
     { url: siteUrl("/cantos"), changeFrequency: "weekly", priority: 0.9 },
     { url: siteUrl("/sobre"), changeFrequency: "yearly", priority: 0.3 },
+    { url: siteUrl("/termos"), changeFrequency: "yearly", priority: 0.2 },
+    { url: siteUrl("/privacidade"), changeFrequency: "yearly", priority: 0.2 },
     ...songs.map((s) => ({ url: siteUrl(`/cantos/${s.slug}`), changeFrequency: "monthly" as const, priority: 0.7 })),
   ];
 }

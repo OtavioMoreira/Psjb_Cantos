@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Divider } from "@/components/ui/Ornament";
 import { ButtonLink } from "@/components/ui/Button";
+import { API_ENABLED } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Sobre" };
 
@@ -20,9 +21,11 @@ export default function SobrePage() {
           oração.
         </p>
         <p className="font-serif text-2xl italic text-gold-ink">“Cantai ao Senhor um canto novo.” — Sl 96,1</p>
-        <p className="text-base text-ink-muted">
-          Esta é uma versão de demonstração (Fase 1): os dados vêm de arquivos de exemplo e o login é ilustrativo.
-        </p>
+        {!API_ENABLED && (
+          <p className="text-base text-ink-muted">
+            Esta é uma versão de demonstração: os dados vêm de arquivos de exemplo e o login é ilustrativo.
+          </p>
+        )}
       </div>
       <div className="mt-8 flex justify-center gap-3">
         <ButtonLink href="/cantos">Ver cantos</ButtonLink>
