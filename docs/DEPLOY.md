@@ -159,9 +159,10 @@ Os valores exatos (principalmente a chave DKIM) aparecem no painel do Resend. Em
 
 A API nova lê colunas e tabelas que ainda não existem no Neon. **Rodar as migrations antes do push**, senão as missas e o login quebram em produção.
 
-- [ ] `npm run db:migrate -w api` com o `DATABASE_URL` de produção (migrations 009 a 012: versão da missa, `site_state` com gatilhos, `audit_log` e `rate_limits`). São só acréscimos (`ADD COLUMN` com padrão, tabelas novas); o código antigo continua funcionando com elas.
-- [ ] Push na `main` (a Vercel publica a API e o front; o Pages publica a demonstração).
+- [x] `npm run db:migrate -w api` com o `DATABASE_URL` de produção (24/11/2026; a Vercel não deixa baixar variáveis sensíveis, então a connection string vem do painel do Neon/Storage) (migrations 009 a 012: versão da missa, `site_state` com gatilhos, `audit_log` e `rate_limits`). São só acréscimos (`ADD COLUMN` com padrão, tabelas novas); o código antigo continua funcionando com elas.
+- [x] Push na `main` (a Vercel publica a API e o front; o Pages publica a demonstração). Conferido em produção: health, rotas novas protegidas (401), `rate_limits` gravando no Neon, `/termos`, `/privacidade`, `sitemap.xml` (628 URLs), `robots.txt` e `sw.js`.
 - [ ] Conferir em **Settings › Cron Jobs** do projeto da API os dois crons: salmos (seg–qui 3h) e **faxina (todo dia às 4h)**. Os dois usam o mesmo `CRON_SECRET`.
 - [ ] Testar: editar a mesma missa em dois aparelhos ao mesmo tempo (as alterações se juntam); "Há alterações não publicadas" no admin de cantos; Admin › Auditoria; enviar um MP3 acima de 4 MB (vai direto ao Blob); abrir uma missa no Modo Missa, desligar a internet e recarregar.
 - [ ] **Desafio "não sou um robô"** (depois do acesso ao Cloudflare): criar um widget do **Turnstile** para `cantos.psjb.org.br` (e `psjb-cantos.vercel.app`), pôr `CAPTCHA_SECRET` no projeto da API e `NEXT_PUBLIC_CAPTCHA_SITE_KEY` no projeto do front, e fazer redeploy dos dois. Sem as chaves, o desafio fica desligado.
+- [ ] **Trocar a senha do banco no Neon** (a de 24/11 foi exposta numa conversa): Neon › Roles › `neondb_owner` › Reset password; conferir se o `DATABASE_URL` do projeto da API na Vercel foi atualizado pela integração e fazer redeploy.
 - [ ] Opcional: `SITE_URL` no projeto do front enquanto o domínio for `psjb-cantos.vercel.app` (o padrão do sitemap e do canonical é `https://cantos.psjb.org.br`).
