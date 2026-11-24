@@ -93,7 +93,6 @@ Todas ficaram prontas em 15/10/2026: trocar o próprio e-mail, recuperar senha, 
 | Upload de arquivos **acima de 4 MB** direto para o Blob | Média | MP3 longo passa de 4 MB; depende do token de upload (API) |
 | Telas de **termos de uso e privacidade** (LGPD) | Média | O cadastro já pede o aceite |
 | **Modo offline (PWA)**: missas do dia em cache para o Modo Missa | Média | Hoje o PDF cobre o uso sem internet |
-| Player de áudio no Modo Missa | Baixa | |
 | SEO: `sitemap.xml`, JSON-LD, redirecionamentos das URLs antigas | Baixa | |
 | **Testes de tela (Playwright) no CI**: login, editor, convite, admin | Média | Hoje os testes de tela são manuais (scripts locais) |
 

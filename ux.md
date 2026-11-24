@@ -474,7 +474,7 @@ Só aparecem pessoas com conta ativa.
 - Duplicar cria "Cópia de …" com a data vazia e abre o editor.
 
 ### 4.7.1 Administração (`/painel/admin`, só admin)
-- **Painel:** 5 cards (Usuários, Cantos, Flags, Salmos da diocese, Movimentos) com ícone, descrição, contagem e os selos `gold-soft` "N aguardando ativação" (Usuários) e "N a revisar" (Salmos). Uma coluna no celular, duas do tablet em diante.
+- **Painel:** 6 cards (Usuários, Cantos, Flags, Salmos da diocese, Movimentos, Auditoria) com ícone, descrição, contagem e os selos `gold-soft` "N aguardando ativação" (Usuários) e "N a revisar" (Salmos). Uma coluna no celular, duas do tablet em diante.
 - **Barra lateral (desktop):** dentro de `/painel/admin`, as cinco seções aparecem recuadas abaixo de "Administração". No celular, o item "Admin" da barra inferior leva ao painel.
 - **Cabeçalho comum:** sobrelinha "🛡 ADMINISTRAÇÃO" em `gold-ink`, título em serifa e ações à direita (quebram para baixo no celular).
 - **Cantos:**
@@ -487,7 +487,9 @@ Só aparecem pessoas com conta ativa.
 - **Flags:** um card por grupo, com "＋ Adicionar". Cada linha tem a bolinha de cor, o nome, o identificador, o número de cantos e os botões de editar e excluir (44 px). O modal tem grupo, nome, identificador (gerado do nome), cor (seletor + "Sem cor") e ordem.
 - **Salmos da diocese** (`/painel/admin/salmos`): [Buscar agora] no topo; card "Rotina automática: segunda a quinta, às 3h" com as 5 últimas execuções (data, automática/manual, resumo "1 novos · 3 já existiam" ou o erro em `danger`); filtro Todos | A revisar (N); cada item em card com data, título, selo de status (Novo (oculto), Já existia, A revisar, Ignorado, Falhou), a mensagem, "Abrir canto" e "PDF na diocese". Na revisão: "É um destes cantos?" com [É este] por candidato, [É um canto novo] e [Ignorar]. Na página do canto importado, "Fonte: Diocese de Montenegro" (link) aparece em Detalhes.
 - **Movimentos:** campo + [Adicionar] no topo; lista com o número de pessoas, renomear na própria linha (✓/✕) e excluir desabilitado quando há pessoas.
-- **Publicar no site:** modal que explica que as páginas são geradas de antemão e que a atualização leva alguns minutos. Toast: "Publicação pedida. O site atualiza em alguns minutos."
+- **Publicar no site:** modal que explica que as páginas são geradas de antemão e que a atualização leva alguns minutos, com a linha de status ("Há alterações não publicadas (a última em …)" ou "Nenhuma alteração desde a última publicação. Última publicação: …, por …"). Toast: "Publicação pedida. O site atualiza em alguns minutos."
+  - **Com alterações pendentes**, o botão vira `primary` com uma bolinha dourada e, abaixo dele, "Há alterações não publicadas" em `gold-ink`; sem pendências, "Publicado em 24 nov, 14:03 por {primeiro nome}" em `ink-muted`. O status é conferido ao abrir a tela, ao voltar para a aba e depois de cada alteração em cantos, flags ou salmos.
+- **Auditoria** (`/painel/admin/auditoria`): filtros em pílulas (Tudo, Usuários, Cantos, Flags, Movimentos, Publicação, Salmos, ≥ 44 px), "N registros" e uma lista em card: à esquerda a data ("seg., 24 de nov., 14:03"), à direita "**Padre João** bloqueou “Maria Souza”" e, abaixo, o detalhe em `ink-muted` ("Motivo: …", "Alterou: letra, título"). Ações em cantos levam ao editor. No celular, a data fica em cima. "Mostrar mais (N)" no fim.
 - **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Nome, paróquia, movimento, instrumento e senha salvam no servidor (botão com spinner enquanto salva). O e-mail fica só leitura (fundo `surface-2`), com a dica "É o seu login." e o link [✉ Trocar e-mail], que abre um modal com "Novo e-mail" e "Sua senha" e o botão [Enviar link]. Enviado, o link dá lugar a um aviso verde: "Enviamos um link para {novo}… Até lá, você continua entrando com {atual}."
 - **Senha temporária:** quem entra com a senha gerada pelo admin é levado a `/painel/perfil#seguranca` (qualquer outra página do painel redireciona para lá). No topo, aviso em `gold-soft` com 🔑 "Você entrou com uma senha temporária…", e o primeiro campo se chama "Senha temporária".
 
@@ -591,6 +593,7 @@ Comportamento:
 - ✕ sai com confirmação apenas se a missa não terminou.
 - **Offline**: ao abrir, todos os cantos da missa ficam em cache (Service Worker). Sem conexão, aparece o selo "Disponível offline ✓".
 - Todos os alvos têm no mínimo 56×56px e espaçamento mínimo de 12px entre eles.
+- **🎧 Áudio:** só aparece quando o canto tem MP3 (no cabeçalho do tablet em diante; no celular, no rodapé, entre Anterior e Próximo, porque o cabeçalho não comporta mais um botão em 360 px). Abre uma barra abaixo do cabeçalho, no fundo `ui` da paleta, com o player e as velocidades 0,75× · 1× · 1,25× (a ativa em `soft`/`chord`). A barra não some com os controles e segue aberta ao trocar de canto.
 
 ### 4.10 PDF da missa (modal "Baixar missa em PDF")
 Aberto pelo botão **"Baixar PDF"** (editor e cards de Minhas Missas; desabilitado sem cantos).
@@ -636,6 +639,7 @@ Usuários                                        [👤+ Convidar usuário]
 ```
 - **Layout:**
   - Desktop (≥ 1024): tabela. Celular e tablet: cards com a identidade no topo e, abaixo, status, papel e último acesso.
+  - Com a API, busca (com espera de 300 ms), filtros e resumo vêm do servidor, 50 por vez com "Mostrar mais (N)" no fim.
   - Ordem: pendentes, depois bloqueados, depois ativos.
 - **Badges de status:**
 

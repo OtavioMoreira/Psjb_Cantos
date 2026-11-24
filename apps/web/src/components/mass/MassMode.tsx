@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Expand, Guitar, List, Minus, Moon, Plus, Shrink, Sun, SunDim, Type, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Expand, Guitar, Headphones, List, Minus, Moon, Plus, Shrink, Sun, SunDim, Type, X } from "lucide-react";
 import type { MassItem, MassSlot } from "@/lib/types";
 import { saveMass, setPrefs, usePrefs, useMasses } from "@/lib/store";
 import { useHydrated } from "@/lib/hooks";
@@ -44,6 +44,8 @@ export function MassMode() {
   const [wakeLockOk, setWakeLockOk] = useState<boolean | null>(null);
   const [wakeDismissed, setWakeDismissed] = useState(false);
   const [visited, setVisited] = useState<Set<number>>(new Set([0]));
+  // Player do canto atual (ensaio, ou para puxar a melodia). Continua aberto ao trocar de canto.
+  const [audioOpen, setAudioOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -207,6 +209,18 @@ export function MassMode() {
     );
   }
 
+  const audioButton = !done && song?.media.audio && (
+    <button
+      aria-label={audioOpen ? "Fechar o áudio" : "Ouvir o áudio deste canto"}
+      aria-pressed={audioOpen}
+      onClick={() => setAudioOpen((v) => !v)}
+      className="grid h-14 w-14 shrink-0 place-items-center rounded-full transition active:scale-95"
+      style={audioOpen ? { background: pal.soft, color: pal.chord } : undefined}
+    >
+      <Headphones size={22} />
+    </button>
+  );
+
   const prev = steps[index - 1];
   const next = steps[index + 1];
   const btn = "grid h-14 w-14 place-items-center rounded-full transition active:scale-95";
@@ -284,6 +298,8 @@ export function MassMode() {
                 </button>
               </div>
             )}
+            {/* No celular, o botão fica no rodapé (não cabe no cabeçalho em 360 px). */}
+            {audioButton && <span className="hidden sm:contents">{audioButton}</span>}
             <button aria-label="Diminuir letra" onClick={() => setPrefs({ massFontSize: Math.max(18, fontSize - 2) })} className={`${btn} text-sm font-bold`}>
               A−
             </button>
@@ -321,6 +337,9 @@ export function MassMode() {
               </button>
             </div>
           )}
+
+          {/* Áudio do canto atual: fica visível mesmo quando os controles somem */}
+          {audioOpen && !done && song?.media.audio && <MassAudio key={song.media.audio} src={song.media.audio} pal={pal} />}
 
           {/* Letra */}
           <div ref={scroller} className="flex-1 overflow-y-auto overscroll-contain" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -385,6 +404,7 @@ export function MassMode() {
             <span className="block truncate font-semibold">{done ? steps.at(-1)?.slot.label : prev?.slot.label ?? "—"}</span>
           </span>
         </button>
+        {audioButton && <span className="contents sm:hidden">{audioButton}</span>}
         <div className="hidden flex-1 items-center justify-center gap-0.5 sm:flex" aria-hidden>
           {steps.map((_, i) => (
             <button key={i} tabIndex={-1} onClick={() => go(i)} className="grid h-8 min-w-6 place-items-center">
@@ -431,6 +451,33 @@ export function MassMode() {
         </div>
       )}
 
+    </div>
+  );
+}
+
+/** Player compacto do Modo Missa, nas cores da paleta. Trocar de canto troca o áudio (e para o anterior). */
+function MassAudio({ src, pal }: { src: string; pal: (typeof PALETTES)[keyof typeof PALETTES] }) {
+  const ref = useRef<HTMLAudioElement>(null);
+  const [rate, setRate] = useState(1);
+  useEffect(() => {
+    if (ref.current) ref.current.playbackRate = rate;
+  }, [rate]);
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4" style={{ borderColor: pal.line, background: pal.ui }}>
+      <audio ref={ref} controls preload="none" src={src} className="h-11 min-w-0 flex-1 basis-60" />
+      <div className="flex items-center gap-1" role="group" aria-label="Velocidade">
+        {[0.75, 1, 1.25].map((r) => (
+          <button
+            key={r}
+            aria-pressed={rate === r}
+            onClick={() => setRate(r)}
+            className="min-h-11 min-w-11 rounded-full px-2 text-sm font-semibold"
+            style={rate === r ? { background: pal.soft, color: pal.chord } : { color: pal.muted }}
+          >
+            {String(r).replace(".", ",")}×
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

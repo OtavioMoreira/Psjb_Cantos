@@ -255,7 +255,8 @@ Estado do cliente em `localStorage`:
 - ✅ Tamanho da letra de 18 a 56; tom salvo na missa; paletas Dia, Noite e Sépia.
 - ✅ Tela sempre acesa (Wake Lock), com um aviso que fecha com um toque quando o aparelho não suporta.
 - ✅ Controles somem após 4 s; tela final "Missa concluída. Deus seja louvado!".
-- 🔜 Offline por service worker e player de áudio do canto atual.
+- ✅ Player de áudio do canto atual (botão de fone; no celular, no rodapé).
+- 🔜 Offline por service worker.
 
 ### E7. API: usuários, papéis e autenticação JWT 🟡
 - ✅ `apps/api` com Fastify + TypeScript em **arquitetura hexagonal** (§6.1).
