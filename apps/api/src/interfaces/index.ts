@@ -2,7 +2,7 @@
 // As implementações (Postgres, argon2, jose, Vercel Blob) ficam em repositories/ e services/.
 
 import type { AuditEntry, AuditEntryData, AuditTarget } from "../domain/audit.js";
-import type { Mass, MassSlot, PersonRef, SeasonId, YearId } from "../domain/mass.js";
+import type { Mass, MassScript, MassSlot, PersonRef, SeasonId, YearId } from "../domain/mass.js";
 import type { Movement } from "../domain/movement.js";
 import type { Flag, FlagGroup, Song, SongMedia, SongSource } from "../domain/song.js";
 import type { Role, User, UserStatus, UserWithPassword } from "../domain/user.js";
@@ -95,6 +95,7 @@ export interface MassData {
   year: YearId | null;
   slots: MassSlot[];
   suggested: boolean;
+  script: MassScript | null;
 }
 
 export interface MassFilters {

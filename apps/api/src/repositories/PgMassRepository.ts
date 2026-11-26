@@ -1,5 +1,5 @@
 import { AppError } from "../domain/errors.js";
-import type { Mass, MassSlot, PersonRef, SeasonId, YearId } from "../domain/mass.js";
+import type { Mass, MassScript, MassSlot, PersonRef, SeasonId, YearId } from "../domain/mass.js";
 import type { MassData, MassFilters, MassRepository } from "../interfaces/index.js";
 import type { Pool } from "../database/pool.js";
 
@@ -15,6 +15,7 @@ interface MassRow {
   liturgical_year: YearId | null;
   slots: MassSlot[];
   suggested: boolean;
+  script: MassScript | null;
   shared_with: PersonRef[];
   share_token: string | null;
   version: number;
@@ -29,7 +30,7 @@ interface MassRow {
 const SELECT = `
   SELECT ms.id, ms.owner_id, o.name AS owner_name, o.photo_url AS owner_photo, ms.name,
          to_char(ms.celebration_date, 'YYYY-MM-DD') AS date, to_char(ms.celebration_time, 'HH24:MI') AS time,
-         ms.season, ms.liturgical_year, ms.slots, ms.suggested, ms.share_token, ms.version, ms.created_at, ms.updated_at,
+         ms.season, ms.liturgical_year, ms.slots, ms.suggested, ms.script, ms.share_token, ms.version, ms.created_at, ms.updated_at,
          ms.updated_by, ub.name AS updated_by_name, ub.photo_url AS updated_by_photo,
          COALESCE((
            SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'photoUrl', u.photo_url) ORDER BY u.name)
@@ -54,6 +55,7 @@ const toMass = (r: MassRow): Mass => ({
   year: r.liturgical_year,
   slots: r.slots,
   suggested: r.suggested,
+  script: r.script,
   sharedWith: r.shared_with,
   shareToken: r.share_token,
   version: r.version,
@@ -62,7 +64,7 @@ const toMass = (r: MassRow): Mass => ({
   updatedAt: r.updated_at,
 });
 
-const values = (d: MassData) => [d.name, d.date, d.time, d.season, d.year, JSON.stringify(d.slots), d.suggested];
+const values = (d: MassData) => [d.name, d.date, d.time, d.season, d.year, JSON.stringify(d.slots), d.suggested, d.script ? JSON.stringify(d.script) : null];
 
 export class PgMassRepository implements MassRepository {
   constructor(private readonly pool: Pool) {}
@@ -101,8 +103,8 @@ export class PgMassRepository implements MassRepository {
   async create(ownerId: string, data: MassData, id?: string) {
     try {
       const { rows } = await this.pool.query<{ id: string }>(
-        `INSERT INTO masses (id, owner_id, name, celebration_date, celebration_time, season, liturgical_year, slots, suggested, updated_by)
-         VALUES (COALESCE($1, gen_random_uuid()), $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $2) RETURNING id`,
+        `INSERT INTO masses (id, owner_id, name, celebration_date, celebration_time, season, liturgical_year, slots, suggested, script, updated_by)
+         VALUES (COALESCE($1, gen_random_uuid()), $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb, $2) RETURNING id`,
         [id ?? null, ownerId, ...values(data)],
       );
       return (await this.findById(rows[0].id))!;
@@ -115,8 +117,8 @@ export class PgMassRepository implements MassRepository {
   async update(id: string, data: MassData, updatedBy: string, expectedVersion?: number) {
     const { rowCount } = await this.pool.query(
       `UPDATE masses SET name = $2, celebration_date = $3, celebration_time = $4, season = $5, liturgical_year = $6,
-         slots = $7::jsonb, suggested = $8, updated_by = $9, updated_at = now(), version = version + 1
-       WHERE id = $1 AND ($10::int IS NULL OR version = $10)`,
+         slots = $7::jsonb, suggested = $8, script = $9::jsonb, updated_by = $10, updated_at = now(), version = version + 1
+       WHERE id = $1 AND ($11::int IS NULL OR version = $11)`,
       [id, ...values(data), updatedBy, expectedVersion ?? null],
     );
     return rowCount ? this.findById(id) : null;

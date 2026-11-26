@@ -1,5 +1,6 @@
 "use client";
 
+import type { MassScript } from "./types";
 import type { AuditEntry, AuditTarget } from "./audit";
 import { BASE_PATH } from "./routes";
 import type { ApiFlag, ApiSong, FlagGroup } from "./apiSongs";
@@ -67,6 +68,7 @@ export interface ApiMass {
   slots: { id: string; moment: string; label: string; items: { songId: number; transpose: number }[] }[];
   /** Sugerida por um admin para todos na semana da data. */
   suggested: boolean;
+  script: MassScript | null;
   owner: ApiPerson;
   sharedWith: ApiPerson[];
   /** "suggestion": a pessoa só vê a sugestão da semana (sem editar). */
@@ -78,7 +80,7 @@ export interface ApiMass {
   updatedAt: string;
 }
 
-export type ApiMassBody = Pick<ApiMass, "name" | "date" | "time" | "season" | "year" | "slots" | "suggested">;
+export type ApiMassBody = Pick<ApiMass, "name" | "date" | "time" | "season" | "year" | "slots" | "suggested" | "script">;
 
 /** Senha certa com o 2FA ligado: falta o código enviado por e-mail. */
 export interface LoginChallenge {

@@ -120,4 +120,26 @@ export interface Mass {
   version?: number;
   /** Sugerida por um admin para todos (a "missa do padre"): aparece em "Sugestões da semana". */
   suggested?: boolean;
+  /** Roteiro da celebração (PDF de 1 página da equipe de liturgia). */
+  script?: MassScript | null;
+}
+
+/** Item do roteiro: texto livre ou um momento da missa (os números dos cantos vêm dos momentos). */
+export interface ScriptItem {
+  id: string;
+  title: string;
+  kind: "texto" | "cantos";
+  /** Só em "cantos": de quais momentos vêm os cantos. */
+  slotIds: string[];
+  /** Aceita **negrito** e *instrução* (vermelho); linhas com Padre:, R.:, L.:, T.: ganham destaque. */
+  text: string;
+  /** Com moldura no PDF. */
+  boxed: boolean;
+}
+
+export interface MassScript {
+  title: string;
+  /** Lembretes importantes (cor litúrgica, acolhida...). */
+  notes: string;
+  items: ScriptItem[];
 }

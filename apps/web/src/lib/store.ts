@@ -729,6 +729,8 @@ export function massFromSuggestion(s: Mass) {
     shareToken: null,
     version: undefined,
     suggested: false,
+    // O roteiro é da equipe de liturgia: fica na sugestão (dá para baixar o PDF por lá).
+    script: null,
   });
 }
 
@@ -796,6 +798,7 @@ const toBody = (m: Mass) => ({
   year: m.year,
   slots: m.slots,
   suggested: Boolean(m.suggested),
+  script: m.script ?? null,
 });
 
 function fromApi(m: ApiMass): Mass {
@@ -813,6 +816,7 @@ function fromApi(m: ApiMass): Mass {
     shareToken: m.shareToken,
     version: m.version,
     suggested: m.suggested ?? false,
+    script: m.script ?? null,
   };
 }
 

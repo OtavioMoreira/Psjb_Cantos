@@ -13,6 +13,21 @@ const slotSchema = z.object({
   items: z.array(itemSchema).max(10).default([]),
 });
 
+/** Roteiro da celebração (PDF de 1 página da equipe de liturgia). */
+const scriptItemSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  title: z.string().trim().max(120).default(""),
+  kind: z.enum(["texto", "cantos"]),
+  slotIds: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
+  text: z.string().max(4000).default(""),
+  boxed: z.boolean().default(false),
+});
+export const scriptSchema = z.object({
+  title: z.string().trim().max(200).default(""),
+  notes: z.string().max(1000).default(""),
+  items: z.array(scriptItemSchema).max(60).default([]),
+});
+
 /** Corpo completo da missa (POST e PUT). Campos ausentes assumem o padrão. */
 export const massBodySchema = z.object({
   name: z.string().trim().max(120).default(""),
@@ -26,6 +41,7 @@ export const massBodySchema = z.object({
   year: z.enum(YEARS).nullable().default(null),
   /** Só admin, e só o dono, liga ou desliga. Exige data. */
   suggested: z.boolean().default(false),
+  script: scriptSchema.nullable().default(null),
   slots: z
     .array(slotSchema)
     .max(40)
@@ -48,6 +64,7 @@ export const massPatchSchema = z
     season: massBodySchema.shape.season.unwrap(),
     year: massBodySchema.shape.year.unwrap(),
     suggested: massBodySchema.shape.suggested.unwrap(),
+    script: massBodySchema.shape.script.unwrap(),
     slots: massBodySchema.shape.slots.unwrap(),
   })
   .partial()
@@ -88,6 +105,7 @@ export interface MassDTO {
   year: Mass["year"];
   slots: Mass["slots"];
   suggested: boolean;
+  script: Mass["script"];
   owner: PersonDTO;
   sharedWith: PersonDTO[];
   /** Como a pessoa que pediu enxerga a missa: dona, convidada ou só a sugestão da semana (leitura). */
@@ -111,6 +129,7 @@ export function toMassDTO(m: Mass, viewerId: string): MassDTO {
     year: m.year,
     slots: m.slots,
     suggested: m.suggested,
+    script: m.script,
     owner: m.owner,
     // Quem só vê a sugestão não precisa saber com quem o admin compartilhou.
     sharedWith: massAccess(m, viewerId) ? m.sharedWith : [],

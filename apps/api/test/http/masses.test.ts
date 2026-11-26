@@ -332,9 +332,21 @@ describe("Missa sugerida (a missa do padre)", () => {
     expect((await req("admin", "PATCH", `/masses/${id}`, { suggested: false })).json().mass.suggested).toBe(false);
   });
 
-  it("duplicar uma sugestão gera uma missa comum", async () => {
-    const id = (await req("admin", "POST", "/masses", { ...MASS, date: sunday, suggested: true })).json().mass.id;
-    expect((await req("admin", "POST", `/masses/${id}/duplicate`)).json().mass.suggested).toBe(false);
+  it("duplicar uma sugestão gera uma missa comum, com o roteiro junto (para reaproveitar na semana seguinte)", async () => {
+    const script = { title: "1º Domingo do Advento", notes: "Cor litúrgica: ROXA", items: [{ id: "i1", title: "Preces", kind: "texto", text: "R.: Vinde, Senhor Jesus!", boxed: true }] };
+    const id = (await req("admin", "POST", "/masses", { ...MASS, date: sunday, suggested: true, script })).json().mass.id;
+    const copy = (await req("admin", "POST", `/masses/${id}/duplicate`)).json().mass;
+    expect(copy.suggested).toBe(false);
+    expect(copy.script).toEqual({ ...script, items: [{ ...script.items[0], slotIds: [] }] });
+    // A sugestão da semana leva o roteiro, para todos baixarem o PDF.
+    expect((await req("ana", "GET", "/masses/suggestions")).json().masses[0].script.title).toBe("1º Domingo do Advento");
+  });
+
+  it("roteiro inválido → 400 (tipo de item, texto longo demais)", async () => {
+    const bad = (script: object) => req("admin", "POST", "/masses", { ...MASS, script });
+    expect((await bad({ items: [{ id: "x", kind: "video" }] })).statusCode).toBe(400);
+    expect((await bad({ items: [{ id: "x", kind: "texto", text: "a".repeat(4001) }] })).statusCode).toBe(400);
+    expect((await bad({ title: "Ok", items: [] })).statusCode).toBe(201);
   });
 
   it("sem login: 401", async () => {

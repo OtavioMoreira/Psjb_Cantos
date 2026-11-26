@@ -235,7 +235,7 @@ items = [  # na ordem em que faz sentido rodar
         req("Sugestões da semana", "GET", "/masses/suggestions",
             desc="Missas que um admin marcou como **sugeridas para todos** (`suggested: true`, a \"missa do padre\"), com data **de hoje até o domingo** (hoje, se for domingo), no fuso de Brasília. Qualquer pessoa logada vê. Só leitura: `access: \"suggestion\"` e `sharedWith: []` para quem não é dono nem convidado; o front cria uma missa nova com base nela."),
         req("Criar missa", "POST", "/masses", MASS_BODY,
-            desc="Todos os campos são opcionais. `suggested: true` (só admin, exige `date`; músico → 403) sugere a missa para todos na semana da data. `slots` são os momentos em ordem; `moment: \"extra\"` é canto adicional com nome livre. `transpose` vai de −6 a +5. `songId` é o id do canto em `data/songs.json`.",
+            desc="Todos os campos são opcionais. `suggested: true` (só admin, exige `date`; músico → 403) sugere a missa para todos na semana da data. `script` (opcional) é o roteiro da celebração: `{ title, notes, items: [{ id, title, kind: \"texto\" | \"cantos\", slotIds, text, boxed }] }`; o PDF de 1 página é gerado no navegador. `slots` são os momentos em ordem; `moment: \"extra\"` é canto adicional com nome livre. `transpose` vai de −6 a +5. `songId` é o id do canto em `data/songs.json`.",
             tests=["pm.collectionVariables.set('massId', pm.response.json().mass.id);"]),
         req("Ver missa", "GET", "/masses/{{massId}}"),
         req("Editar missa (PUT, substitui tudo)", "PUT", "/masses/{{massId}}", {**MASS_BODY, "name": "Domingo — Missa das 19h (revisada)"},

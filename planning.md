@@ -364,7 +364,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | GET | `/api/users/search?q=&limit=` | ✅ | logado: pessoas **ativas** para compartilhar (nome, e-mail, movimento), sem a própria pessoa |
 | GET | `/api/masses?when=upcoming\|past\|all&q=` | ✅ | missas que criei ou que foram compartilhadas comigo; `access` = `owner` ou `shared` |
 | GET | `/api/masses/suggestions` | ✅ | logado: missas **sugeridas para todos** por um admin com data de hoje até o domingo (hoje, se for domingo; fuso de Brasília), em ordem de data e hora. Só leitura (`access: "suggestion"`, `sharedWith: []` para quem não é dono nem convidado) |
-| POST | `/api/masses` | ✅ | cria `{ name, date, time, season, year, suggested, slots }` (tudo opcional) → 201. `suggested: true` só para admin (403) e exige `date` (400); ligar ou desligar depois (PUT/PATCH) é só do dono admin |
+| POST | `/api/masses` | ✅ | cria `{ name, date, time, season, year, suggested, script, slots }` (tudo opcional) → 201. `script` é o roteiro da celebração (`{ title, notes, items: [{ id, title, kind: texto|cantos, slotIds, text, boxed }] }`, até 60 itens de 4.000 caracteres) ou null. `suggested: true` só para admin (403) e exige `date` (400); ligar ou desligar depois (PUT/PATCH) é só do dono admin |
 | GET | `/api/masses/:id` | ✅ | dono ou convidado; 403 para os outros; 404 se não existe |
 | PUT | `/api/masses/:id` | ✅ | substitui a missa inteira (dono ou convidado). `If-Match: <version>` opcional: se outra pessoa salvou antes, 409 `MASS_CONFLICT` com a missa atual |
 | PATCH | `/api/masses/:id` | ✅ | muda só os campos enviados (dono ou convidado); mesmo `If-Match` |

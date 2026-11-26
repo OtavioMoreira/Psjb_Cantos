@@ -39,7 +39,7 @@ describe.skipIf(!dbUrl)("PgSiteStateRepository (alterações não publicadas)", 
     await reset();
     await pool.query("UPDATE songs SET title = 'x' WHERE id = -1");
     const u = await factory.user();
-    await repos.masses.create(u.id, { name: "Missa", date: null, time: null, season: null, year: null, slots: [], suggested: false });
+    await repos.masses.create(u.id, { name: "Missa", date: null, time: null, season: null, year: null, slots: [], suggested: false, script: null });
     expect(await pending()).toBe(false);
   });
 });

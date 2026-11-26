@@ -92,6 +92,7 @@ export class UpdateMassAction {
       year: changes.year !== undefined ? changes.year : mass.year,
       slots: changes.slots ?? mass.slots,
       suggested: changes.suggested ?? mass.suggested,
+      script: changes.script !== undefined ? changes.script : mass.script,
     };
     if (data.suggested !== mass.suggested) {
       if (access !== "owner") throw new AppError("FORBIDDEN", "Só quem criou a missa pode sugeri-la para todos.");
@@ -131,6 +132,8 @@ export class DuplicateMassAction {
       year: mass.year,
       slots: mass.slots,
       suggested: false,
+      // O roteiro vai junto: o admin duplica a missa da semana passada e só troca os textos.
+      script: mass.script,
     });
     return toMassDTO(copy, userId);
   }

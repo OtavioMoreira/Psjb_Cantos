@@ -10,6 +10,7 @@ const mass = (over: Partial<MassData> = {}): MassData => ({
   year: null,
   slots: [],
   suggested: false,
+  script: null,
   ...over,
 });
 
@@ -37,6 +38,14 @@ describe.skipIf(!dbUrl)("PgMassRepository", () => {
     expect(list.map((m) => m.id)).toEqual(toSunday === 0 ? [a.id, b.id] : [b.id, a.id]);
     expect(list[0].suggested).toBe(true);
     await expect(repos.masses.create(admin.id, mass({ suggested: true }))).rejects.toThrow(/masses_suggested_has_date/);
+  });
+
+  it("guarda o roteiro da celebração em JSON e troca no update", async () => {
+    const owner = await factory.user();
+    const script = { title: "1º Domingo do Advento", notes: "Cor: ROXA", items: [{ id: "i1", title: "Canto de abertura", kind: "cantos" as const, slotIds: ["s1"], text: "", boxed: false }] };
+    const m = await repos.masses.create(owner.id, mass({ script }));
+    expect((await repos.masses.findById(m.id))!.script).toEqual(script);
+    expect((await repos.masses.update(m.id, mass({ script: null }), owner.id))!.script).toBeNull();
   });
 
   it("guarda data e hora exatamente como enviadas (sem erro de fuso) e os momentos em JSON", async () => {

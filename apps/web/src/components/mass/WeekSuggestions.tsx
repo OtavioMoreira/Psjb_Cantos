@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, CopyPlus, Pencil, Sparkles } from "lucide-react";
+import { ChevronDown, CopyPlus, FileDown, Loader2, Pencil, Sparkles } from "lucide-react";
 import type { Mass } from "@/lib/types";
 import { massFromSuggestion, useSession, useWeekSuggestions } from "@/lib/store";
-import { useSongIndex } from "@/lib/useSongIndex";
+import { loadSongIndex, useSongIndex } from "@/lib/useSongIndex";
 import { SEASON_STYLE, formatDateLong, formatNumber } from "@/lib/liturgy";
 import { massEditUrl } from "@/lib/routes";
 import { toast } from "@/components/ui/Toast";
@@ -44,6 +44,7 @@ function SuggestionCard({ mass }: { mass: Mass & { ownerName: string } }) {
   const router = useRouter();
   const { userId } = useSession();
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const { songs } = useSongIndex(open);
   const byId = useMemo(() => new Map((songs ?? []).map((s) => [s.id, s])), [songs]);
   const color = mass.season ? SEASON_STYLE[mass.season].color : "var(--border)";
@@ -54,6 +55,20 @@ function SuggestionCard({ mass }: { mass: Mass & { ownerName: string } }) {
     const copy = massFromSuggestion(mass);
     toast("Missa criada com base na sugestão. Agora é só ajustar.");
     router.push(massEditUrl(copy.id));
+  };
+
+  // O roteiro da equipe de liturgia (folheto de 1 página), quando o admin montou.
+  const downloadScript = async () => {
+    if (!mass.script) return;
+    setBusy(true);
+    try {
+      const [{ downloadScriptPdf }, all] = await Promise.all([import("@/lib/scriptPdf"), loadSongIndex()]);
+      await downloadScriptPdf(mass, mass.script, new Map(all.map((s) => [s.id, s])));
+    } catch {
+      toast("Não foi possível gerar o roteiro agora.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -119,6 +134,16 @@ function SuggestionCard({ mass }: { mass: Mass & { ownerName: string } }) {
           >
             <CopyPlus size={16} /> Usar como base
           </button>
+          {mass.script && (
+            <button
+              type="button"
+              onClick={downloadScript}
+              disabled={busy}
+              className="inline-flex min-h-11 items-center gap-2 rounded-[10px] border border-primary px-4 text-sm font-semibold text-primary hover:bg-primary-soft disabled:opacity-60"
+            >
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />} Roteiro (PDF)
+            </button>
+          )}
           {mine && (
             <Link
               href={massEditUrl(mass.id)}

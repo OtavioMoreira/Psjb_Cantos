@@ -151,8 +151,8 @@ describe.skipIf(!dbUrl)("PgUserRepository: perfil e admin", () => {
   it("delete apaga a conta com papéis, sessões e missas (CASCADE); as missas de outros só perdem o convidado", async () => {
     const dono = await factory.user();
     const outro = await factory.user();
-    const minha = await repos.masses.create(dono.id, { name: "Minha", date: null, time: null, season: null, year: null, slots: [], suggested: false });
-    const dele = await repos.masses.create(outro.id, { name: "Dele", date: null, time: null, season: null, year: null, slots: [], suggested: false });
+    const minha = await repos.masses.create(dono.id, { name: "Minha", date: null, time: null, season: null, year: null, slots: [], suggested: false, script: null });
+    const dele = await repos.masses.create(outro.id, { name: "Dele", date: null, time: null, season: null, year: null, slots: [], suggested: false, script: null });
     await repos.masses.setShares(dele.id, [dono.id]);
 
     expect(await repos.users.delete(dono.id)).toBe(true);

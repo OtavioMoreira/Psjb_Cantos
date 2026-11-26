@@ -11,6 +11,7 @@ import { SEASON_STYLE, formatNumber, liturgicalSeason, liturgicalYear } from "@/
 import { keyLabel, wrapSemitones } from "@/lib/chords";
 import { taxonomy } from "@/lib/labels";
 import { SlotPicker } from "./SlotPicker";
+import { ScriptEditor } from "./ScriptEditor";
 import { MassPdfButton } from "./MassPdfButton";
 import { ShareMassButton, SharedAvatars } from "./ShareMass";
 import { ChordSheet } from "@/components/song/ChordSheet";
@@ -235,6 +236,9 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
           </span>
         </label>
       )}
+
+      {/* Roteiro da celebração (PDF de 1 página): montado pelo admin; quem recebeu a missa também ajusta. */}
+      {(isAdmin || mass.script) && <ScriptEditor mass={mass} byId={byId} onChange={(script) => update((m) => ({ ...m, script }))} />}
 
       {error && <p className="mt-4 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">Não conseguimos carregar os cantos. Verifique sua conexão.</p>}
 

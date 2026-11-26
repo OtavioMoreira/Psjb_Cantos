@@ -57,7 +57,7 @@ describe("Missa (massBodySchema)", () => {
   const slot = (over: object = {}) => ({ id: "s1", moment: "entrada", label: "Entrada", items: [{ songId: 1, transpose: 0 }], ...over });
 
   it("tudo é opcional e vem com padrão", () => {
-    expect(ok(massBodySchema.safeParse({}))).toEqual({ name: "", date: null, time: null, season: null, year: null, suggested: false, slots: [] });
+    expect(ok(massBodySchema.safeParse({}))).toEqual({ name: "", date: null, time: null, season: null, year: null, suggested: false, script: null, slots: [] });
   });
 
   it("tom de −6 a +5 (regra da transposição)", () => {

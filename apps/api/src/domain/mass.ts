@@ -39,6 +39,26 @@ export interface MassSlot {
   items: MassItem[];
 }
 
+/** Item do roteiro: texto livre ou um momento da missa (os números dos cantos vêm dos slots). */
+export interface ScriptItem {
+  id: string;
+  title: string;
+  kind: "texto" | "cantos";
+  /** Só em "cantos": de quais momentos vêm os cantos. */
+  slotIds: string[];
+  /** Texto do item (em "cantos", vem depois dos números). Aceita **negrito** e *instrução*. */
+  text: string;
+  /** Com moldura no PDF (ex.: motivação inicial, preces). */
+  boxed: boolean;
+}
+
+/** Roteiro da celebração: o folheto de 1 página da equipe de liturgia. */
+export interface MassScript {
+  title: string;
+  notes: string;
+  items: ScriptItem[];
+}
+
 export interface PersonRef {
   id: string;
   name: string;
@@ -58,6 +78,8 @@ export interface Mass {
   slots: MassSlot[];
   /** Sugerida por um admin para todos (a "missa do padre"); aparece na semana da data. */
   suggested: boolean;
+  /** Roteiro da celebração (PDF de 1 página). null = sem roteiro. */
+  script: MassScript | null;
   sharedWith: PersonRef[];
   /** Token do link de convite (só o dono vê). null = sem link ativo. */
   shareToken: string | null;
