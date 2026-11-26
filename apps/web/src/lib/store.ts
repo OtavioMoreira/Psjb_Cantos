@@ -368,6 +368,21 @@ export const admin = {
     writeUser(id, { password: pwd, mustChangePassword: true });
     return pwd;
   },
+  /**
+   * Convida uma lista (até 50) com o mesmo papel. Um resultado por pessoa: convidada, já tinha conta
+   * ou e-mail que não saiu (a conta fica pendente para "Reenviar convite").
+   */
+  async inviteBulk(people: { name: string; email: string }[], role: User["role"]): Promise<{ email: string; name: string; status: "invited" | "exists" | "email_failed" }[]> {
+    if (API_ENABLED) {
+      const results = await api.admin.inviteBulk({ people, roles: ROLES_FOR[role] });
+      const created = results.flatMap((r) => (r.user ? [mirror(r.user)] : []));
+      usersStore.write([...usersStore.read().filter((u) => !created.some((c) => c.id === u.id)), ...created]);
+      return results.map(({ name, email, status }) => ({ name, email, status }));
+    }
+    const out: { email: string; name: string; status: "invited" | "exists" | "email_failed" }[] = [];
+    for (const p of people) out.push({ ...p, status: (await this.invite({ ...p, role })) ? "invited" : "exists" });
+    return out;
+  },
   /** false = e-mail já cadastrado. Com a API, outros erros (ex.: EMAIL_FAILED) chegam na tela. */
   async invite(data: { name: string; email: string; role: User["role"] }) {
     if (API_ENABLED) {

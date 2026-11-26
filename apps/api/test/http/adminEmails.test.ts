@@ -131,3 +131,46 @@ describe("Bloquear avisa a pessoa por e-mail", () => {
     expect(adapters.email.last("pend@x.com")).toBeUndefined();
   });
 });
+
+describe("Convite em lote (POST /api/admin/users/invite/bulk)", () => {
+  const bulk = (payload: object) => app.inject({ method: "POST", url: "/api/admin/users/invite/bulk", headers: as(), payload });
+
+  it("convida cada pessoa com o mesmo papel, pula quem já tem conta e repetidos na lista", async () => {
+    await addUser("ja@x.com");
+    const res = await bulk({
+      people: [
+        { name: "Bia Lima", email: "Bia@X.com" },
+        { name: "Já Tenho", email: "ja@x.com" },
+        { name: "Caio Reis", email: "caio@x.com" },
+        { name: "Bia de Novo", email: "bia@x.com" },
+      ],
+      roles: ["admin", "musico"],
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().results.map((r: { email: string; status: string }) => `${r.email}:${r.status}`)).toEqual([
+      "bia@x.com:invited",
+      "ja@x.com:exists",
+      "caio@x.com:invited",
+      "bia@x.com:exists",
+    ]);
+    expect(res.json().results[0].user).toMatchObject({ status: "pending", roles: ["admin", "musico"] });
+    expect(adapters.email.last("caio@x.com")!.text).toMatch(/redefinir-senha\?token=[\w-]+&convite=1/);
+    expect(adapters.email.sent.filter((m) => m.to === "bia@x.com")).toHaveLength(1);
+  });
+
+  it("se o e-mail não sai, a conta fica pendente e a linha avisa (para reenviar o convite depois)", async () => {
+    adapters.email.fail = true;
+    const res = await bulk({ people: [{ name: "Dani Souza", email: "dani@x.com" }] });
+    expect(res.json().results[0]).toMatchObject({ email: "dani@x.com", status: "email_failed" });
+    expect((await adapters.users.findByEmailWithPassword("dani@x.com"))?.status).toBe("pending");
+  });
+
+  it("valida a lista inteira: vazia, mais de 50, nome curto ou e-mail inválido é 400", async () => {
+    expect((await bulk({ people: [] })).statusCode).toBe(400);
+    const many = Array.from({ length: 51 }, (_, i) => ({ name: `Pessoa ${i}`, email: `p${i}@x.com` }));
+    expect((await bulk({ people: many })).statusCode).toBe(400);
+    expect((await bulk({ people: [{ name: "Ab", email: "ab@x.com" }] })).statusCode).toBe(400);
+    expect((await bulk({ people: [{ name: "Ana Paula", email: "ana" }] })).statusCode).toBe(400);
+    expect(adapters.email.sent).toHaveLength(0);
+  });
+});

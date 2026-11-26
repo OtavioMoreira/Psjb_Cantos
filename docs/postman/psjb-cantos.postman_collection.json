@@ -917,6 +917,56 @@
           ]
         },
         {
+          "name": "Convidar em lote",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/invite/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "invite",
+                "bulk"
+              ]
+            },
+            "description": "Convida até 50 pessoas de uma vez, todas com o mesmo papel. Responde 200 com um resultado por linha: `invited` (convite enviado), `exists` (já tem conta; inclui repetidos na lista) ou `email_failed` (conta pendente criada, use **Reenviar convite**). Em produção há uma pausa de 0,6 s entre os envios (limite do Resend). 400 se alguma linha for inválida.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"people\": [\n    {\n      \"name\": \"Lote Um\",\n      \"email\": \"{{bulkEmail1}}\"\n    },\n    {\n      \"name\": \"Lote Dois\",\n      \"email\": \"{{bulkEmail2}}\"\n    }\n  ],\n  \"roles\": [\n    \"musico\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('bulkEmail1', `lote1+${Date.now()}@exemplo.com`);",
+                  "pm.collectionVariables.set('bulkEmail2', `lote2+${Date.now()}@exemplo.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Reenviar convite",
           "request": {
             "method": "POST",

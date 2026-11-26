@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Container } from "../container.js";
-import { adminUpdateUserSchema, blockUserSchema, inviteUserSchema, listUsersQuerySchema, userIdParamSchema, type UserDTO } from "../dtos/user.dto.js";
+import { adminUpdateUserSchema, blockUserSchema, bulkInviteSchema, inviteUserSchema, listUsersQuerySchema, userIdParamSchema, type UserDTO } from "../dtos/user.dto.js";
 import type { UserPage } from "../actions/admin/ListUsersAction.js";
 import { validate } from "../http/validate.js";
 import { requireAuth } from "../middlewares/auth.js";
@@ -43,6 +43,11 @@ export class AdminUserController {
   invite = async (req: FastifyRequest, reply: FastifyReply) => {
     const user = await this.c.actions.inviteUser.execute(requireAuth(req).userId, validate(inviteUserSchema, req.body));
     return reply.status(201).send({ user });
+  };
+
+  inviteBulk = async (req: FastifyRequest, reply: FastifyReply) => {
+    const results = await this.c.actions.bulkInvite.execute(requireAuth(req).userId, validate(bulkInviteSchema, req.body));
+    return reply.send({ results });
   };
 
   resendInvite = async (req: FastifyRequest, reply: FastifyReply) => {

@@ -89,6 +89,7 @@ export async function routes(app: FastifyInstance, { container }: { container: C
     adminScope.get("/audit", async (req) => container.actions.listAudit.execute(validate(auditQuerySchema, req.query)));
     adminScope.get("/users", admin.list);
     adminScope.post("/users/invite", strict(30), admin.invite);
+    adminScope.post("/users/invite/bulk", strict(5), admin.inviteBulk);
     adminScope.post("/users/:id/invite", strict(30), admin.resendInvite);
     adminScope.post("/users/:id/reset-link", strict(30), admin.sendResetLink);
     adminScope.patch("/users/:id/activate", admin.activate);

@@ -269,6 +269,13 @@ export const api = {
     unblock: async (id: string) => (await authed<{ user: ApiUser }>(`/admin/users/${id}/unblock`, { method: "POST" })).user,
     invite: async (body: { name: string; email: string; roles: ApiRole[] }) =>
       (await authed<{ user: ApiUser }>("/admin/users/invite", { method: "POST", body: JSON.stringify(body) })).user,
+    inviteBulk: async (body: { people: { name: string; email: string }[]; roles: ApiRole[] }) =>
+      (
+        await authed<{ results: { name: string; email: string; status: "invited" | "exists" | "email_failed"; user: ApiUser | null }[] }>(
+          "/admin/users/invite/bulk",
+          { method: "POST", body: JSON.stringify(body) },
+        )
+      ).results,
     resendInvite: (id: string) => authed<{ ok: true }>(`/admin/users/${id}/invite`, { method: "POST" }),
     sendResetLink: (id: string) => authed<{ ok: true }>(`/admin/users/${id}/reset-link`, { method: "POST" }),
     resetPassword: (id: string) => authed<{ user: ApiUser; temporaryPassword: string }>(`/admin/users/${id}/reset-password`, { method: "POST" }),

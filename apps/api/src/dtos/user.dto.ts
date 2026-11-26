@@ -93,6 +93,31 @@ export const inviteUserSchema = z
   .strict();
 export type InviteUserInput = z.infer<typeof inviteUserSchema>;
 
+/** Convite em lote: até 50 pessoas por vez, todas com o mesmo papel (o envio é um e-mail por pessoa). */
+export const BULK_INVITE_MAX = 50;
+export const bulkInviteSchema = z
+  .object({
+    people: z
+      .array(z.object({ name: nameSchema, email: emailSchema }).strict())
+      .min(1, "Informe pelo menos uma pessoa.")
+      .max(BULK_INVITE_MAX, `No máximo ${BULK_INVITE_MAX} pessoas por vez.`),
+    roles: z
+      .array(z.enum(ROLES))
+      .min(1, "Escolha pelo menos um papel.")
+      .default(["musico"])
+      .transform((r) => [...new Set(r)]),
+  })
+  .strict();
+export type BulkInviteInput = z.infer<typeof bulkInviteSchema>;
+/** invited: convite enviado · exists: já tinha conta · email_failed: conta criada, e-mail não saiu (reenviar depois). */
+export type BulkInviteStatus = "invited" | "exists" | "email_failed";
+export interface BulkInviteResult {
+  name: string;
+  email: string;
+  status: BulkInviteStatus;
+  user: UserDTO | null;
+}
+
 export const blockUserSchema = z.object({
   reason: optionalText(300),
 });

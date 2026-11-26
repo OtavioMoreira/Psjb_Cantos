@@ -40,6 +40,7 @@ const ROLE: Record<string, string> = { admin: "Administrador", musico: "Músico"
 /** Verbo da ação; `{t}` é o nome do alvo. */
 const VERB: Record<string, string> = {
   "user.invite": "convidou {t}",
+  "user.invite-bulk": "convidou várias pessoas de uma vez",
   "user.resend-invite": "reenviou o convite para {t}",
   "user.reset-link": "enviou o link de redefinição de senha para {t}",
   "user.activate": "ativou a conta de {t}",
@@ -81,5 +82,6 @@ export function auditDetails(e: AuditEntry): string | null {
   if (Array.isArray(d.roles) && d.roles.length) parts.push(`Papel: ${d.roles.includes("admin") ? ROLE.admin : ROLE.musico}`);
   if (typeof d.decision === "string") parts.push(`Decisão: ${DECISION[d.decision] ?? d.decision}`);
   if (typeof d.email === "string") parts.push(String(d.email));
+  if (typeof d.count === "number") parts.push(`${d.count} pessoa${d.count === 1 ? "" : "s"}`);
   return parts.length ? parts.join(" · ") : null;
 }

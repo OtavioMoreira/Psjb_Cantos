@@ -1,6 +1,6 @@
 import { AppError } from "../../domain/errors.js";
 import type { User } from "../../domain/user.js";
-import { toUserDTO, type InviteUserInput, type UserDTO } from "../../dtos/user.dto.js";
+import { toUserDTO, type BulkInviteInput, type BulkInviteResult, type InviteUserInput, type UserDTO } from "../../dtos/user.dto.js";
 import { inviteEmail, passwordResetEmail } from "../../emails/templates.js";
 import type { EmailMessage, MovementRepository, PasswordHasher, UserRepository } from "../../interfaces/index.js";
 import { issueLinkToken, type EmailTokenDeps } from "../auth/emailTokens.js";
@@ -53,6 +53,35 @@ export class InviteUserAction {
     });
     await sendInvite(this.deps, user, adminId);
     return toUserDTO(user);
+  }
+}
+
+/**
+ * Convida uma lista de pessoas, uma por vez, com o mesmo papel. Cada linha tem o seu resultado: quem já
+ * tem conta é pulado e, se o e-mail de alguém não sai, a conta fica pendente para "Reenviar convite".
+ * A pausa entre os envios respeita o limite de envios por segundo do Resend.
+ */
+export class BulkInviteAction {
+  constructor(
+    private readonly invite: InviteUserAction,
+    private readonly pauseMs = 0,
+  ) {}
+
+  async execute(adminId: string, input: BulkInviteInput): Promise<BulkInviteResult[]> {
+    const results: BulkInviteResult[] = [];
+    for (const [i, p] of input.people.entries()) {
+      if (i > 0 && this.pauseMs) await new Promise((r) => setTimeout(r, this.pauseMs));
+      try {
+        const user = await this.invite.execute(adminId, { name: p.name, email: p.email, roles: input.roles, movementId: null });
+        results.push({ ...p, status: "invited", user });
+      } catch (err) {
+        if (!(err instanceof AppError)) throw err;
+        if (err.code === "EMAIL_TAKEN") results.push({ ...p, status: "exists", user: null });
+        else if (err.code === "EMAIL_FAILED") results.push({ ...p, status: "email_failed", user: null });
+        else throw err;
+      }
+    }
+    return results;
   }
 }
 

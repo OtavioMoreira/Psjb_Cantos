@@ -8,7 +8,7 @@ import {
   ResetUserPasswordAction,
   UnblockUserAction,
 } from "./actions/admin/AdminUserActions.js";
-import { InviteUserAction, ResendInviteAction, SendResetLinkAction } from "./actions/admin/AdminEmailActions.js";
+import { BulkInviteAction, InviteUserAction, ResendInviteAction, SendResetLinkAction } from "./actions/admin/AdminEmailActions.js";
 import { ChangePasswordAction } from "./actions/auth/ChangePasswordAction.js";
 import { RequestPasswordResetAction, ResetPasswordAction } from "./actions/auth/PasswordResetActions.js";
 import { ConfirmEmailChangeAction, RequestEmailChangeAction } from "./actions/users/ChangeEmailActions.js";
@@ -128,6 +128,7 @@ export interface Adapters {
 export function buildContainer(env: Env, adapters: Adapters) {
   const ttl = { shortDays: env.REFRESH_TTL_SHORT_DAYS, longDays: env.REFRESH_TTL_LONG_DAYS };
   const deps = { ...adapters, ttl, appUrl: env.APP_URL, twoFactor: env.loginTwoFactor };
+  const inviteUser = new InviteUserAction(deps);
   return {
     env,
     tokens: adapters.tokens,
@@ -154,7 +155,8 @@ export function buildContainer(env: Env, adapters: Adapters) {
       unblockUser: new UnblockUserAction(deps),
       deleteUser: new DeleteUserAction(deps),
       resetUserPassword: new ResetUserPasswordAction(deps),
-      inviteUser: new InviteUserAction(deps),
+      inviteUser,
+      bulkInvite: new BulkInviteAction(inviteUser, env.NODE_ENV === "production" ? 600 : 0),
       resendInvite: new ResendInviteAction(deps),
       sendResetLink: new SendResetLinkAction(deps),
       searchUsers: new SearchUsersAction(deps),

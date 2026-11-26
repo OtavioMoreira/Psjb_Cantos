@@ -22,6 +22,7 @@ import type { User, UserRole, UserStatus } from "@/lib/types";
 import { admin, initials, syncAdminUsers, useUser, useUsers } from "@/lib/store";
 import { API_ENABLED, ApiError } from "@/lib/api";
 import { normalize } from "@/lib/search";
+import { BULK_INVITE_MAX, parseInviteList } from "@/lib/inviteList";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { MovementSelect } from "@/components/user/MovementSelect";
@@ -693,6 +694,32 @@ function DeleteDialog({ user, onClose }: { user: User; onClose: () => void }) {
 }
 
 function InviteDialog({ onClose }: { onClose: () => void }) {
+  const [mode, setMode] = useState<"one" | "many">("one");
+  return mode === "one" ? <InviteOne onClose={onClose} onMany={() => setMode("many")} /> : <InviteMany onClose={onClose} onOne={() => setMode("one")} />;
+}
+
+function RoleSelect({ id, value, onChange }: { id: string; value: UserRole; onChange: (r: UserRole) => void }) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
+        Papel
+      </label>
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value as UserRole)} className="h-11 w-full rounded-[6px] border border-border bg-surface px-3">
+        {Object.entries(ROLE_LABEL).map(([k, l]) => (
+          <option key={k} value={k}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+const INVITE_HELP = API_ENABLED
+  ? "A pessoa recebe um e-mail com um link (válido por 7 dias) para criar a senha. Até lá, aparece como “Aguardando ativação”."
+  : "A pessoa recebe um e-mail para confirmar o endereço e criar a senha. Até lá, aparece como “Aguardando e-mail”.";
+
+function InviteOne({ onClose, onMany }: { onClose: () => void; onMany: () => void }) {
   const [form, setForm] = useState({ name: "", email: "", role: "musico" as UserRole });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -728,26 +755,116 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
         </>
       }
     >
-      <p className="mb-4 text-sm text-ink-muted">
-        {API_ENABLED
-          ? "A pessoa recebe um e-mail com um link (válido por 7 dias) para criar a senha. Até lá, aparece como “Aguardando ativação”."
-          : "A pessoa recebe um e-mail para confirmar o endereço e criar a senha. Até lá, aparece como “Aguardando e-mail”."}
-      </p>
+      <p className="mb-4 text-sm text-ink-muted">{INVITE_HELP}</p>
       <div className="space-y-4">
         <Field label="Nome" name="invite-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <Field label="E-mail" name="invite-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={error || undefined} />
-        <div>
-          <label htmlFor="invite-role" className="mb-1.5 block text-sm font-medium">
-            Papel
-          </label>
-          <select id="invite-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })} className="h-11 w-full rounded-[6px] border border-border bg-surface px-3">
-            {Object.entries(ROLE_LABEL).map(([id, l]) => (
-              <option key={id} value={id}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </div>
+        <RoleSelect id="invite-role" value={form.role} onChange={(role) => setForm({ ...form, role })} />
+        <button type="button" onClick={onMany} className="min-h-11 text-sm font-medium text-primary underline-offset-2 hover:underline">
+          Convidar várias pessoas de uma vez
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+const BULK_STATUS: Record<"invited" | "exists" | "email_failed", { label: string; cls: string }> = {
+  invited: { label: "Convite enviado", cls: "text-success" },
+  exists: { label: "Já tem conta", cls: "text-ink-muted" },
+  email_failed: { label: "E-mail não saiu: use “Reenviar convite”", cls: "text-danger" },
+};
+
+function InviteMany({ onClose, onOne }: { onClose: () => void; onOne: () => void }) {
+  const [text, setText] = useState("");
+  const [role, setRole] = useState<UserRole>("musico");
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState<Awaited<ReturnType<typeof admin.inviteBulk>> | null>(null);
+  const { people, problems } = useMemo(() => parseInviteList(text), [text]);
+  const tooMany = people.length > BULK_INVITE_MAX;
+  const guessed = people.filter((p) => p.guessed).length;
+
+  if (results) {
+    const sent = results.filter((r) => r.status === "invited").length;
+    return (
+      <Modal title="Convites enviados" onClose={onClose} footer={<Button onClick={onClose}>Fechar</Button>}>
+        <p className="mb-3 text-sm text-ink-muted">
+          {sent} de {results.length} convite{results.length === 1 ? "" : "s"} enviado{sent === 1 ? "" : "s"}.
+        </p>
+        <ul className="max-h-[50vh] divide-y divide-border overflow-y-auto rounded-[6px] border border-border">
+          {results.map((r) => (
+            <li key={r.email} className="px-3 py-2 text-sm">
+              <span className="block break-words font-medium">{r.name}</span>
+              <span className="block break-all text-ink-muted">{r.email}</span>
+              <span className={`block text-xs font-medium ${BULK_STATUS[r.status].cls}`}>{BULK_STATUS[r.status].label}</span>
+            </li>
+          ))}
+        </ul>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      title="Convidar várias pessoas"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onOne}>
+            Voltar
+          </Button>
+          <Button
+            disabled={!people.length || tooMany || busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                setResults(await admin.inviteBulk(people.map(({ name, email }) => ({ name, email })), role));
+              } catch (e) {
+                toast(errorText(e, "Não foi possível enviar os convites agora."));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
+            {busy ? "Enviando…" : `Enviar ${people.length || ""} convite${people.length === 1 ? "" : "s"}`}
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-3 text-sm text-ink-muted">
+        Cole a lista, uma pessoa por linha: <span className="font-medium text-ink">Nome; e-mail</span> (também vale copiar da planilha ou só o e-mail). Até{" "}
+        {BULK_INVITE_MAX} por vez. {INVITE_HELP}
+      </p>
+      <div className="space-y-4">
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium">Lista</span>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={7}
+            placeholder={"Maria Souza; maria@gmail.com\nJoão Lima; joao@gmail.com"}
+            className="w-full rounded-[6px] border border-border bg-surface p-3 font-mono text-sm outline-none focus:border-primary focus:ring-2 focus:ring-gold/40"
+          />
+        </label>
+        <RoleSelect id="invite-many-role" value={role} onChange={setRole} />
+        {(people.length > 0 || problems.length > 0) && (
+          <div className="space-y-1 text-sm" aria-live="polite">
+            <p className={tooMany ? "text-danger" : "text-ink"}>
+              {people.length} pessoa{people.length === 1 ? "" : "s"} pronta{people.length === 1 ? "" : "s"}
+              {tooMany ? `: o máximo é ${BULK_INVITE_MAX} por vez.` : "."}
+              {guessed > 0 && !tooMany && <span className="text-ink-muted"> {guessed} sem nome na lista: o nome foi tirado do e-mail (a pessoa ajusta no perfil).</span>}
+            </p>
+            {problems.length > 0 && (
+              <ul className="space-y-0.5 text-danger">
+                {problems.map((p) => (
+                  <li key={p.line} className="break-words">
+                    Linha {p.line} ({p.text}): {p.reason} Fica de fora.
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );

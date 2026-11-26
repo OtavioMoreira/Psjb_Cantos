@@ -28,6 +28,8 @@ describe("Texto da auditoria", () => {
     expect(auditDetails(entry({ details: { fields: ["roles"], roles: ["admin", "musico"] } }))).toBe("Alterou: papel · Papel: Administrador");
     expect(auditDetails(entry({ details: { decision: "ignore", songId: null } }))).toBe("Decisão: ignorou");
     expect(auditDetails(entry({ details: { reason: null } }))).toBeNull();
+    expect(auditSentence(entry({ action: "user.invite-bulk", targetId: null, targetLabel: null }))).toBe("convidou várias pessoas de uma vez");
+    expect(auditDetails(entry({ details: { count: 12, roles: ["musico"] } }))).toBe("Papel: Músico · 12 pessoas");
   });
 
   it("ação desconhecida (versão nova da API) aparece pelo código", () => {

@@ -19,6 +19,11 @@ const fieldsOf = (body: Record<string, unknown>) => ({ fields: Object.keys(body)
 
 export const AUDIT_RULES: Record<string, Rule> = {
   "POST /users/invite": { action: "user.invite", target: "user", details: (b) => ({ email: b.email, roles: b.roles }) },
+  "POST /users/invite/bulk": {
+    action: "user.invite-bulk",
+    target: "user",
+    details: (b) => ({ count: Array.isArray(b.people) ? b.people.length : 0, roles: b.roles }),
+  },
   "POST /users/:id/invite": { action: "user.resend-invite", target: "user" },
   "POST /users/:id/reset-link": { action: "user.reset-link", target: "user" },
   "PATCH /users/:id/activate": { action: "user.activate", target: "user" },
