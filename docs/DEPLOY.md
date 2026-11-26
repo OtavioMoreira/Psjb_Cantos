@@ -37,13 +37,13 @@ Roteiro para tirar o site do GitHub Pages (demonstração) e publicá-lo com a A
 | Rodar migrations, importar cantos, migrar arquivos | Claude | Neon e Blob prontos |
 | Cadastrar no Cloudflare os registros do Resend e o CNAME do site | quem tem acesso ao Cloudflare do `psjb.org.br` | a lista exata (seção 6) |
 | Aprovar o site na URL `*.vercel.app` antes da troca do domínio | Otavio e a coordenação | — |
-| Confirmar se a paróquia usa e-mail `@psjb.org.br` antes de cancelar a HostGator | Otavio | falar com a secretaria |
+| ~~Confirmar se a paróquia usa e-mail `@psjb.org.br`~~ Usa (29 caixas): **o e-mail fica na HostGator** (decisão de 26/11/2026) | Otavio | — |
 
 ## 3. Pré-requisitos
 
 - [x] Conta na Vercel criada com o GitHub do repositório (plano Hobby).
 - [x] CLI logada nesta máquina: `! npx vercel login` (a sessão do Claude passa a enxergar a conta).
-- [ ] Descobrir **quem tem acesso à conta do Cloudflare** do `psjb.org.br` (o DNS está lá, não na HostGator).
+- [x] Descobrir **quem tem acesso à conta do Cloudflare** do `psjb.org.br` (o DNS está lá, não na HostGator).
 - [x] Confirmar que o domínio `psjb.org.br` está **pago no registro.br** (RDAP em 18/11/2026: vence em 29/06/2031; DNS no Cloudflare desde 30/06/2021, então o editor de DNS do cPanel da HostGator não vale) (é isso que mantém o DNS no ar depois de cancelar a HostGator).
 
 ## 4. Passo a passo
@@ -113,12 +113,12 @@ Só depois da aprovação do site na URL `*.vercel.app`, porque hoje esse endere
 - [ ] Atualizar `APP_URL` e `WEB_ORIGIN` na API para `https://cantos.psjb.org.br`; redeploy.
 - [ ] Conferir HTTPS, login (cookie no domínio novo) e links dos e-mails.
 
-### 4.7 Desligar a HostGator
-- [ ] Confirmar que nenhum canto aponta para `cantos.psjb.org.br/uploads` (passo 4.2).
-- [ ] **Confirmar com a secretaria se existem caixas `@psjb.org.br`** (ver seção 5). Se existirem, migrar antes.
+### 4.7 HostGator depois da troca (o e-mail continua lá)
+**Decisão de 26/11/2026: a HostGator não será cancelada.** Ela continua com o e-mail da paróquia; só o site `cantos` sai de lá.
+- [x] Confirmar que nenhum canto aponta para `cantos.psjb.org.br/uploads` (passo 4.2).
 - [ ] Guardar um backup completo do cPanel (arquivos e banco MySQL) fora da HostGator.
-- [ ] Remover do SPF o `include:websitewelcome.com` quando o e-mail não passar mais pela HostGator.
-- [ ] Cancelar a hospedagem.
+- [ ] **Nunca** mexer em MX, SPF (`include:websitewelcome.com`), `default._domainkey` nem no `mail.psjb.org.br`: são do e-mail.
+- [ ] Opcional, depois do lançamento: tirar do cPanel os arquivos e o banco do site antigo (o subdomínio `cantos` deixa de apontar para lá na troca do DNS).
 
 ## 5. Atenção: e-mail da paróquia na HostGator
 
@@ -131,7 +131,9 @@ O DNS do `psjb.org.br` (consultado em 15/10/2026) mostra:
 | TXT (SPF) | `v=spf1 a mx include:websitewelcome.com ~all` | autoriza a HostGator a enviar pelo domínio |
 | `_dmarc` | (não existe) | sem política DMARC |
 
-Se a paróquia usa caixas como `secretaria@psjb.org.br`, **cancelar a HostGator acaba com elas**. Antes de cancelar, migrar para outro serviço (Google Workspace for Nonprofits, Zoho Mail grátis ou Microsoft 365 para organizações sem fins lucrativos) e trocar o MX. O Resend não conflita com isso: ele envia por um subdomínio próprio (`send.psjb.org.br`) e não recebe e-mail.
+**Conferido no cPanel em 26/11/2026:** 29 caixas `@psjb.org.br` (secretaria, contato, financeiro, dizimo, pe.diego, as das capelas `cap.*` e outras) e um encaminhador (`atendimento@` → secretaria, pe.diego e um endereço externo). O DKIM da HostGator está em `default._domainkey`. **O e-mail fica na HostGator** (decisão do Otavio).
+
+O Resend não conflita com isso: ele envia por um subdomínio próprio (`send.psjb.org.br`), usa a chave `resend._domainkey` e não recebe e-mail. O DMARC novo (`p=none`) só pede relatórios e não bloqueia nada.
 
 ## 6. Registros DNS no Cloudflare
 
@@ -142,7 +144,7 @@ Os valores exatos (principalmente a chave DKIM) aparecem no painel do Resend. Em
 | TXT | `resend._domainkey` | `p=MIGfMA0...` (chave pública do Resend, exata no painel) | DKIM: assina os e-mails |
 | CNAME | `send` | `send.forge.rmta.net` | SPF e retorno de devoluções do subdomínio de envio |
 | CNAME | `rsend` | `rsend-sae1.forge.rmta.net` | SPF da região `sa-east-1` |
-| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:<e-mail da paróquia>` | DMARC: começa só monitorando |
+| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:ti@psjb.org.br` | DMARC: começa só monitorando |
 | CNAME | `cantos` | `cname.vercel-dns.com` | site novo (só no passo 4.6) |
 
 - Todos com o **proxy do Cloudflare desligado** (nuvem cinza).
