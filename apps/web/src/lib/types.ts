@@ -41,6 +41,8 @@ export interface Song {
   lyrics: string;
   /** Crédito da fonte, nos cantos importados (ex.: salmos da Diocese de Montenegro). */
   source?: { name: string; url: string } | null;
+  /** Veio da API e ainda está oculto (aguardando aprovação): só o admin vê. */
+  hidden?: boolean;
 }
 
 /** Versão leve usada em listagens (sem a letra completa). */

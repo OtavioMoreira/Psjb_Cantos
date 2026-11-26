@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, CloudOff, Eye, GripVertical, Loader2, Minus, Plus, RotateCcw, Sparkles, Tablet, Trash2, Users, X } from "lucide-react";
 import type { Mass, MassSlot, Song } from "@/lib/types";
 import { massAccess, saveMass, setMassShares, uid, useIsAdmin, useMassMergeNotice, useMassSyncError, useMasses, usePeopleLookup, usePrefs, useSession } from "@/lib/store";
-import { useSongIndex } from "@/lib/useSongIndex";
+import { useSongMap } from "@/lib/useSongIndex";
+import { SongMediaLinks } from "./SongMediaLinks";
 import { SEASON_STYLE, formatNumber, liturgicalSeason, liturgicalYear } from "@/lib/liturgy";
 import { keyLabel, wrapSemitones } from "@/lib/chords";
 import { taxonomy } from "@/lib/labels";
@@ -32,8 +33,9 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
   const [save, setSave] = useState<SaveState>("idle");
   const [flash, setFlash] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const { songs, error } = useSongIndex();
-  const byId = useMemo(() => new Map((songs ?? []).map((s) => [s.id, s])), [songs]);
+  // Índice do site + os cantos que ainda não estão nele (ex.: salmo da diocese aprovado e não publicado).
+  const songIds = useMemo(() => mass.slots.flatMap((s) => s.items.map((i) => i.songId)), [mass.slots]);
+  const { songs, error, byId, pending } = useSongMap(songIds);
   const prefs = usePrefs();
   const { userId } = useSession();
   const person = usePeopleLookup();
@@ -310,9 +312,15 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
                                 {song.composer && <span className="ml-2 font-normal text-ink-muted">{song.composer}</span>}
                               </p>
                               <p className="font-serif text-xl font-semibold leading-snug text-ink">{song.title}</p>
+                              {song.hidden && (
+                                <p className="mt-1 inline-block rounded-full bg-gold-soft px-2 py-0.5 text-xs font-semibold text-gold-ink">Oculto: aguardando aprovação</p>
+                              )}
+                              <SongMediaLinks song={song} />
                             </>
-                          ) : (
+                          ) : pending(item.songId) ? (
                             <span className="inline-block h-5 w-48 animate-pulse rounded bg-border" />
+                          ) : (
+                            <p className="text-sm text-ink-muted">Canto ainda não publicado no repertório (aguardando a coordenação).</p>
                           )}
                         </div>
                         <div className="-mr-1 flex shrink-0 items-center">

@@ -208,6 +208,15 @@ export async function buildScriptPdf(mass: Pick<Mass, "slots">, script: MassScri
   return { doc, fits, size };
 }
 
+/** Cantos da missa para o roteiro: o índice do site e, para o que falta nele, a API. */
+export async function scriptSongMap(mass: Pick<Mass, "slots">) {
+  const { loadSongIndex, fetchSong } = await import("./useSongIndex");
+  const byId = new Map((await loadSongIndex()).map((s) => [s.id, s]));
+  const missing = [...new Set(mass.slots.flatMap((s) => s.items.map((i) => i.songId)))].filter((id) => !byId.has(id));
+  for (const s of await Promise.all(missing.map(fetchSong))) if (s) byId.set(s.id, s);
+  return byId;
+}
+
 export async function downloadScriptPdf(mass: Pick<Mass, "slots" | "date">, script: MassScript, byId: Map<number, Song>) {
   const { doc, fits, size } = await buildScriptPdf(mass, script, byId, await logoDataUrl());
   doc.save(scriptFileName(script, mass.date));

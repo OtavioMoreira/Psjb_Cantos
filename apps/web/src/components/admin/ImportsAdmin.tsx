@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { CalendarClock, CircleCheck, ExternalLink, EyeOff, FileText, Loader2, RefreshCw } from "lucide-react";
 import { api, ApiError, type ApiImportItem, type ApiImportRun, type ImportStatus } from "@/lib/api";
+import type { ApiSong } from "@/lib/apiSongs";
 import { formatDateShort } from "@/lib/liturgy";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
@@ -11,7 +12,7 @@ import { AdminTitle } from "./AdminShell";
 import { songEditUrl } from "./SongsAdmin";
 
 const STATUS: Record<ImportStatus, { label: string; tone: string }> = {
-  created: { label: "Novo (oculto)", tone: "bg-gold-soft text-gold-ink" },
+  created: { label: "Canto novo", tone: "bg-gold-soft text-gold-ink" },
   linked: { label: "Já existia", tone: "bg-primary-soft text-primary" },
   review: { label: "A revisar", tone: "bg-gold-soft text-gold-ink" },
   ignored: { label: "Ignorado", tone: "bg-surface-2 text-ink-muted" },
@@ -30,7 +31,8 @@ const when = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-di
 export function ImportsAdmin() {
   const [data, setData] = useState<{ items: ApiImportItem[]; runs: ApiImportRun[] } | null>(null);
   const [filter, setFilter] = useState<"review" | "all">("all");
-  const [titles, setTitles] = useState<Record<number, string>>({});
+  const [found, setFound] = useState<Record<number, ApiSong>>({});
+  const titles = Object.fromEntries(Object.entries(found).map(([id, s]) => [id, s.title]));
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(
@@ -42,9 +44,9 @@ export function ImportsAdmin() {
           setData(d);
           // Títulos dos cantos citados (criados, reconhecidos e candidatos da revisão).
           const ids = [...new Set(d.items.flatMap((i) => [i.songId, ...i.candidateSongIds]).filter((x): x is number => Boolean(x)))];
-          return Promise.all(ids.map((id) => api.admin.song(id).then((s) => [id, s.title] as const).catch(() => null)));
+          return Promise.all(ids.map((id) => api.admin.song(id).then((s) => [id, s] as const).catch(() => null)));
         })
-        .then((found) => setTitles(Object.fromEntries(found.filter((x): x is readonly [number, string] => Boolean(x))))),
+        .then((list) => setFound(Object.fromEntries(list.filter((x): x is readonly [number, ApiSong] => Boolean(x))))),
     [],
   );
   useEffect(() => {
@@ -139,6 +141,19 @@ export function ImportsAdmin() {
               <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS[i.status].tone}`}>{STATUS[i.status].label}</span>
             </div>
             {i.message && <p className="mt-1 text-sm text-ink-muted">{i.message}</p>}
+            {i.songId && found[i.songId] && (
+              <SongStatus
+                song={found[i.songId]}
+                sourceAudio={i.audioUrl}
+                busy={busy === `a${i.id}`}
+                onApprove={() =>
+                  attempt(`a${i.id}`, async () => {
+                    await api.admin.updateSong(i.songId!, { active: true });
+                    return "Aprovado: já aparece nas missas. Para entrar na lista pública de cantos, clique em “Publicar no site”.";
+                  })
+                }
+              />
+            )}
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
               {i.songId && (
                 <Link href={songEditUrl(i.songId)} className="font-medium text-primary hover:underline">
@@ -187,6 +202,44 @@ export function ImportsAdmin() {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * Situação do canto ligado ao item: oculto (com "Aprovar") ou visível, e o que ele tem de mídia.
+ * O áudio toca daqui mesmo (o do canto; sem ele, o da diocese).
+ */
+function SongStatus({ song, sourceAudio, busy, onApprove }: { song: ApiSong; sourceAudio: string | null; busy: boolean; onApprove: () => void }) {
+  const audio = song.media.audio ?? sourceAudio;
+  return (
+    <div className="mt-3 rounded-[10px] bg-surface-2 p-3">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {song.active ? (
+          <span className="inline-flex items-center gap-1.5 font-semibold text-success">
+            <CircleCheck size={16} /> Visível no repertório
+          </span>
+        ) : (
+          <>
+            <span className="inline-flex items-center gap-1.5 font-semibold text-gold-ink">
+              <EyeOff size={16} /> Oculto: aguardando aprovação
+            </span>
+            <Button className="ml-auto min-h-10 py-1.5" disabled={busy} onClick={onApprove}>
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <CircleCheck size={16} />} Aprovar
+            </Button>
+          </>
+        )}
+      </div>
+      {!song.active && <p className="mt-1 text-xs text-ink-muted">Antes de aprovar, confira a letra em “Abrir canto”.</p>}
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+        {song.media.partituraPdf && (
+          <a href={song.media.partituraPdf} target="_blank" rel="noopener" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+            <FileText size={14} /> Partitura (PDF)
+          </a>
+        )}
+        {!audio && <span className="text-ink-muted">Sem áudio</span>}
+      </div>
+      {audio && <audio src={audio} controls preload="none" className="mt-2 h-10 w-full" aria-label={`Áudio de ${song.title}`} />}
     </div>
   );
 }

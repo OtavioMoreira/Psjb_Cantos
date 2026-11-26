@@ -88,7 +88,10 @@ class PsalmImporter {
     );
   }
 
-  /** Cria o canto (oculto, aguardando aprovação) com a letra do PDF, a partitura e o áudio copiados. */
+  /**
+   * Cria o canto (oculto, aguardando aprovação) com a letra do PDF e a partitura copiada. O áudio
+   * aponta direto para o MP3 da diocese (26/11/2026): não ocupa o Blob, que tem 1 GB no plano grátis.
+   */
   protected async createSong(item: ExternalPsalm, info: ListingInfo, pdf: Buffer | null): Promise<Song> {
     const ids = await this.flagIds();
     const sheet = pdf ? sheetToLyrics(await this.deps.pdf.lines(pdf), info.kind) : null;
@@ -111,11 +114,7 @@ class PsalmImporter {
       const url = await this.deps.storage.put(`songs/${song.id}/partitura-pdf-diocese.pdf`, pdf, "application/pdf");
       song = (await this.deps.songs.setMedia(song.id, "partituraPdf", url, null))!;
     }
-    if (item.audioUrl) {
-      const audio = await this.deps.psalmSource.download(item.audioUrl);
-      const url = await this.deps.storage.put(`songs/${song.id}/audio-diocese.mp3`, audio, "audio/mpeg");
-      song = (await this.deps.songs.setMedia(song.id, "audio", url, null))!;
-    }
+    if (item.audioUrl) song = (await this.deps.songs.setMedia(song.id, "audio", item.audioUrl, null))!;
     return song;
   }
 

@@ -235,6 +235,8 @@ export const api = {
   requestEmailChange: (email: string, password: string) => authed<{ ok: true }>("/me/email", { method: "POST", body: JSON.stringify({ email, password }) }),
   /** Confirma pelo link do e-mail (não precisa estar logado). */
   confirmEmailChange: (token: string) => call<{ email: string }>("/auth/confirm-email", { method: "POST", body: JSON.stringify({ token }) }),
+  /** Um canto visível pelo id ou slug (mesmo antes de "Publicar no site"). */
+  song: async (ref: number | string) => (await call<{ song: ApiSong }>(`/songs/${ref}`)).song,
   async movements() {
     return (await call<{ movements: { id: number; name: string }[] }>("/movements")).movements;
   },

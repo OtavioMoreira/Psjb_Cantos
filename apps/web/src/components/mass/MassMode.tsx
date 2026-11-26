@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Expand, Guitar, Headphones, List, Minus, Moo
 import type { MassItem, MassSlot } from "@/lib/types";
 import { saveMass, setPrefs, usePrefs, useMasses } from "@/lib/store";
 import { useHydrated } from "@/lib/hooks";
-import { useSongIndex } from "@/lib/useSongIndex";
+import { useSongMap } from "@/lib/useSongIndex";
 import { keyLabel, wrapSemitones } from "@/lib/chords";
 import { formatNumber } from "@/lib/liturgy";
 import { ChordSheet } from "@/components/song/ChordSheet";
@@ -35,7 +35,8 @@ export function MassMode() {
   const hydrated = useHydrated();
   const mass = useMasses().find((m) => m.id === id);
   const prefs = usePrefs();
-  const { songs, error } = useSongIndex();
+  // Índice do site + os cantos da missa que ainda não estão nele (aprovados e não publicados).
+  const { songs, error, byId } = useSongMap(useMemo(() => (mass ? mass.slots.flatMap((s) => s.items.map((i) => i.songId)) : []), [mass]));
   const [index, setIndex] = useState(0);
   const [done, setDone] = useState(false);
   const [sidebar, setSidebar] = useState(true);
@@ -62,7 +63,6 @@ export function MassMode() {
     () => (mass ? mass.slots.flatMap((slot) => slot.items.map((item) => ({ slot, item }))) : []),
     [mass],
   );
-  const byId = useMemo(() => new Map((songs ?? []).map((s) => [s.id, s])), [songs]);
   const step = steps[index];
   const song = step ? byId.get(step.item.songId) : undefined;
 

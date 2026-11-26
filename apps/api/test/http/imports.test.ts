@@ -80,7 +80,9 @@ describe("Importação de salmos: canto novo", () => {
         "Despertai vosso poder, ó nosso Deus\ne vinde logo nos trazer a salvação!",
     );
     expect(s.media.partituraPdf).toMatch(/songs\/\d+\/partitura-pdf-diocese\.pdf/);
-    expect(s.media.audio).toMatch(/songs\/\d+\/audio-diocese\.mp3/);
+    // O áudio aponta para o MP3 da diocese (não é baixado nem guardado no Blob).
+    expect(s.media.audio).toMatch(/^https:\/\/storage\.unitas\.app\.br\/.+\.mp3$/);
+    expect(adapters.psalmSource.downloads.some((u) => u.endsWith(".mp3"))).toBe(false);
 
     // 1ª camada: rodar de novo (outro dia da semana) não cria nada nem baixa de novo.
     const downloads = adapters.psalmSource.downloads.length;

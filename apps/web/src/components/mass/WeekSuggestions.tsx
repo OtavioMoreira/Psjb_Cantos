@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, CopyPlus, FileDown, Loader2, Pencil, Sparkles } from "lucide-react";
 import type { Mass } from "@/lib/types";
 import { massFromSuggestion, useSession, useWeekSuggestions } from "@/lib/store";
-import { loadSongIndex, useSongIndex } from "@/lib/useSongIndex";
+import { useSongMap } from "@/lib/useSongIndex";
 import { SEASON_STYLE, formatDateLong, formatNumber } from "@/lib/liturgy";
 import { massEditUrl } from "@/lib/routes";
 import { toast } from "@/components/ui/Toast";
@@ -45,8 +45,8 @@ function SuggestionCard({ mass }: { mass: Mass & { ownerName: string } }) {
   const { userId } = useSession();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const { songs } = useSongIndex(open);
-  const byId = useMemo(() => new Map((songs ?? []).map((s) => [s.id, s])), [songs]);
+  const ids = useMemo(() => mass.slots.flatMap((s) => s.items.map((i) => i.songId)), [mass.slots]);
+  const { songs, byId, pending } = useSongMap(ids, open);
   const color = mass.season ? SEASON_STYLE[mass.season].color : "var(--border)";
   const count = mass.slots.reduce((n, s) => n + s.items.length, 0);
   const mine = mass.ownerId === userId;
@@ -62,8 +62,8 @@ function SuggestionCard({ mass }: { mass: Mass & { ownerName: string } }) {
     if (!mass.script) return;
     setBusy(true);
     try {
-      const [{ downloadScriptPdf }, all] = await Promise.all([import("@/lib/scriptPdf"), loadSongIndex()]);
-      await downloadScriptPdf(mass, mass.script, new Map(all.map((s) => [s.id, s])));
+      const { downloadScriptPdf, scriptSongMap } = await import("@/lib/scriptPdf");
+      await downloadScriptPdf(mass, mass.script, await scriptSongMap(mass));
     } catch {
       toast("Não foi possível gerar o roteiro agora.");
     } finally {
@@ -111,10 +111,10 @@ function SuggestionCard({ mass }: { mass: Mass & { ownerName: string } }) {
                               {song.number != null && <span className="mr-1 text-gold-ink [font-variant-numeric:lining-nums]">{formatNumber(song.number)}</span>}
                               {song.title}
                             </>
-                          ) : songs ? (
-                            "Canto novo (aparece depois de publicar o site)"
-                          ) : (
+                          ) : !songs || pending(i.songId) ? (
                             "Carregando…"
+                          ) : (
+                            "Canto ainda não publicado no repertório"
                           )}
                         </span>
                       );
