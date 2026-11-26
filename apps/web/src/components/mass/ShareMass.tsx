@@ -108,7 +108,7 @@ function useCandidates(q: string, ownerId: string | undefined): { list: Candidat
         .then((found) => {
           if (!alive) return;
           rememberPeople(found);
-          setRemote({ q, list: found.map((p) => ({ id: p.id, name: p.name, email: p.email, detail: p.movement ?? "" })) });
+          setRemote({ q, list: found.map((p) => ({ id: p.id, name: p.name, email: p.email, detail: p.movements.join(", ") })) });
         })
         .catch(() => alive && setRemote({ q, list: [] }));
     }, 250);
@@ -123,7 +123,7 @@ function useCandidates(q: string, ownerId: string | undefined): { list: Candidat
     return users
       .filter((u) => u.status === "ativo" && u.id !== ownerId)
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
-      .map((u) => ({ id: u.id, name: u.name, email: u.email, detail: [ROLE_LABEL[u.role], u.movement].filter(Boolean).join(" · ") }))
+      .map((u) => ({ id: u.id, name: u.name, email: u.email, detail: [ROLE_LABEL[u.role], u.movements.map((m) => m.name).join(", ")].filter(Boolean).join(" · ") }))
       .filter((u) => terms.every((t) => normalize(`${u.name} ${u.email} ${u.detail}`).includes(t)));
   }, [users, ownerId, q]);
 

@@ -90,7 +90,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
             <UserAvatar name={user.name} photoUrl={user.photoUrl} size={48} />
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.name}</p>
-              <p className="truncate text-xs text-ink-muted">{isAdmin ? "Administrador" : user.movement}</p>
+              <p className="truncate text-xs text-ink-muted">{isAdmin ? "Administrador" : user.movements.map((m) => m.name).join(", ")}</p>
             </div>
           </div>
           <nav aria-label="Painel" className="mt-6 space-y-1 border-t border-border pt-4">

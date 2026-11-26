@@ -21,6 +21,7 @@ describe.skipIf(!dbUrl)("Migrations", () => {
       "010_site_state.sql",
       "011_audit_log.sql",
       "012_rate_limits.sql",
+      "013_user_movements.sql",
     ]);
   });
 

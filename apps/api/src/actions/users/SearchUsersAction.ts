@@ -5,7 +5,7 @@ export interface PersonSearchDTO {
   name: string;
   email: string;
   photoUrl: string | null;
-  movement: string | null;
+  movements: string[];
 }
 
 /** Busca pessoas ativas para compartilhar uma missa. Qualquer pessoa logada pode buscar. */

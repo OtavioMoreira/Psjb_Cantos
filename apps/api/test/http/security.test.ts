@@ -45,7 +45,7 @@ let app: FastifyInstance;
 let adapters: ReturnType<typeof makeTestContainer>["adapters"];
 
 async function addUser(email: string, roles: ("admin" | "musico")[] = ["musico"], status: "active" | "pending" | "blocked" = "active") {
-  return adapters.users.create({ name: email.split("@")[0], email, passwordHash: await adapters.hasher.hash("senha1234"), phone: null, movementId: null, status, roles });
+  return adapters.users.create({ name: email.split("@")[0], email, passwordHash: await adapters.hasher.hash("senha1234"), phone: null, movementIds: [], status, roles });
 }
 const login = (email: string, password = "senha1234") => app.inject({ method: "POST", url: "/api/auth/login", payload: { email, password } });
 const tokenOf = async (email: string) => (await login(email)).json().accessToken as string;

@@ -35,3 +35,10 @@ export class DeleteMovementAction {
     if (!(await this.deps.movements.delete(id))) throw new AppError("NOT_FOUND", "Movimento não encontrado.");
   }
 }
+
+/** Recusa (400) se algum dos movimentos escolhidos não existe. */
+export async function ensureMovementsExist(movements: MovementRepository, ids: number[] | undefined) {
+  if (!ids?.length) return;
+  if ((await movements.missingIds(ids)).length)
+    throw new AppError("VALIDATION_ERROR", "Confira os dados enviados.", { fields: { movementIds: "Movimento não encontrado." } });
+}

@@ -10,7 +10,7 @@ let adapters: ReturnType<typeof makeTestContainer>["adapters"];
 let adminToken: string;
 
 const addUser = async (email: string, roles: ("admin" | "musico")[] = ["musico"], name = email.split("@")[0]) =>
-  adapters.users.create({ name, email, passwordHash: await adapters.hasher.hash("senha1234"), phone: null, movementId: null, status: "active", roles });
+  adapters.users.create({ name, email, passwordHash: await adapters.hasher.hash("senha1234"), phone: null, movementIds: [], status: "active", roles });
 const tokenOf = async (email: string) =>
   (await app.inject({ method: "POST", url: "/api/auth/login", payload: { email, password: "senha1234" } })).json().accessToken as string;
 const admin = (method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", url: string, payload?: object, token = adminToken) =>

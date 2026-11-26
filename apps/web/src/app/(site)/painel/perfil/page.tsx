@@ -7,7 +7,7 @@ import { api, API_ENABLED, ApiError } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
 import type { User } from "@/lib/types";
 import { Field } from "@/components/ui/Field";
-import { MovementSelect } from "@/components/user/MovementSelect";
+import { MovementPicker } from "@/components/user/MovementPicker";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "@/components/ui/Toast";
@@ -43,7 +43,7 @@ export default function PerfilPage() {
       <div className="mt-6 space-y-5">
         {/* key força reinicializar o formulário quando o usuário salvo muda */}
         <PersonalCard key={user.name + user.email} user={user} />
-        <MovementCard key={user.movement + user.parish + user.instrument} user={user} />
+        <MovementCard key={user.movements.map((m) => m.id).join() + user.parish + user.instrument} user={user} />
         <SecurityCard required={Boolean(user.mustChangePassword)} />
         <PrefsCard />
       </div>
@@ -238,26 +238,22 @@ function PhotoPicker({ user, name }: { user: User; name: string }) {
 
 function MovementCard({ user }: { user: User }) {
   const [parish, setParish] = useState(user.parish);
-  const [movement, setMovement] = useState({ id: user.movementId, name: user.movement });
+  const [movements, setMovements] = useState(user.movements);
   const [instrument, setInstrument] = useState(user.instrument ?? "");
   const [busy, setBusy] = useState(false);
-  const dirty = parish !== user.parish || movement.id !== user.movementId || instrument !== (user.instrument ?? "");
+  const dirty = parish !== user.parish || movements.map((m) => m.id).join() !== user.movements.map((m) => m.id).join() || instrument !== (user.instrument ?? "");
   return (
-    <Card title="Paróquia e movimento">
+    <Card title="Paróquia e movimentos">
       <form
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          void save(setBusy, () => updateUser({ parish: parish.trim(), movement: movement.name, movementId: movement.id, instrument }), "Dados atualizados.");
+          void save(setBusy, () => updateUser({ parish: parish.trim(), movements, instrument }), "Dados atualizados.");
         }}
       >
         <fieldset className="space-y-4">
           <Field label="Paróquia" name="parish" value={parish} maxLength={120} placeholder="Paróquia Catedral São João Batista" onChange={(e) => setParish(e.target.value)} />
-          <MovementSelect
-            label="Movimento"
-            value={movement.id}
-            onChange={(m) => setMovement({ id: m?.id ?? null, name: m?.name ?? "" })}
-          />
+          <MovementPicker label="Movimentos" value={movements} onChange={setMovements} />
           <div>
             <label htmlFor="instrument" className="mb-1.5 block text-sm font-medium">
               Instrumento / voz

@@ -16,7 +16,7 @@ async function addUser(key: string, opts: { roles?: Role[]; status?: UserStatus 
     email,
     passwordHash: await adapters.hasher.hash("senha1234"),
     phone: null,
-    movementId: null,
+    movementIds: [],
     status: opts.status ?? "active",
     roles: opts.roles ?? ["musico"],
   });
@@ -273,9 +273,9 @@ describe("Movimentos", () => {
   it("cadastro com movimento existente; inexistente dá 400", async () => {
     const { id } = (await req("admin", "POST", "/admin/movements", { name: "Catequese" })).json().movement;
     const base = { name: "Carla Souza", password: "senha1234" };
-    const ok = await app.inject({ method: "POST", url: "/api/users", payload: { ...base, email: "carla@x.com", movementId: id } });
-    expect(ok.json().user.movement).toEqual({ id, name: "Catequese" });
-    const bad = await app.inject({ method: "POST", url: "/api/users", payload: { ...base, email: "c2@x.com", movementId: 999 } });
-    expect(bad.json().error.details.fields.movementId).toBe("Movimento não encontrado.");
+    const ok = await app.inject({ method: "POST", url: "/api/users", payload: { ...base, email: "carla@x.com", movementIds: [id] } });
+    expect(ok.json().user.movements).toEqual([{ id, name: "Catequese" }]);
+    const bad = await app.inject({ method: "POST", url: "/api/users", payload: { ...base, email: "c2@x.com", movementIds: [999] } });
+    expect(bad.json().error.details.fields.movementIds).toBe("Movimento não encontrado.");
   });
 });

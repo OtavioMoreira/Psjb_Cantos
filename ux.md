@@ -312,7 +312,8 @@ Comportamento:
 │   Nome completo  [___________________]    │
 │   E-mail         [___________________]    │
 │   Telefone / WhatsApp (opcional) [_____]  │
-│   Movimento (opcional) [Nenhum      ▾]   │
+│   Movimentos (opcional)                   │
+│   (Catequese) (✓ RCC) (Pastoral…) …       │
 │   Senha [________ 👁]  ▓▓▓░ Força: Boa    │
 │   Confirmar senha [________ 👁]           │
 │   [✓] Li e aceito os termos (LGPD)        │
@@ -407,9 +408,9 @@ Seções em cards empilhados, com largura máxima de 640px:
 │ Nome     [Ana Souza                    ]     │
 │ E-mail   [ana@exemplo.com              ]     │
 │                          [Salvar alterações] │
-├ Paróquia e movimento ────────────────────────┤
+├ Paróquia e movimentos ───────────────────────┤
 │ Paróquia   [Catedral São João Batista ▾]     │
-│ Movimento [Ministério de Música ▾]           │
+│ Movimentos (✓ Min. de Música) (✓ RCC) (…)    │
 │ Instrumento / voz [Violão ▾]                 │
 │ Instrumento/voz padrão → usado no Modo Missa │
 ├ Segurança ───────────────────────────────────┤
@@ -490,7 +491,7 @@ Só aparecem pessoas com conta ativa.
 - **Publicar no site:** modal que explica que as páginas são geradas de antemão e que a atualização leva alguns minutos, com a linha de status ("Há alterações não publicadas (a última em …)" ou "Nenhuma alteração desde a última publicação. Última publicação: …, por …"). Toast: "Publicação pedida. O site atualiza em alguns minutos."
   - **Com alterações pendentes**, o botão vira `primary` com uma bolinha dourada e, abaixo dele, "Há alterações não publicadas" em `gold-ink`; sem pendências, "Publicado em 24 nov, 14:03 por {primeiro nome}" em `ink-muted`. O status é conferido ao abrir a tela, ao voltar para a aba e depois de cada alteração em cantos, flags ou salmos.
 - **Auditoria** (`/painel/admin/auditoria`): filtros em pílulas (Tudo, Usuários, Cantos, Flags, Movimentos, Publicação, Salmos, ≥ 44 px), "N registros" e uma lista em card: à esquerda a data ("seg., 24 de nov., 14:03"), à direita "**Padre João** bloqueou “Maria Souza”" e, abaixo, o detalhe em `ink-muted` ("Motivo: …", "Alterou: letra, título"). Ações em cantos levam ao editor. No celular, a data fica em cima. "Mostrar mais (N)" no fim.
-- **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Nome, paróquia, movimento, instrumento e senha salvam no servidor (botão com spinner enquanto salva). O e-mail fica só leitura (fundo `surface-2`), com a dica "É o seu login." e o link [✉ Trocar e-mail], que abre um modal com "Novo e-mail" e "Sua senha" e o botão [Enviar link]. Enviado, o link dá lugar a um aviso verde: "Enviamos um link para {novo}… Até lá, você continua entrando com {atual}."
+- **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Nome, paróquia, movimentos, instrumento e senha salvam no servidor (botão com spinner enquanto salva). O e-mail fica só leitura (fundo `surface-2`), com a dica "É o seu login." e o link [✉ Trocar e-mail], que abre um modal com "Novo e-mail" e "Sua senha" e o botão [Enviar link]. Enviado, o link dá lugar a um aviso verde: "Enviamos um link para {novo}… Até lá, você continua entrando com {atual}."
 - **Senha temporária:** quem entra com a senha gerada pelo admin é levado a `/painel/perfil#seguranca` (qualquer outra página do painel redireciona para lá). No topo, aviso em `gold-soft` com 🔑 "Você entrou com uma senha temporária…", e o primeiro campo se chama "Senha temporária".
 
 ### 4.8 Montar Missa: editor (`/painel/missas/nova`)
@@ -630,15 +631,20 @@ Usuários                                        [👤+ Convidar usuário]
 [🔍 Buscar por nome, e-mail ou movimento        ] [Todos os papéis ▾]
 8 usuários
 ┌──────────────────────────────────────────────────────────────────────┐
-│ USUÁRIO                     PAPEL        STATUS             ÚLTIMO   │
-│ (MC) Mariana Costa          Músico       ● Aguardando e-mail Nunca  ⋯│
-│      mariana@… · Coral Jovem                                          │
-│ (RG) Rafael Gomes           Músico       ● Bloqueado        2 mar.  ⋯│
-│ (CP) Coordenação  [você]    Administrador● Ativo            Hoje    ⋯│
+│ USUÁRIO            MOVIMENTOS                  PAPEL   STATUS    ÚLT. │
+│ (MC) Mariana Costa [Catequese ✕][RCC ✕] (+)    Músico  ● Aguard. Nunca⋯│
+│      mariana@…        ┌ MOVIMENTOS DE MARIANA ┐                       │
+│                       │ ☑ Catequese           │                       │
+│                       │ ☐ Legião de Maria     │                       │
+│                       │ ☑ RCC                 │                       │
+│                       │ Cada marcação já salva. Criar movimento │     │
+│                       └───────────────────────┘                       │
+│ (RG) Rafael Gomes  (+ Movimento)               Músico  ● Bloq.  2 mar.⋯│
 └──────────────────────────────────────────────────────────────────────┘
 ```
 - **Layout:**
-  - Desktop (≥ 1024): tabela. Celular e tablet: cards com a identidade no topo e, abaixo, status, papel e último acesso.
+  - Desktop (≥ 1024): tabela. Celular e tablet: cards com a identidade no topo, os movimentos e, abaixo, status, papel e último acesso.
+  - **Movimentos na lista:** etiquetas `primary-soft` com ✕ (alvo de 24 px, `aria-label` "Tirar Ana de RCC") e o botão tracejado (+) — "+ Movimento" quando não há nenhum — que abre um popover de 288 px com caixas de marcar (linhas de 44 px; filtro quando há mais de 8), "Salvando…" e o link "Criar movimento". Cada clique salva na hora; fecha com Esc ou clicando fora.
   - Com a API, busca (com espera de 300 ms), filtros e resumo vêm do servidor, 50 por vez com "Mostrar mais (N)" no fim.
   - Ordem: pendentes, depois bloqueados, depois ativos.
 - **Badges de status:**
@@ -658,7 +664,7 @@ Usuários                                        [👤+ Convidar usuário]
 - **Modais** (no celular, abrem como bottom sheet):
   - **Bloquear:** texto explicativo + campo "Motivo (aparece para a pessoa ao tentar entrar)" + [⛔ Bloquear] em vermelho. O toast oferece "Desfazer".
   - **Redefinir senha:** duas opções grandes, "Enviar link por e-mail (recomendado)" e "Gerar senha temporária". A senha gerada aparece **uma única vez**, com [Copiar]. Com a API, o link por e-mail só fica habilitado para conta ativa (nas outras, a descrição orienta a usar o convite). Erro no envio aparece em toast.
-  - **Editar:** nome, e-mail (com a API, a dica avisa que é o login da pessoa), movimento (seletor) e papel, com a descrição de cada papel. Erro da API aparece dentro do modal.
+  - **Editar:** nome, e-mail (com a API, a dica avisa que é o login da pessoa), movimentos (etiquetas marcáveis) e papel, com a descrição de cada papel. Erro da API aparece dentro do modal.
   - **Convidar:** nome, e-mail e papel; o convidado nasce "Aguardando e-mail" (com a API, "Aguardando ativação") e recebe o link de 7 dias para criar a senha. O botão fica com spinner enquanto envia.
   - **Excluir:** confirmação que sugere bloquear, por ser reversível; o toast oferece "Desfazer". Com a API, avisa que as missas criadas pela pessoa são apagadas junto, e a exclusão só vai para o servidor depois dos 6,5 s do "Desfazer".
 - **Tabela (desktop):** o contêiner não usa `overflow-hidden`, para o menu ⋯ das últimas linhas não ser cortado; os cantos arredondados ficam no cabeçalho.

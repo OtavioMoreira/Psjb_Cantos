@@ -11,8 +11,8 @@ interface MovementRow {
 }
 
 const SELECT = `
-  SELECT mv.id, mv.name, mv.created_at, count(u.id) AS members
-  FROM movements mv LEFT JOIN users u ON u.movement_id = mv.id`;
+  SELECT mv.id, mv.name, mv.created_at, count(u.user_id) AS members
+  FROM movements mv LEFT JOIN user_movements u ON u.movement_id = mv.id`;
 
 const toMovement = (r: MovementRow): Movement => ({ id: r.id, name: r.name, members: Number(r.members), createdAt: r.created_at });
 
@@ -51,14 +51,22 @@ export class PgMovementRepository implements MovementRepository {
     }
   }
 
+  async missingIds(ids: number[]) {
+    const { rows } = await this.pool.query<{ id: number }>(
+      "SELECT x.id FROM unnest($1::int[]) AS x(id) WHERE NOT EXISTS (SELECT 1 FROM movements m WHERE m.id = x.id)",
+      [ids],
+    );
+    return rows.map((r) => r.id);
+  }
+
   async delete(id: number) {
     try {
       const { rowCount } = await this.pool.query("DELETE FROM movements WHERE id = $1", [id]);
       return Boolean(rowCount);
     } catch (err) {
-      // FK users.movement_id é RESTRICT (erro 23001; 23503 se um dia virar NO ACTION).
+      // FK user_movements.movement_id é RESTRICT (erro 23001; 23503 se um dia virar NO ACTION).
       if (["23001", "23503"].includes((err as { code?: string }).code ?? ""))
-        throw new AppError("MOVEMENT_IN_USE", "Há pessoas neste movimento. Troque o movimento delas antes de excluir.");
+        throw new AppError("MOVEMENT_IN_USE", "Há pessoas neste movimento. Tire o movimento delas antes de excluir.");
       throw err;
     }
   }

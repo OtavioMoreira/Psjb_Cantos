@@ -18,7 +18,8 @@ export interface User {
   email: string;
   phone: string | null;
   photoUrl: string | null;
-  movement: MovementRef | null;
+  /** Movimentos da pessoa (vários), por nome. */
+  movements: MovementRef[];
   parish: string | null;
   instrument: string | null;
   status: UserStatus;

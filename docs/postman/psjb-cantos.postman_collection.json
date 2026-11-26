@@ -579,10 +579,10 @@
                 "users"
               ]
             },
-            "description": "Cria a conta **pendente**, com papel músico. Ela só entra depois que um admin ativar. `phone` e `movementId` são opcionais (use **Movimentos › Listar** para ver os ids). 409 EMAIL_TAKEN se o e-mail já existe.",
+            "description": "Cria a conta **pendente**, com papel músico. Ela só entra depois que um admin ativar. `phone` e `movementIds` (lista: a pessoa pode ter vários movimentos) são opcionais (use **Movimentos › Listar** para ver os ids). 409 EMAIL_TAKEN se o e-mail já existe.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Músico de Teste\",\n  \"email\": \"{{newUserEmail}}\",\n  \"password\": \"{{newUserPassword}}\",\n  \"phone\": \"(31) 99999-0000\",\n  \"movementId\": \"{{movementId}}\"\n}",
+              "raw": "{\n  \"name\": \"Músico de Teste\",\n  \"email\": \"{{newUserEmail}}\",\n  \"password\": \"{{newUserPassword}}\",\n  \"phone\": \"(31) 99999-0000\",\n  \"movementIds\": [\n    \"{{movementId}}\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -658,7 +658,7 @@
                 "me"
               ]
             },
-            "description": "Só os campos enviados mudam: `name`, `phone`, `movementId`, `parish`, `instrument` (vazio ou null limpa). E-mail, papel e status não são aceitos aqui (400).",
+            "description": "Só os campos enviados mudam: `name`, `phone`, `movementIds` (substitui a lista; `[]` tira todos), `parish`, `instrument` (vazio ou null limpa). E-mail, papel e status não são aceitos aqui (400).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"parish\": \"Paróquia Catedral São João Batista\",\n  \"instrument\": \"Violão\"\n}",
@@ -886,7 +886,7 @@
             "description": "Cria a conta **pendente** e manda o convite por e-mail: link de 7 dias para criar a senha (`/redefinir-senha?token=…&convite=1`). Ao criar a senha (**Autenticação › Redefinir a senha**), a conta fica ativa. `roles` padrão: `[\"musico\"]`. 409 EMAIL_TAKEN; 502 EMAIL_FAILED se o e-mail não saiu (a conta fica criada; use **Reenviar convite**).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Convidado de Teste\",\n  \"email\": \"{{inviteEmail}}\",\n  \"roles\": [\n    \"musico\"\n  ],\n  \"movementId\": null\n}",
+              "raw": "{\n  \"name\": \"Convidado de Teste\",\n  \"email\": \"{{inviteEmail}}\",\n  \"roles\": [\n    \"musico\"\n  ],\n  \"movementIds\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1120,10 +1120,10 @@
                 "{{userId}}"
               ]
             },
-            "description": "Só os campos enviados mudam: `name`, `email`, `phone`, `movementId`, `roles` (substitui a lista). O admin não tira o próprio papel de admin (403) e sempre sobra um admin ativo (409 LAST_ADMIN). 409 EMAIL_TAKEN se o e-mail é de outra conta.",
+            "description": "Só os campos enviados mudam: `name`, `email`, `phone`, `movementIds` e `roles` (cada lista substitui a anterior; só `movementIds` é o que a tabela do admin manda ao marcar movimentos). O admin não tira o próprio papel de admin (403) e sempre sobra um admin ativo (409 LAST_ADMIN). 409 EMAIL_TAKEN se o e-mail é de outra conta.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Músico de Teste (editado)\",\n  \"movementId\": \"{{movementId}}\",\n  \"roles\": [\n    \"musico\"\n  ]\n}",
+              "raw": "{\n  \"name\": \"Músico de Teste (editado)\",\n  \"movementIds\": [\n    \"{{movementId}}\"\n  ],\n  \"roles\": [\n    \"musico\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"

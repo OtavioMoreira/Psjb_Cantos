@@ -47,7 +47,7 @@ beforeEach(async () => {
   const { buildContainer } = await import("../../src/container.js");
   const { loadEnv } = await import("../../src/config/env.js");
   app = await buildApp({ container: buildContainer(loadEnv({ NODE_ENV: "test" }), t.adapters), logger: false });
-  await t.adapters.users.create({ name: "Admin", email: "a@x.com", passwordHash: await t.adapters.hasher.hash("senha1234"), phone: null, movementId: null, status: "active", roles: ["admin"] });
+  await t.adapters.users.create({ name: "Admin", email: "a@x.com", passwordHash: await t.adapters.hasher.hash("senha1234"), phone: null, movementIds: [], status: "active", roles: ["admin"] });
   token = (await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: "a@x.com", password: "senha1234" } })).json().accessToken;
   songId = (await app.inject({ method: "POST", url: "/api/admin/songs", headers: { authorization: `Bearer ${token}` }, payload: { title: "Glória" } })).json().song.id;
 });
@@ -100,7 +100,7 @@ describe("Envio direto ao Blob (arquivos acima de 4 MB)", () => {
   it("sem Blob (disco local), o ticket manda usar o envio de sempre", async () => {
     const t = makeTestContainer();
     const local = await buildApp({ container: t.container, logger: false });
-    await t.adapters.users.create({ name: "Admin", email: "b@x.com", passwordHash: await t.adapters.hasher.hash("senha1234"), phone: null, movementId: null, status: "active", roles: ["admin"] });
+    await t.adapters.users.create({ name: "Admin", email: "b@x.com", passwordHash: await t.adapters.hasher.hash("senha1234"), phone: null, movementIds: [], status: "active", roles: ["admin"] });
     const tk = (await local.inject({ method: "POST", url: "/api/auth/login", payload: { email: "b@x.com", password: "senha1234" } })).json().accessToken;
     const h = { authorization: `Bearer ${tk}` };
     const id = (await local.inject({ method: "POST", url: "/api/admin/songs", headers: h, payload: { title: "X" } })).json().song.id;

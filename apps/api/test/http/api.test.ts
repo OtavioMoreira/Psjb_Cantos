@@ -18,7 +18,7 @@ beforeEach(async () => {
     email: ADMIN.email,
     passwordHash: await adapters.hasher.hash(ADMIN.password),
     phone: null,
-    movementId: null,
+    movementIds: [],
     status: "active",
     roles: ["admin", "musico"],
   });
@@ -114,7 +114,7 @@ describe("Lista de usuários do admin (paginada)", () => {
   it("página, total, resumo por status e busca sem acento", async () => {
     const { accessToken } = (await login(ADMIN)).json();
     for (let i = 1; i <= 5; i++)
-      await adapters.users.create({ name: `Músico ${i}`, email: `m${i}@x.com`, passwordHash: "x", phone: null, movementId: null, status: i === 5 ? "pending" : "active", roles: ["musico"] });
+      await adapters.users.create({ name: `Músico ${i}`, email: `m${i}@x.com`, passwordHash: "x", phone: null, movementIds: [], status: i === 5 ? "pending" : "active", roles: ["musico"] });
     const get = (qs: string) => app.inject({ method: "GET", url: `/api/admin/users?${qs}`, headers: { authorization: `Bearer ${accessToken}` } });
 
     const p1 = (await get("page=1&pageSize=2")).json();

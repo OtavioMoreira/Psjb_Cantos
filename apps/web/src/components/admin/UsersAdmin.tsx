@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Ban,
   CircleCheck,
+  Plus,
+  X,
   Copy,
   KeyRound,
   Mail,
@@ -25,7 +28,8 @@ import { normalize } from "@/lib/search";
 import { BULK_INVITE_MAX, parseInviteList } from "@/lib/inviteList";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
-import { MovementSelect } from "@/components/user/MovementSelect";
+import { MovementPicker } from "@/components/user/MovementPicker";
+import { useMovements, type Movement } from "@/lib/movements";
 import { Modal } from "@/components/ui/Modal";
 import { toast } from "@/components/ui/Toast";
 
@@ -131,7 +135,7 @@ export function UsersAdmin() {
     return users
       .filter((u) => status === "todos" || u.status === status)
       .filter((u) => role === "todos" || u.role === role)
-      .filter((u) => !nq || normalize(`${u.name} ${u.email} ${u.movement}`).includes(nq))
+      .filter((u) => !nq || normalize(`${u.name} ${u.email} ${u.movements.map((m) => m.name).join(" ")}`).includes(nq))
       .sort((a, b) => {
         const order = { pendente: 0, bloqueado: 1, ativo: 2 };
         return order[a.status] - order[b.status] || a.name.localeCompare(b.name, "pt-BR");
@@ -249,6 +253,7 @@ export function UsersAdmin() {
           <thead className="bg-surface-2 text-xs uppercase tracking-[0.08em] text-ink-muted [&_th:first-child]:rounded-tl-[16px] [&_th:last-child]:rounded-tr-[16px]">
             <tr>
               <th className="px-4 py-3 font-semibold">Usuário</th>
+              <th className="px-4 py-3 font-semibold">Movimentos</th>
               <th className="px-4 py-3 font-semibold">Papel</th>
               <th className="px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3 font-semibold">Último acesso</th>
@@ -262,6 +267,9 @@ export function UsersAdmin() {
               <tr key={u.id} className="align-middle hover:bg-surface-2/60">
                 <td className="px-4 py-3">
                   <UserIdentity user={u} isMe={u.id === me.id} />
+                </td>
+                <td className="w-[30%] px-4 py-3">
+                  <MovementsCell user={u} />
                 </td>
                 <td className="px-4 py-3">{ROLE_LABEL[u.role]}</td>
                 <td className="px-4 py-3">
@@ -285,6 +293,9 @@ export function UsersAdmin() {
             <div className="flex items-start justify-between gap-2">
               <UserIdentity user={u} isMe={u.id === me.id} />
               <UserActions user={u} isMe={u.id === me.id} open={setDialog} />
+            </div>
+            <div className="mt-3">
+              <MovementsCell user={u} />
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
               <StatusBadge user={u} />
@@ -325,8 +336,122 @@ function UserIdentity({ user, isMe }: { user: User; isMe: boolean }) {
           {isMe && <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-ink-muted">você</span>}
         </p>
         <p className="truncate text-sm text-ink-muted">{user.email}</p>
-        {user.movement && <p className="truncate text-xs text-ink-muted">{user.movement}</p>}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Movimentos direto na lista: cada um vira uma etiqueta com × para tirar, e o + abre a lista
+ * para marcar vários. Cada clique já salva (sem botão "Salvar").
+ */
+function MovementsCell({ user }: { user: User }) {
+  const all = useMovements();
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+  const [saving, setSaving] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const firstName = user.name.split(" ")[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("click", onClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", onClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const chosen = new Set(user.movements.map((m) => m.id));
+  const save = async (next: Movement[]) => {
+    setSaving((n) => n + 1);
+    try {
+      await admin.setMovements(user.id, next);
+    } catch (e) {
+      toast(errorText(e, `Não foi possível salvar os movimentos de ${firstName} agora.`));
+    } finally {
+      setSaving((n) => n - 1);
+    }
+  };
+  const toggle = (m: Movement) => save(chosen.has(m.id) ? user.movements.filter((x) => x.id !== m.id) : [...user.movements, m]);
+  const nf = normalize(filter.trim());
+  const shown = all.filter((m) => !nf || normalize(m.name).includes(nf));
+
+  return (
+    <div className="relative" ref={ref}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {user.movements.map((m) => (
+          <span key={m.id} className="inline-flex max-w-full items-center gap-0.5 rounded-full bg-primary-soft py-0.5 pl-2.5 pr-0.5 text-xs font-medium text-primary">
+            <span className="truncate">{m.name}</span>
+            <button
+              type="button"
+              aria-label={`Tirar ${firstName} de ${m.name}`}
+              onClick={() => save(user.movements.filter((x) => x.id !== m.id))}
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-full hover:bg-primary/15"
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={`Escolher os movimentos de ${user.name}`}
+          onClick={() => setOpen((v) => !v)}
+          className={
+            user.movements.length
+              ? "grid h-7 w-7 place-items-center rounded-full border border-dashed border-border text-ink-muted hover:border-primary hover:text-primary"
+              : "inline-flex h-7 items-center gap-1 rounded-full border border-dashed border-border px-2.5 text-xs text-ink-muted hover:border-primary hover:text-primary"
+          }
+        >
+          <Plus size={14} />
+          {!user.movements.length && "Movimento"}
+        </button>
+        {saving > 0 && <Loader2 size={14} className="animate-spin text-ink-muted" aria-label="Salvando" />}
+      </div>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label={`Movimentos de ${user.name}`}
+          className="animate-fade-in absolute left-0 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-48px)] rounded-[10px] border border-border bg-surface p-2 shadow-overlay"
+        >
+          <p className="px-2 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-[0.08em] text-ink-muted">Movimentos de {firstName}</p>
+          {all.length > 8 && (
+            <input
+              autoFocus
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filtrar movimentos"
+              aria-label="Filtrar movimentos"
+              className="mb-1 h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-primary"
+            />
+          )}
+          <ul className="max-h-72 overflow-y-auto">
+            {shown.map((m) => (
+              <li key={m.id}>
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-primary-soft">
+                  <input type="checkbox" checked={chosen.has(m.id)} onChange={() => toggle(m)} className="h-4 w-4 shrink-0 accent-[var(--primary-solid)]" />
+                  <span className="min-w-0">{m.name}</span>
+                </label>
+              </li>
+            ))}
+            {all.length === 0 && <li className="px-2 py-3 text-sm text-ink-muted">Nenhum movimento cadastrado.</li>}
+            {all.length > 0 && shown.length === 0 && <li className="px-2 py-3 text-sm text-ink-muted">Nenhum movimento com esse nome.</li>}
+          </ul>
+          <div className="mt-1 flex items-center justify-between gap-2 border-t border-border px-2 pt-2 text-xs text-ink-muted">
+            <span aria-live="polite">{saving > 0 ? "Salvando…" : "Cada marcação já salva."}</span>
+            {API_ENABLED && (
+              <Link href="/painel/admin/movimentos" className="font-medium text-primary hover:underline">
+                Criar movimento
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -445,7 +570,7 @@ function UserActions({ user, isMe, open }: { user: User; isMe: boolean; open: (d
 }
 
 function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClose: () => void }) {
-  const [form, setForm] = useState({ name: user.name, email: user.email, role: user.role, movement: user.movement, movementId: user.movementId });
+  const [form, setForm] = useState({ name: user.name, email: user.email, role: user.role, movements: user.movements });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const valid = form.name.trim().length >= 3 && /^\S+@\S+\.\S+$/.test(form.email);
@@ -488,12 +613,7 @@ function EditDialog({ user, isMe, onClose }: { user: User; isMe: boolean; onClos
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           hint={API_ENABLED ? "É o login da pessoa. Avise sobre a troca, porque ela vai entrar com o novo e-mail." : "Ao trocar o e-mail, a API enviará uma nova confirmação."}
         />
-        <MovementSelect
-          id="edit-movement"
-          label="Movimento"
-          value={form.movementId}
-          onChange={(m) => setForm({ ...form, movement: m?.name ?? "", movementId: m?.id ?? null })}
-        />
+        <MovementPicker label="Movimentos" hint="" value={form.movements} onChange={(movements) => setForm({ ...form, movements })} />
         <div>
           <label htmlFor="role" className="mb-1.5 block text-sm font-medium">
             Papel

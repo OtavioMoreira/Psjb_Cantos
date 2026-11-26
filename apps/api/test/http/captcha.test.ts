@@ -7,7 +7,7 @@ let app: FastifyInstance;
 let adapters: ReturnType<typeof makeTestContainer>["adapters"];
 
 const post = (url: string, payload: object) => app.inject({ method: "POST", url: `/api${url}`, payload });
-const NEW_USER = { name: "Maria Teste", email: "maria@x.com", password: "senha1234", phone: null, movementId: null };
+const NEW_USER = { name: "Maria Teste", email: "maria@x.com", password: "senha1234", phone: null, movementIds: [] };
 const login = (password: string, captchaToken?: string) => post("/auth/login", { email: "ana@x.com", password, captchaToken });
 
 beforeEach(async () => {
@@ -15,7 +15,7 @@ beforeEach(async () => {
   adapters = t.adapters;
   adapters.captcha.enabled = true;
   app = await buildApp({ container: t.container, logger: false });
-  await adapters.users.create({ name: "Ana", email: "ana@x.com", passwordHash: await adapters.hasher.hash("senha1234"), phone: null, movementId: null, status: "active", roles: ["musico"] });
+  await adapters.users.create({ name: "Ana", email: "ana@x.com", passwordHash: await adapters.hasher.hash("senha1234"), phone: null, movementIds: [], status: "active", roles: ["musico"] });
 });
 
 describe("Desafio \"não sou um robô\" (reCAPTCHA/Turnstile) no servidor", () => {

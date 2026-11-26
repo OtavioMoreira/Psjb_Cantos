@@ -39,7 +39,7 @@ export interface ApiUser {
   email: string;
   phone: string | null;
   photoUrl: string | null;
-  movement: { id: number; name: string } | null;
+  movements: { id: number; name: string }[];
   parish: string | null;
   instrument: string | null;
   status: ApiStatus;
@@ -217,7 +217,7 @@ export const api = {
     accessToken = null;
     await call("/auth/logout", { method: "POST" }).catch(() => undefined);
   },
-  async signup(data: { name: string; email: string; password: string; movementId: number | null; phone: string; captchaToken?: string }) {
+  async signup(data: { name: string; email: string; password: string; movementIds: number[]; phone: string; captchaToken?: string }) {
     return (await call<{ user: ApiUser }>("/users", { method: "POST", body: JSON.stringify(data) })).user;
   },
   /** Sempre responde igual, exista ou não a conta. */
@@ -235,7 +235,7 @@ export const api = {
     return (await authed<{ user: ApiUser }>("/me")).user;
   },
   async searchPeople(q: string) {
-    const r = await authed<{ users: (ApiPerson & { email: string; movement: string | null })[] }>(`/users/search?q=${encodeURIComponent(q)}&limit=20`);
+    const r = await authed<{ users: (ApiPerson & { email: string; movements: string[] })[] }>(`/users/search?q=${encodeURIComponent(q)}&limit=20`);
     return r.users;
   },
   async updateMe(body: ProfileInput) {
@@ -369,7 +369,8 @@ export const api = {
 export interface ProfileInput {
   name?: string;
   phone?: string | null;
-  movementId?: number | null;
+  /** Substitui a lista inteira ([] tira todos). */
+  movementIds?: number[];
   parish?: string | null;
   instrument?: string | null;
 }
@@ -377,7 +378,8 @@ export interface ProfileInput {
 export interface AdminUserInput {
   name?: string;
   email?: string;
-  movementId?: number | null;
+  /** Substitui a lista inteira ([] tira todos). */
+  movementIds?: number[];
   roles?: ApiRole[];
 }
 

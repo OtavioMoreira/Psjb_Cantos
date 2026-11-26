@@ -12,7 +12,7 @@ export interface CreateUserData {
   email: string;
   passwordHash: string;
   phone: string | null;
-  movementId: number | null;
+  movementIds: number[];
   status: UserStatus;
   roles: Role[];
 }
@@ -21,7 +21,8 @@ export interface CreateUserData {
 export interface ProfileData {
   name?: string;
   phone?: string | null;
-  movementId?: number | null;
+  /** Substitui a lista inteira. */
+  movementIds?: number[];
   parish?: string | null;
   instrument?: string | null;
 }
@@ -31,7 +32,8 @@ export interface AdminUserData {
   name?: string;
   email?: string;
   phone?: string | null;
-  movementId?: number | null;
+  /** Substitui a lista inteira. */
+  movementIds?: number[];
   roles?: Role[];
 }
 
@@ -70,7 +72,7 @@ export interface UserRepository {
   /** Dos IDs informados, devolve os que existem e estão ativos. */
   filterActiveIds(ids: string[]): Promise<string[]>;
   /** Pessoas ativas para compartilhar missa (nome, e-mail ou movimento), sem a própria pessoa. */
-  searchActive(q: string, excludeId: string, limit: number): Promise<(PersonRef & { email: string; movement: string | null })[]>;
+  searchActive(q: string, excludeId: string, limit: number): Promise<(PersonRef & { email: string; movements: string[] })[]>;
 }
 
 export interface MovementRepository {
@@ -81,6 +83,8 @@ export interface MovementRepository {
   rename(id: number, name: string): Promise<Movement | null>;
   /** false se não existia. Lança MOVEMENT_IN_USE se há pessoas no movimento. */
   delete(id: number): Promise<boolean>;
+  /** Dos IDs informados, os que não existem (para recusar com 400). */
+  missingIds(ids: number[]): Promise<number[]>;
 }
 
 export interface MassData {

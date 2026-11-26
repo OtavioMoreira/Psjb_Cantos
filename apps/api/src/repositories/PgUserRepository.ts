@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
 import { AppError } from "../domain/errors.js";
-import type { Role, User, UserStatus, UserWithPassword } from "../domain/user.js";
+import type { MovementRef, Role, User, UserStatus, UserWithPassword } from "../domain/user.js";
 import type { AdminUserData, CreateUserData, ProfileData, UserFilters, UserRepository } from "../interfaces/index.js";
 import type { Pool } from "../database/pool.js";
 
@@ -11,8 +11,7 @@ interface UserRow {
   password_hash: string;
   phone: string | null;
   photo_url: string | null;
-  movement_id: number | null;
-  movement_name: string | null;
+  movements: MovementRef[];
   parish: string | null;
   instrument: string | null;
   must_change_password: boolean;
@@ -24,15 +23,28 @@ interface UserRow {
   roles: Role[];
 }
 
-// Papéis e movimento vêm na mesma consulta, para não fazer N+1.
+// Papéis e movimentos vêm na mesma consulta, para não fazer N+1.
 const SELECT = `
-  SELECT u.*, m.name AS movement_name,
+  SELECT u.*,
+         COALESCE((SELECT json_agg(json_build_object('id', m.id, 'name', m.name) ORDER BY m.name)
+                   FROM user_movements um JOIN movements m ON m.id = um.movement_id
+                   WHERE um.user_id = u.id), '[]') AS movements,
          COALESCE(array_agg(r.name ORDER BY r.name) FILTER (WHERE r.name IS NOT NULL), '{}') AS roles
   FROM users u
-  LEFT JOIN movements m ON m.id = u.movement_id
   LEFT JOIN user_roles ur ON ur.user_id = u.id
   LEFT JOIN roles r ON r.id = ur.role_id`;
-const GROUP = "GROUP BY u.id, m.name";
+const GROUP = "GROUP BY u.id";
+
+/** Algum movimento da pessoa com o nome parecido (sem acento). */
+const movementMatches = (param: string) =>
+  `EXISTS (SELECT 1 FROM user_movements um JOIN movements m ON m.id = um.movement_id WHERE um.user_id = u.id AND unaccent(m.name) ILIKE ${param})`;
+
+/** Troca a lista inteira de movimentos da pessoa. */
+async function setMovements(db: Pool | PoolClient, userId: string, ids: number[]) {
+  await db.query("DELETE FROM user_movements WHERE user_id = $1", [userId]);
+  if (ids.length)
+    await db.query("INSERT INTO user_movements (user_id, movement_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING", [userId, ids]);
+}
 
 function toUser(row: UserRow): User {
   return {
@@ -41,7 +53,7 @@ function toUser(row: UserRow): User {
     email: row.email,
     phone: row.phone,
     photoUrl: row.photo_url,
-    movement: row.movement_id ? { id: row.movement_id, name: row.movement_name ?? "" } : null,
+    movements: row.movements,
     parish: row.parish,
     instrument: row.instrument,
     status: row.status,
@@ -87,10 +99,11 @@ export class PgUserRepository implements UserRepository {
     try {
       await client.query("BEGIN");
       const { rows } = await client.query<{ id: string }>(
-        `INSERT INTO users (name, email, password_hash, phone, movement_id, status)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [data.name, data.email, data.passwordHash, data.phone, data.movementId, data.status],
+        `INSERT INTO users (name, email, password_hash, phone, status)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [data.name, data.email, data.passwordHash, data.phone, data.status],
       );
+      await setMovements(client, rows[0].id, data.movementIds);
       await client.query(
         `INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE name = ANY($2::text[])`,
         [rows[0].id, data.roles],
@@ -124,7 +137,7 @@ export class PgUserRepository implements UserRepository {
       // Sem diferenciar maiúsculas nem acentos; %, _ e \ digitados valem como texto.
       params.push(`%${filters.q.replace(/[\\%_]/g, "\\$&")}%`);
       const p = `unaccent($${params.length})`;
-      where.push(`(unaccent(u.name) ILIKE ${p} OR unaccent(u.email) ILIKE ${p} OR unaccent(coalesce(m.name, '')) ILIKE ${p})`);
+      where.push(`(unaccent(u.name) ILIKE ${p} OR unaccent(u.email) ILIKE ${p} OR ${movementMatches(p)})`);
     }
     return { where: where.length ? `WHERE ${where.join(" AND ")}` : "", params };
   }
@@ -149,7 +162,7 @@ export class PgUserRepository implements UserRepository {
   async count(filters: UserFilters) {
     const { where, params } = this.filterSql(filters);
     const { rows } = await this.pool.query<{ n: number }>(
-      `SELECT count(*)::int AS n FROM users u LEFT JOIN movements m ON m.id = u.movement_id ${where}`,
+      `SELECT count(*)::int AS n FROM users u ${where}`,
       params,
     );
     return rows[0].n;
@@ -176,25 +189,31 @@ export class PgUserRepository implements UserRepository {
   }
 
   async updateProfile(id: string, data: ProfileData) {
-    const found = await this.patch(id, {
-      name: data.name,
-      phone: data.phone,
-      movement_id: data.movementId,
-      parish: data.parish,
-      instrument: data.instrument,
-    });
-    return found ? this.findById(id) : null;
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const found = await this.patch(id, { name: data.name, phone: data.phone, parish: data.parish, instrument: data.instrument }, client);
+      if (found && data.movementIds) await setMovements(client, id, data.movementIds);
+      await client.query("COMMIT");
+      return found ? this.findById(id) : null;
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async adminUpdate(id: string, data: AdminUserData) {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      const found = await this.patch(id, { name: data.name, email: data.email, phone: data.phone, movement_id: data.movementId }, client);
+      const found = await this.patch(id, { name: data.name, email: data.email, phone: data.phone }, client);
       if (!found) {
         await client.query("ROLLBACK");
         return null;
       }
+      if (data.movementIds) await setMovements(client, id, data.movementIds);
       if (data.roles) {
         await client.query("DELETE FROM user_roles WHERE user_id = $1", [id]);
         await client.query(
@@ -258,14 +277,16 @@ export class PgUserRepository implements UserRepository {
 
   async searchActive(q: string, excludeId: string, limit: number) {
     const term = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
-    const { rows } = await this.pool.query<{ id: string; name: string; email: string; photo_url: string | null; movement: string | null }>(
-      `SELECT u.id, u.name, u.email, u.photo_url, m.name AS movement
-       FROM users u LEFT JOIN movements m ON m.id = u.movement_id
+    const { rows } = await this.pool.query<{ id: string; name: string; email: string; photo_url: string | null; movements: string[] }>(
+      `SELECT u.id, u.name, u.email, u.photo_url,
+              ARRAY(SELECT m.name FROM user_movements um JOIN movements m ON m.id = um.movement_id
+                    WHERE um.user_id = u.id ORDER BY m.name) AS movements
+       FROM users u
        WHERE u.status = 'active' AND u.id <> $1
-         AND ($2 = '%%' OR u.name ILIKE $2 OR u.email ILIKE $2 OR m.name ILIKE $2)
+         AND ($2 = '%%' OR unaccent(u.name) ILIKE unaccent($2) OR u.email ILIKE $2 OR ${movementMatches("unaccent($2)")})
        ORDER BY u.name LIMIT $3`,
       [excludeId, term, limit],
     );
-    return rows.map((r) => ({ id: r.id, name: r.name, email: r.email, photoUrl: r.photo_url, movement: r.movement }));
+    return rows.map((r) => ({ id: r.id, name: r.name, email: r.email, photoUrl: r.photo_url, movements: r.movements }));
   }
 }

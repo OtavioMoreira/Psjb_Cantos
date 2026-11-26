@@ -10,7 +10,7 @@ let adminToken: string;
 
 const PASSWORD = "senha1234";
 const addUser = async (email: string, status: UserStatus = "active", roles: Role[] = ["musico"], name = "Pessoa Teste") =>
-  adapters.users.create({ name, email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementId: null, status, roles });
+  adapters.users.create({ name, email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementIds: [], status, roles });
 const login = (email: string, password = PASSWORD) => app.inject({ method: "POST", url: "/api/auth/login", payload: { email, password } });
 const as = () => ({ authorization: `Bearer ${adminToken}` });
 const invite = (payload: object) => app.inject({ method: "POST", url: "/api/admin/users/invite", headers: as(), payload });

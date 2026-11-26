@@ -14,7 +14,7 @@ import { api, API_ENABLED, ApiError, type ApiMass, type ApiPerson, type ApiUser 
 
 type Listener = () => void;
 
-function createStore<T>(key: string, fallback: T) {
+function createStore<T>(key: string, fallback: T, migrate: (stored: T) => T = (v) => v) {
   const listeners = new Set<Listener>();
   let cache: T | undefined;
 
@@ -22,7 +22,7 @@ function createStore<T>(key: string, fallback: T) {
     if (cache !== undefined) return cache;
     try {
       const raw = localStorage.getItem(key);
-      cache = raw ? (JSON.parse(raw) as T) : fallback;
+      cache = raw ? migrate(JSON.parse(raw) as T) : fallback;
     } catch {
       cache = fallback;
     }
@@ -71,8 +71,20 @@ export const DEMO_ACCOUNTS = [
   { label: "Músico", email: "musica@psjb.org.br", password: "cantos123" },
 ];
 
+/** Dados salvos antes de 26/11/2026 tinham um movimento só (`movementId` + `movement`). */
+type LegacyUser = StoredUser & { movementId?: number | null; movement?: string };
+const withMovements = (list: LegacyUser[]): StoredUser[] =>
+  list.map(({ movementId, movement, ...u }) => ({
+    ...u,
+    movements: u.movements ?? (movementId ? [{ id: movementId, name: movement ?? "" }] : []),
+  }));
+
 // Com a API, as contas de demonstração do JSON não entram: a lista vem do servidor.
-const usersStore = createStore<StoredUser[]>(API_ENABLED ? "psjb:api-users" : "psjb:users", API_ENABLED ? [] : (usersJson as StoredUser[]));
+const usersStore = createStore<StoredUser[]>(
+  API_ENABLED ? "psjb:api-users" : "psjb:users",
+  API_ENABLED ? [] : (usersJson as StoredUser[]),
+  withMovements,
+);
 const sessionStore = createStore<{ userId: string | null }>("psjb:session", { userId: null });
 
 const now = () => new Date().toISOString();
@@ -103,8 +115,7 @@ const GUEST: User = {
   email: "",
   role: "musico",
   status: "ativo",
-  movement: "",
-  movementId: null,
+  movements: [],
   parish: "",
   createdAt: "",
   emailVerifiedAt: null,
@@ -163,8 +174,7 @@ function mirror(u: ApiUser): StoredUser {
     password: "", // a senha só existe na API
     role: u.roles.includes("admin") ? "admin" : "musico",
     status: API_STATUS[u.status],
-    movement: u.movement?.name ?? "",
-    movementId: u.movement?.id ?? null,
+    movements: u.movements ?? [],
     parish: u.parish ?? "",
     instrument: u.instrument ?? undefined,
     phone: u.phone,
@@ -208,12 +218,12 @@ export function usePeopleLookup() {
 }
 
 /** Dados do perfil. Com a API, salva no servidor (o e-mail não muda por aqui: depende da confirmação por e-mail). */
-export async function updateUser(patch: Partial<Pick<User, "name" | "email" | "parish" | "movement" | "movementId" | "instrument" | "phone">>) {
+export async function updateUser(patch: Partial<Pick<User, "name" | "email" | "parish" | "movements" | "instrument" | "phone">>) {
   const { userId } = sessionStore.read();
   if (!userId) return;
   if (!API_ENABLED) return writeUser(userId, patch);
-  const { email: _e, movement: _m, ...rest } = patch; // eslint-disable-line @typescript-eslint/no-unused-vars
-  syncApiUser(await api.updateMe(rest));
+  const { email: _e, movements, ...rest } = patch; // eslint-disable-line @typescript-eslint/no-unused-vars
+  syncApiUser(await api.updateMe({ ...rest, ...(movements ? { movementIds: movements.map((m) => m.id) } : {}) }));
 }
 
 /** Troca a senha exigindo a atual. Com a API, as sessões dos outros aparelhos caem. */
@@ -237,7 +247,7 @@ export async function changePassword(current: string, next: string): Promise<{ o
 
 /* Cadastro com confirmação de e-mail — Fase 3: POST /api/auth/signup + e-mail com token */
 
-export function signup(data: { name: string; email: string; password: string; movement: string; movementId: number | null }) {
+export function signup(data: { name: string; email: string; password: string; movements: User["movements"] }) {
   if (usersStore.read().some((u) => sameEmail(u.email, data.email))) return { ok: false as const, reason: "existe" as const };
   const t = token();
   const user: StoredUser = {
@@ -247,8 +257,7 @@ export function signup(data: { name: string; email: string; password: string; mo
     password: data.password,
     role: "musico",
     status: "pendente",
-    movement: data.movement,
-    movementId: data.movementId,
+    movements: data.movements,
     parish: "Paróquia Catedral São João Batista",
     createdAt: now(),
     emailVerifiedAt: null,
@@ -321,15 +330,45 @@ async function applyAdmin(id: string, call: () => Promise<ApiUser>) {
   }
 }
 
+/** Fila de envios dos movimentos de cada pessoa (edição direto na tabela do admin). */
+const movementSaves = new Map<string, { chain: Promise<void>; last: number }>();
+
 const ROLES_FOR: Record<User["role"], ApiUser["roles"]> = { admin: ["admin", "musico"], musico: ["musico"] };
 
 export const admin = {
-  async update(id: string, patch: Pick<User, "name" | "email" | "role" | "movement" | "movementId">) {
+  async update(id: string, patch: Pick<User, "name" | "email" | "role" | "movements">) {
     if (!API_ENABLED) return writeUser(id, patch);
     const cur = usersStore.read().find((x) => x.id === id);
     // Papel só vai quando muda: assim o admin pode editar os próprios dados sem mexer nos papéis.
     const roles = cur && cur.role === patch.role ? undefined : ROLES_FOR[patch.role];
-    await applyAdmin(id, () => api.admin.updateUser(id, { name: patch.name, email: patch.email, movementId: patch.movementId, roles }));
+    await applyAdmin(id, () => api.admin.updateUser(id, { name: patch.name, email: patch.email, movementIds: patch.movements.map((m) => m.id), roles }));
+  },
+  /**
+   * Movimentos direto na tabela: a tela muda na hora e o servidor recebe a lista inteira. Cliques
+   * seguidos entram numa fila por pessoa e só o último envia (com a lista mais recente), para uma
+   * resposta antiga não desfazer o clique seguinte. Se falhar, recarrega o que o servidor tem.
+   */
+  async setMovements(id: string, movements: User["movements"]) {
+    writeUser(id, { movements: [...movements].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")) });
+    if (!API_ENABLED) return;
+    const entry = movementSaves.get(id) ?? { chain: Promise.resolve(), last: 0 };
+    movementSaves.set(id, entry);
+    const ticket = ++entry.last;
+    const run = entry.chain
+      .catch(() => undefined)
+      .then(async () => {
+        if (ticket !== entry.last) return; // um clique mais novo vai mandar a lista final
+        const ids = (usersStore.read().find((u) => u.id === id)?.movements ?? []).map((m) => m.id);
+        const fresh = await api.admin.updateUser(id, { movementIds: ids });
+        if (ticket === entry.last) writeUser(id, mirror(fresh));
+      });
+    entry.chain = run;
+    try {
+      await run;
+    } catch (err) {
+      void syncAdminUsers().catch(() => undefined);
+      throw err;
+    }
   },
   async block(id: string, reason: string) {
     if (!API_ENABLED) return writeUser(id, { status: "bloqueado", blockedReason: reason.trim() || undefined });
@@ -407,8 +446,7 @@ export const admin = {
         password: token().slice(0, 10),
         role: data.role,
         status: "pendente",
-        movement: "",
-        movementId: null,
+        movements: [],
         parish: "Paróquia Catedral São João Batista",
         createdAt: now(),
         emailVerifiedAt: null,

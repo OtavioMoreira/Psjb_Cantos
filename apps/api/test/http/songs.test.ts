@@ -17,7 +17,7 @@ beforeEach(async () => {
       email: `${key}@psjb.org.br`,
       passwordHash: await adapters.hasher.hash("senha1234"),
       phone: null,
-      movementId: null,
+      movementIds: [],
       status: "active",
       roles: [...roles],
     });

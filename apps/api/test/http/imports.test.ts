@@ -55,7 +55,7 @@ beforeEach(async () => {
   app = await buildApp({ container: t.container, logger: false });
   for (const [group, slug] of [["momento", "salmo"], ["momento", "aclamacao"], ["tempo", "advento"], ["tempo", "natal"], ["ano", "A"], ["ano", "B"], ["ano", "C"]])
     ids[`${group}:${slug}`] = (await adapters.flags.create({ group: group as "ano", slug, name: slug, color: null, position: 0 })).id;
-  await adapters.users.create({ name: "Admin", email: "admin@psjb.org.br", passwordHash: await adapters.hasher.hash("senha1234"), phone: null, movementId: null, status: "active", roles: ["admin", "musico"] });
+  await adapters.users.create({ name: "Admin", email: "admin@psjb.org.br", passwordHash: await adapters.hasher.hash("senha1234"), phone: null, movementIds: [], status: "active", roles: ["admin", "musico"] });
   token = (await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: "admin@psjb.org.br", password: "senha1234" } })).json().accessToken;
 });
 

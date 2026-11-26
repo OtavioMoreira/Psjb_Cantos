@@ -9,7 +9,7 @@ let adapters: ReturnType<typeof makeTestContainer>["adapters"];
 
 const PASSWORD = "senha1234";
 const addUser = async (email: string, status: UserStatus = "active") =>
-  adapters.users.create({ name: "Ana Souza", email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementId: null, status, roles: ["musico"] });
+  adapters.users.create({ name: "Ana Souza", email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementIds: [], status, roles: ["musico"] });
 const forgot = (email: string) => app.inject({ method: "POST", url: "/api/auth/forgot", payload: { email } });
 const reset = (token: string, password = "nova12345") => app.inject({ method: "POST", url: "/api/auth/reset", payload: { token, password } });
 const login = (email: string, password: string) => app.inject({ method: "POST", url: "/api/auth/login", payload: { email, password } });

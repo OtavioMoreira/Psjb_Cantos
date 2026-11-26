@@ -74,9 +74,8 @@ export interface User {
   email: string;
   role: UserRole;
   status: UserStatus;
-  /** Nome do movimento (vazio = nenhum). */
-  movement: string;
-  movementId: number | null;
+  /** Movimentos da pessoa (pode ter vários; vazio = nenhum), em ordem alfabética. */
+  movements: { id: number; name: string }[];
   parish: string;
   instrument?: string;
   phone?: string | null;

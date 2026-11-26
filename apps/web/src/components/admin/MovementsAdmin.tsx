@@ -42,7 +42,7 @@ export function MovementsAdmin() {
 
   return (
     <div className="max-w-[720px]">
-      <AdminTitle title="Movimentos" description="Cada pessoa escolhe um no cadastro ou no perfil. Um movimento com pessoas não pode ser excluído." />
+      <AdminTitle title="Movimentos" description="Cada pessoa marca os seus (pode ter vários) no cadastro ou no perfil, e o admin também marca direto na lista de usuários. Um movimento com pessoas não pode ser excluído." />
 
       <form
         className="mt-6 flex gap-2"

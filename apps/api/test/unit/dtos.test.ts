@@ -13,18 +13,18 @@ describe("Cadastro (createUserSchema)", () => {
   const base = { name: "Maria Souza", email: "Maria@Exemplo.com ", password: "senha1234" };
 
   it("normaliza o e-mail e transforma vazio em null", () => {
-    expect(ok(createUserSchema.safeParse({ ...base, phone: "", movementId: null }))).toEqual({
+    expect(ok(createUserSchema.safeParse({ ...base, phone: "" }))).toEqual({
       name: "Maria Souza",
       email: "maria@exemplo.com",
       password: "senha1234",
       phone: null,
-      movementId: null,
+      movementIds: [],
     });
   });
 
   it("ignora campos que a pessoa não pode escolher (papel, status, id): sem mass assignment", () => {
     const data = ok(createUserSchema.safeParse({ ...base, roles: ["admin"], status: "active", id: "x", passwordHash: "y" }));
-    expect(Object.keys(data as object).sort()).toEqual(["email", "movementId", "name", "password", "phone"]);
+    expect(Object.keys(data as object).sort()).toEqual(["email", "movementIds", "name", "password", "phone"]);
   });
 
   it.each([
@@ -134,7 +134,10 @@ describe("validate()", () => {
 describe("Perfil (updateMeSchema)", () => {
   it("campo ausente não muda; vazio ou null limpa", () => {
     expect(ok(updateMeSchema.safeParse({ name: " Ana Souza " }))).toEqual({ name: "Ana Souza" });
-    expect(ok(updateMeSchema.safeParse({ parish: "", instrument: null, movementId: null }))).toEqual({ parish: null, instrument: null, movementId: null });
+    expect(ok(updateMeSchema.safeParse({ parish: "", instrument: null, movementIds: [] }))).toEqual({ parish: null, instrument: null, movementIds: [] });
+    expect(ok(updateMeSchema.safeParse({ movementIds: [3, "1", 3] }))).toEqual({ movementIds: [3, 1] });
+    fails(updateMeSchema.safeParse({ movementIds: [0] }));
+    fails(updateMeSchema.safeParse({ movementId: 1 }));
     expect(ok(updateMeSchema.safeParse({}))).toEqual({});
   });
   it("recusa e-mail, papel, status e campos desconhecidos (mass assignment)", () => {

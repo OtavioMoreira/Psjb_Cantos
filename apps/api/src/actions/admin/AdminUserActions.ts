@@ -4,6 +4,7 @@ import { hasRole, type User } from "../../domain/user.js";
 import { sendQuietly } from "../auth/emailTokens.js";
 import { toUserDTO, type AdminUpdateUserInput, type UserDTO } from "../../dtos/user.dto.js";
 import { accountBlockedEmail } from "../../emails/templates.js";
+import { ensureMovementsExist } from "../movements/MovementActions.js";
 import type { EmailSender, FileStorage, MovementRepository, PasswordHasher, SessionRepository, TrustedDeviceRepository, UserRepository } from "../../interfaces/index.js";
 
 interface Deps {
@@ -34,7 +35,7 @@ function notSelf(adminId: string, targetId: string, message: string) {
   if (adminId === targetId) throw new AppError("FORBIDDEN", message);
 }
 
-/** Admin edita nome, e-mail, telefone, movimento e papéis. Não rebaixa a si mesmo. */
+/** Admin edita nome, e-mail, telefone, movimentos e papéis. Não rebaixa a si mesmo. */
 export class AdminUpdateUserAction {
   constructor(private readonly deps: Deps) {}
 
@@ -44,8 +45,7 @@ export class AdminUpdateUserAction {
       notSelf(adminId, id, "Você não pode tirar o próprio papel de administrador.");
       await ensureAnotherAdmin(this.deps.users, target);
     }
-    if (input.movementId != null && !(await this.deps.movements.findById(input.movementId)))
-      throw new AppError("VALIDATION_ERROR", "Confira os dados enviados.", { fields: { movementId: "Movimento não encontrado." } });
+    await ensureMovementsExist(this.deps.movements, input.movementIds);
 
     const user = await this.deps.users.adminUpdate(id, input);
     if (!user) throw new AppError("NOT_FOUND", "Usuário não encontrado.");

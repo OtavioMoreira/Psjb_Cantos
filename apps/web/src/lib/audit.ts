@@ -22,6 +22,7 @@ const FIELD: Record<string, string> = {
   email: "e-mail",
   phone: "telefone",
   movementId: "movimento",
+  movementIds: "movimentos",
   roles: "papel",
   number: "número",
   title: "título",

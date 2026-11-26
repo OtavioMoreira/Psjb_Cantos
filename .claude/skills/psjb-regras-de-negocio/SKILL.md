@@ -225,11 +225,12 @@ Os eixos:
   - **bloqueado:** não consegue entrar. Na tentativa de login, vê o **motivo** definido pelo admin e a orientação "Procure a coordenação da paróquia".
 - **Contas de demonstração** (modo sem API): admin `admin@psjb.org.br` / `admin123` e músico `musica@psjb.org.br` / `cantos123`.
 - **Conta de teste da API:** `superadmin@psjb.org.br` / `123456`, papéis admin + músico, criada pelo seed (`npm run db:seed -w api`). A senha fura a regra de 8+ caracteres de propósito; em produção o seed exige `SEED_ADMIN_PASSWORD`.
-- **Dados do usuário:** nome, e-mail (é o login), senha, telefone (opcional), foto (opcional) e movimento (opcional).
-- **Movimentos** (substituíram o texto livre "ministério" em 03/10/2026): ficam na tabela `movements` e cada pessoa participa de **no máximo um** (`users.movement_id`).
-  - A lista é pública (`GET /api/movements`) e aparece como seletor no cadastro, no perfil e no admin.
+- **Dados do usuário:** nome, e-mail (é o login), senha, telefone (opcional), foto (opcional) e movimentos (opcional, vários).
+- **Movimentos** (substituíram o texto livre "ministério" em 03/10/2026): ficam na tabela `movements`. **Uma pessoa pode participar de vários** (26/11/2026; tabela `user_movements`; antes era no máximo um, em `users.movement_id`, que ficou obsoleta e será removida).
+  - Na API o campo é `movementIds: number[]` (cadastro, `PATCH /api/me`, convite e `PATCH /api/admin/users/:id`): a lista **substitui a anterior inteira**, `[]` tira todos, ids repetidos contam uma vez, no máximo 20. Id que não existe → 400 (`fields.movementIds`). A resposta traz `movements: [{ id, name }]` em ordem alfabética.
+  - A lista é pública (`GET /api/movements`) e aparece como **etiquetas marcáveis** (vários ao mesmo tempo) no cadastro, no perfil e no modal de edição do admin. A contagem de pessoas por movimento conta cada pessoa em cada movimento dela.
   - Só admin cria, renomeia ou exclui (`/api/admin/movements`). Os nomes são únicos sem diferenciar maiúsculas.
-  - **Excluir um movimento com pessoas é bloqueado** (409 `MOVEMENT_IN_USE`): primeiro troque o movimento delas.
+  - **Excluir um movimento com pessoas é bloqueado** (409 `MOVEMENT_IN_USE`): primeiro tire o movimento delas. Excluir a pessoa libera os movimentos dela.
   - O seed cria uma lista inicial (Ministério de Música, RCC, Pastoral da Juventude...) que a coordenação deve revisar.
 
 ## 10. Login, cadastro, confirmação e recuperação
@@ -274,12 +275,12 @@ Os eixos:
   - O login compara usuário e e-mail sem diferenciar maiúsculas e acentos, como no site antigo, e a API aplica `trim` na entrada. Os detalhes estão em `db/postgres/CONVERSAO.md`.
 
 ## 11. Perfil (`/painel/perfil`)
-- **Dados editáveis:** nome, e-mail, paróquia, movimento e instrumento/voz.
+- **Dados editáveis:** nome, e-mail, paróquia, movimentos (vários) e instrumento/voz.
 - **Trocar o e-mail (com a API, 15/10/2026):** botão "Trocar e-mail" abre um modal com o novo e-mail e a **senha atual** (`POST /api/me/email`). O link (24 h) vai para o **endereço novo**, e o e-mail só muda quando a pessoa confirma em `/confirmar-email?token=` (`POST /api/auth/confirm-email`, pública: pode abrir em outro aparelho). Até lá, **o antigo continua valendo**. Depois da troca, o endereço antigo recebe o aviso "Seu e-mail foi alterado".
   - Recusa o mesmo e-mail e um que já é de outra conta (inclusive se alguém pegar o endereço entre o pedido e a confirmação: 409). Um pedido por minuto (429 `TOO_SOON`); só o último link vale.
 - **Troca de senha:** exige a senha atual, e a nova precisa ser diferente. Com a API (`POST /api/auth/password`, em `/auth` para receber o cookie), a sessão deste aparelho continua e **as dos outros aparelhos caem**.
 - **Foto:** JPG, PNG ou WebP de até 2 MB (`PUT /api/me/photo`, campo `photo`). O tipo é conferido pelos bytes do arquivo, não pelo nome. Cada troca gera uma URL nova e apaga a foto anterior. No perfil, "Enviar foto" / "Trocar foto" (só com a API); a foto aparece no avatar do cabeçalho e do painel.
-- **Com a API** (14/10/2026): nome, telefone, movimento, paróquia e instrumento salvam por `PATCH /api/me` (só os campos enviados; vazio limpa). O campo de e-mail fica só leitura; a troca é pelo botão "Trocar e-mail" (acima). O admin também pode trocar pelo admin de usuários, sem confirmação.
+- **Com a API** (14/10/2026): nome, telefone, movimentos, paróquia e instrumento salvam por `PATCH /api/me` (só os campos enviados; vazio limpa). O campo de e-mail fica só leitura; a troca é pelo botão "Trocar e-mail" (acima). O admin também pode trocar pelo admin de usuários, sem confirmação.
 - **Senha temporária:** quem entra com a senha gerada pelo admin (`mustChangePassword`) é levado a Perfil › Segurança e não usa o resto do painel até criar a própria senha. A obrigação é conferida no front; a API zera a marca na troca.
 - **Preferências:** tema (claro, escuro ou sistema) e sustenidos/bemóis.
 
@@ -294,7 +295,7 @@ Os eixos:
 - **Movimentos:** criar e renomear (nome único); o botão de excluir fica desabilitado quando há pessoas.
 
 ### 12.1 Admin de usuários (`/painel/admin/usuarios`)
-- **Com a API** (14/10/2026): listar, ativar, editar (nome, e-mail, movimento, papel), bloquear/liberar, senha temporária e excluir usam o servidor. **Convidar**, **enviar convite de novo** e **enviar link de redefinição** mandam e-mail de verdade (15/10/2026). "Reenviar confirmação" não aparece (a conta pendente espera um admin, não o e-mail).
+- **Com a API** (14/10/2026): listar, ativar, editar (nome, e-mail, movimentos, papel), bloquear/liberar, senha temporária e excluir usam o servidor. **Convidar**, **enviar convite de novo** e **enviar link de redefinição** mandam e-mail de verdade (15/10/2026). "Reenviar confirmação" não aparece (a conta pendente espera um admin, não o e-mail).
   - **Ativar** uma conta pendente manda o aviso "Sua conta foi liberada" com o link para entrar. Falha no aviso não desfaz a ativação.
   - Nas ações do admin, se o e-mail não sair a tela avisa (502 `EMAIL_FAILED`), para tentar de novo ou usar a senha temporária.
   - Papel no front é um só: Administrador vira `roles: ["admin", "musico"]` e Músico, `["musico"]`. O papel só vai para a API quando muda.
@@ -304,8 +305,9 @@ Os eixos:
   - Busca por nome, e-mail ou movimento (sem acento), e filtro por papel.
   - **Com a API (24/11/2026):** busca, filtros e paginação são feitos no servidor, 50 por vez com "Mostrar mais"; o resumo conta todas as contas.
   - A lista mostra primeiro os pendentes, depois os bloqueados e por fim os ativos.
+  - **Movimentos direto na lista (26/11/2026):** coluna "Movimentos" na tabela (e no card do celular) com uma etiqueta por movimento. O **×** da etiqueta tira a pessoa daquele movimento e o **+** ("+ Movimento" quando não tem nenhum) abre a lista com caixas de marcar (com filtro quando há mais de 8) e o atalho "Criar movimento". **Cada clique já salva**, sem botão "Salvar" (`PATCH /api/admin/users/:id` só com `movementIds`). Cliques seguidos na mesma pessoa entram numa fila e só o último vai ao servidor, com a lista mais recente; se falhar, a tela avisa e volta ao que o servidor tem. Fica na auditoria como "Alterou: movimentos".
 - **Ações:**
-  - **Editar** nome, e-mail, movimento e papel.
+  - **Editar** nome, e-mail, movimentos e papel.
   - **Bloquear** com motivo (opcional), com "Desfazer". Com a API, bloquear **derruba as sessões** da pessoa na hora e manda o e-mail "Seu acesso foi bloqueado" (com o motivo) para quem estava **ativo** (pendente nunca entrou, então não recebe). Falha no aviso não desfaz o bloqueio. **Liberar** volta para ativo (na demonstração: ativo se o e-mail já foi confirmado, senão pendente).
   - **Ativar sem confirmação** e **reenviar confirmação**: só para pendentes.
   - **Redefinir senha:** "Enviar link por e-mail" (recomendado; com a API, só para conta ativa: `POST /api/admin/users/:id/reset-link`) ou "Gerar senha temporária", exibida **uma única vez** (formato `abcd-23x4`, sem caracteres ambíguos). A senha temporária **derruba as sessões**, tira a confiança dos aparelhos do 2FA e **obriga a troca** no próximo acesso.

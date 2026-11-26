@@ -2,6 +2,7 @@ import { AppError } from "../../domain/errors.js";
 import type { User } from "../../domain/user.js";
 import { toUserDTO, type BulkInviteInput, type BulkInviteResult, type InviteUserInput, type UserDTO } from "../../dtos/user.dto.js";
 import { inviteEmail, passwordResetEmail } from "../../emails/templates.js";
+import { ensureMovementsExist } from "../movements/MovementActions.js";
 import type { EmailMessage, MovementRepository, PasswordHasher, UserRepository } from "../../interfaces/index.js";
 import { issueLinkToken, type EmailTokenDeps } from "../auth/emailTokens.js";
 
@@ -37,8 +38,7 @@ export class InviteUserAction {
 
   async execute(adminId: string, input: InviteUserInput): Promise<UserDTO> {
     if (await this.deps.users.emailExists(input.email)) throw new AppError("EMAIL_TAKEN", "Já existe uma conta com este e-mail.");
-    if (input.movementId !== null && !(await this.deps.movements.findById(input.movementId)))
-      throw new AppError("VALIDATION_ERROR", "Confira os dados enviados.", { fields: { movementId: "Movimento não encontrado." } });
+    await ensureMovementsExist(this.deps.movements, input.movementIds);
 
     // Senha aleatória que ninguém conhece: até usar o link, não há como entrar.
     const { token: unusable } = this.deps.tokens.generateRefreshToken();
@@ -47,7 +47,7 @@ export class InviteUserAction {
       email: input.email,
       passwordHash: await this.deps.hasher.hash(unusable),
       phone: null,
-      movementId: input.movementId,
+      movementIds: input.movementIds,
       status: "pending",
       roles: input.roles,
     });
@@ -72,7 +72,7 @@ export class BulkInviteAction {
     for (const [i, p] of input.people.entries()) {
       if (i > 0 && this.pauseMs) await new Promise((r) => setTimeout(r, this.pauseMs));
       try {
-        const user = await this.invite.execute(adminId, { name: p.name, email: p.email, roles: input.roles, movementId: null });
+        const user = await this.invite.execute(adminId, { name: p.name, email: p.email, roles: input.roles, movementIds: [] });
         results.push({ ...p, status: "invited", user });
       } catch (err) {
         if (!(err instanceof AppError)) throw err;

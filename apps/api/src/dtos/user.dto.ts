@@ -21,14 +21,19 @@ const optionalText = (max: number) =>
 const nameSchema = z.string().trim().min(3, "Informe seu nome completo.").max(120);
 const emailSchema = z.string().trim().toLowerCase().pipe(z.email("E-mail inválido.").max(254));
 const phoneSchema = optionalText(20).refine((v) => v === null || /^[\d\s()+-]{8,20}$/.test(v), "Telefone inválido.");
-const movementIdSchema = z.coerce.number().int().positive().optional().nullable().transform((v) => v ?? null);
+export const MOVEMENTS_MAX = 20;
+/** Lista de movimentos da pessoa (substitui a inteira). Vazia = nenhum. */
+const movementIdsSchema = z
+  .array(z.coerce.number().int().positive())
+  .max(MOVEMENTS_MAX, `No máximo ${MOVEMENTS_MAX} movimentos.`)
+  .transform((ids) => [...new Set(ids)]);
 
 export const createUserSchema = z.object({
   name: nameSchema,
   email: emailSchema,
   password: passwordSchema,
   phone: phoneSchema,
-  movementId: movementIdSchema,
+  movementIds: movementIdsSchema.default([]),
   captchaToken: z.string().max(4096).optional(),
 });
 export type CreateUserInput = z.infer<typeof createUserSchema>;
@@ -41,7 +46,7 @@ export const updateMeSchema = z
   .object({
     name: nameSchema,
     phone: phoneSchema,
-    movementId: movementIdSchema,
+    movementIds: movementIdsSchema,
     parish: optionalText(120),
     instrument: optionalText(60),
   })
@@ -68,7 +73,7 @@ export const adminUpdateUserSchema = z
     name: nameSchema,
     email: emailSchema,
     phone: phoneSchema,
-    movementId: movementIdSchema,
+    movementIds: movementIdsSchema,
     roles: z
       .array(z.enum(ROLES))
       .min(1, "Escolha pelo menos um papel.")
@@ -83,7 +88,7 @@ export const inviteUserSchema = z
   .object({
     name: nameSchema,
     email: emailSchema,
-    movementId: movementIdSchema,
+    movementIds: movementIdsSchema.default([]),
     roles: z
       .array(z.enum(ROLES))
       .min(1, "Escolha pelo menos um papel.")
@@ -145,7 +150,7 @@ export interface UserDTO {
   email: string;
   phone: string | null;
   photoUrl: string | null;
-  movement: User["movement"];
+  movements: User["movements"];
   parish: string | null;
   instrument: string | null;
   status: User["status"];
@@ -163,7 +168,7 @@ export function toUserDTO(u: User): UserDTO {
     email: u.email,
     phone: u.phone,
     photoUrl: u.photoUrl,
-    movement: u.movement,
+    movements: u.movements,
     parish: u.parish,
     instrument: u.instrument,
     status: u.status,

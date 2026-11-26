@@ -104,7 +104,7 @@ interface User {
   id: string; name: string;
   email: string;           // único, minúsculo; é o login
   role: UserRole; status: UserStatus;
-  movement: string; movementId: number | null; parish: string; instrument?: string;  // movimento: tabela movements
+  movements: { id: number; name: string }[]; parish: string; instrument?: string;  // movimento: tabela movements
   blockedReason?: string;  // mostrado ao usuário bloqueado quando ele tenta entrar
   createdAt: string; emailVerifiedAt: string | null; lastLoginAt: string | null;
   phone?: string | null; photoUrl?: string | null;
@@ -266,7 +266,7 @@ Estado do cliente em `localStorage`:
 - ✅ Gestão só para admin: listar, ativar, editar (dados e papéis), bloquear/liberar, gerar senha temporária e excluir (`/api/admin/users/*`), protegidos pelo middleware `requireRole("admin")`. O admin não age sobre si mesmo e sempre sobra pelo menos um admin ativo (409 `LAST_ADMIN`).
 - ✅ Perfil: `PATCH /api/me` (nome, telefone, movimento, paróquia, instrumento) e troca de senha (`POST /api/auth/password`, que derruba as sessões dos outros aparelhos). Troca do e-mail com confirmação do novo endereço (`POST /api/me/email` + `POST /api/auth/confirm-email`).
 - ✅ **E-mail (Resend)**: recuperação de senha, convite (`/api/admin/users/invite`, reenvio), link de redefinição pelo admin, aviso de conta liberada e **2FA** (`/auth/login/verify`, `/auth/login/resend`, aparelho confiável). Migration `007_auth_tokens.sql` (`auth_tokens`, `trusted_devices`).
-- ✅ **Movimentos** (tabela `movements`, um por pessoa em `users.movement_id`) no lugar do "ministério": lista pública e gestão pelo admin. O front usa um seletor no cadastro, no perfil e no admin.
+- ✅ **Movimentos** (tabela `movements`) no lugar do "ministério": lista pública e gestão pelo admin. **Vários por pessoa** desde 26/11/2026 (`user_movements`, migration 013; `users.movement_id` ficou obsoleta). O front usa etiquetas marcáveis no cadastro, no perfil e no admin, e a lista de usuários do admin edita os movimentos direto na tabela.
 - ✅ **Missas** (tabelas `masses` e `mass_shares`): todas as rotas de §5.2. Com `API_URL`, o front salva e sincroniza pela API.
 - ✅ **Link de convite** (`masses.share_token`): gerar, desativar e entrar (`POST /api/masses/join`).
 - ✅ **Cantos e flags** (tabelas `songs`, `flags`, `song_flags`): repertório público, CRUD de cantos e flags pelo admin, envio de PDF e áudio (Vercel Blob) e importação do `data/songs.json` (`npm run db:import-songs -w api`).
@@ -335,7 +335,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | GET | `/api/test` | 1 ✅ | string de teste |
 | GET | `/api/songs`, `/api/songs/:slug` | 2 | JSON |
 | GET | `/api/categories` | 2 | JSON |
-| POST | `/api/users` | ✅ | cadastro público `{ name, email, password, phone?, movementId? }` → 201 com a conta **pendente** e papel músico; 409 `EMAIL_TAKEN`; 400 com os campos inválidos |
+| POST | `/api/users` | ✅ | cadastro público `{ name, email, password, phone?, movementIds? }` → 201 com a conta **pendente** e papel músico; 409 `EMAIL_TAKEN`; 400 com os campos inválidos |
 | POST | `/api/auth/login` | ✅ | `{ email, password, remember }` → `{ accessToken, expiresIn, user }` + cookie `psjb_refresh`. 401 `INVALID_CREDENTIALS`, 403 `ACCOUNT_PENDING` ou `ACCOUNT_BLOCKED` (com `details.reason`). Com o 2FA ligado e sem o cookie `psjb_device` válido → `{ twoFactor: true, challengeId, emailHint, expiresIn }` e o código vai por e-mail (502 `EMAIL_FAILED` se não sair) |
 | POST | `/api/auth/login/verify` | ✅ | 2FA: `{ challengeId, code, trustDevice }` → sessão (igual ao login). `trustDevice` grava o cookie `psjb_device` (30 dias). 400 `INVALID_CODE` (com `attemptsLeft`) ou `INVALID_TOKEN` (vencido, usado ou 5 tentativas) |
 | POST | `/api/auth/login/resend` | ✅ | 2FA: `{ challengeId }` → código novo e `challengeId` novo. 429 `TOO_SOON` (com `retryAfter`) antes de 60 s |
@@ -350,12 +350,12 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | GET | `/api/admin/users?status=&role=&q=&page=&pageSize=` | ✅ | listagem (admin): pendentes, depois bloqueados e ativos. Paginada (50 por página, máx. 100), busca sem acento; devolve `total` e `counts` por status |
 | PATCH | `/api/admin/users/:id/activate` | ✅ | admin ativa (ou desbloqueia) a conta. Pendente → ativo manda o e-mail "Sua conta foi liberada" |
 | POST | `/api/admin/users/invite/bulk` | ✅ | admin: `{ people: [{ name, email }] (1 a 50), roles? }` → 200 com um resultado por pessoa: `invited`, `exists` ou `email_failed` (26/11/2026) |
-| POST | `/api/admin/users/invite` | ✅ | admin: `{ name, email, roles?, movementId? }` → 201 com a conta pendente e o convite (link de 7 dias para criar a senha). 409 `EMAIL_TAKEN`; 502 `EMAIL_FAILED` (a conta fica criada) |
+| POST | `/api/admin/users/invite` | ✅ | admin: `{ name, email, roles?, movementIds? }` → 201 com a conta pendente e o convite (link de 7 dias para criar a senha). 409 `EMAIL_TAKEN`; 502 `EMAIL_FAILED` (a conta fica criada) |
 | POST | `/api/admin/users/:id/invite` | ✅ | admin: reenvia o convite (só conta pendente) → 202 |
 | POST | `/api/admin/users/:id/reset-link` | ✅ | admin: manda o link de redefinição (só conta ativa) → 202; 502 `EMAIL_FAILED` |
-| PATCH | `/api/me` | ✅ | só os campos enviados: `{ name?, phone?, movementId?, parish?, instrument? }` (vazio ou null limpa). E-mail, papel e status → 400 |
+| PATCH | `/api/me` | ✅ | só os campos enviados: `{ name?, phone?, movementIds?, parish?, instrument? }` (vazio ou null limpa; `movementIds` substitui a lista, `[]` tira todos). E-mail, papel e status → 400 |
 | POST | `/api/auth/password` | ✅ | `{ currentPassword, newPassword }`. Fica em `/auth` para receber o cookie: a sessão deste aparelho continua e as outras caem. Senha atual errada → 400 com `fields.currentPassword`. Zera `mustChangePassword` |
-| PATCH | `/api/admin/users/:id` | ✅ | admin: `{ name?, email?, phone?, movementId?, roles? }` (`roles` substitui a lista). Tirar o próprio papel de admin → 403; e-mail de outra conta → 409 `EMAIL_TAKEN` |
+| PATCH | `/api/admin/users/:id` | ✅ | admin: `{ name?, email?, phone?, movementIds?, roles? }` (`movementIds` e `roles` substituem a lista; a tabela do admin manda só `movementIds`). Tirar o próprio papel de admin → 403; e-mail de outra conta → 409 `EMAIL_TAKEN` |
 | POST | `/api/admin/users/:id/block` · `/unblock` | ✅ | admin: bloquear `{ reason? }` derruba as sessões da pessoa; liberar volta para ativo. Bloquear a si mesmo → 403 |
 | POST | `/api/admin/users/:id/reset-password` | ✅ | admin: gera senha temporária → `{ user, temporaryPassword }` (mostrada uma única vez). Derruba as sessões e marca `mustChangePassword` |
 | DELETE | `/api/admin/users/:id` | ✅ | admin: 204. As missas da pessoa vão junto (CASCADE). Excluir a si mesmo → 403 |

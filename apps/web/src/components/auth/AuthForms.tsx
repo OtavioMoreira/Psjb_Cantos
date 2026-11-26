@@ -8,7 +8,7 @@ import { DEMO_ACCOUNTS, login, resendVerification, signup, syncApiUser } from "@
 import { api, API_ENABLED, ApiError, type ApiUser, type LoginChallenge } from "@/lib/api";
 import { LoginCode } from "./LoginCode";
 import { Field } from "@/components/ui/Field";
-import { MovementSelect } from "@/components/user/MovementSelect";
+import { MovementPicker } from "@/components/user/MovementPicker";
 import { Button } from "@/components/ui/Button";
 import { AuthCard, DemoNote } from "./AuthCard";
 import { CAPTCHA_ENABLED, HumanCheck } from "./HumanCheck";
@@ -309,7 +309,7 @@ function loginErrorText(err: unknown): { text: string; pending?: boolean } {
 
 function SignupForm({ onCreated }: { onCreated: (email: string, token: string) => void }) {
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirm: "" });
-  const [movement, setMovement] = useState<{ id: number; name: string } | null>(null);
+  const [movements, setMovements] = useState<{ id: number; name: string }[]>([]);
   const [accepted, setAccepted] = useState(false);
   const [captcha, setCaptcha] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
@@ -338,7 +338,7 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
     if (API_ENABLED) {
       const { name, email, phone, password } = form;
       api
-        .signup({ name, email, phone, password, movementId: movement?.id ?? null, captchaToken: captcha ?? undefined })
+        .signup({ name, email, phone, password, movementIds: movements.map((m) => m.id), captchaToken: captcha ?? undefined })
         .then((u) => onCreated(u.email, ""))
         .catch((err) => {
           setLoading(false);
@@ -349,7 +349,7 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
       return;
     }
     setTimeout(() => {
-      const r = signup({ ...form, movement: movement?.name ?? "", movementId: movement?.id ?? null });
+      const r = signup({ ...form, movements });
       setLoading(false);
       if (!r.ok) setError("Já existe uma conta com este e-mail. Tente entrar ou recuperar a senha.");
       else onCreated(form.email.trim().toLowerCase(), r.token);
@@ -378,7 +378,7 @@ function SignupForm({ onCreated }: { onCreated: (email: string, token: string) =
           placeholder="(31) 99999-0000"
           error={show("phone")}
         />
-        <MovementSelect id="signup-movement" value={movement?.id ?? null} onChange={setMovement} />
+        <MovementPicker value={movements} onChange={setMovements} />
         <div>
           <PasswordField label="Senha" name="new-password" autoComplete="new-password" value={form.password} onChange={set("password")} error={show("password")} />
           <PasswordStrength password={form.password} />

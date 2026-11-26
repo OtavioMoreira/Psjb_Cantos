@@ -31,7 +31,7 @@ describe.skipIf(!dbUrl)("API com Postgres de verdade", () => {
 
   async function admin() {
     const hash = await new Argon2PasswordHasher().hash("admin1234");
-    const u = await repos.users.create({ name: "Admin", email: "admin@teste.com", passwordHash: hash, phone: null, movementId: null, status: "active", roles: ["admin", "musico"] });
+    const u = await repos.users.create({ name: "Admin", email: "admin@teste.com", passwordHash: hash, phone: null, movementIds: [], status: "active", roles: ["admin", "musico"] });
     const token = (await call("POST", "/auth/login", undefined, { email: "admin@teste.com", password: "admin1234" })).json().accessToken as string;
     return { u, token };
   }
@@ -39,8 +39,8 @@ describe.skipIf(!dbUrl)("API com Postgres de verdade", () => {
   it("cadastro → ativação → login → refresh → /me (com argon2 e sessões reais)", async () => {
     const { token: adminToken } = await admin();
     const mv = (await call("POST", "/admin/movements", adminToken, { name: "Catequese" })).json().movement;
-    const signup = await call("POST", "/users", undefined, { name: "Clara Souza", email: "Clara@Teste.com", password: "cantos2026", movementId: mv.id });
-    expect(signup.json().user).toMatchObject({ email: "clara@teste.com", status: "pending", movement: { name: "Catequese" } });
+    const signup = await call("POST", "/users", undefined, { name: "Clara Souza", email: "Clara@Teste.com", password: "cantos2026", movementIds: [mv.id] });
+    expect(signup.json().user).toMatchObject({ email: "clara@teste.com", status: "pending", movements: [{ name: "Catequese" }] });
 
     expect((await call("POST", "/auth/login", undefined, { email: "clara@teste.com", password: "cantos2026" })).json().error.code).toBe("ACCOUNT_PENDING");
     await call("PATCH", `/admin/users/${signup.json().user.id}/activate`, adminToken);
@@ -80,7 +80,7 @@ describe.skipIf(!dbUrl)("API com Postgres de verdade", () => {
     const song = (await call("POST", "/admin/songs", adminToken, { title: "Entrada" })).json().song;
 
     const hash = await new Argon2PasswordHasher().hash("cantos2026");
-    await repos.users.create({ name: "Bruno", email: "bruno@teste.com", passwordHash: hash, phone: null, movementId: null, status: "active", roles: ["musico"] });
+    await repos.users.create({ name: "Bruno", email: "bruno@teste.com", passwordHash: hash, phone: null, movementIds: [], status: "active", roles: ["musico"] });
     const bruno = (await call("POST", "/auth/login", undefined, { email: "bruno@teste.com", password: "cantos2026" })).json().accessToken;
 
     const id = "6f1c2b8e-4c5d-4e7f-9a1b-2c3d4e5f6a7b";

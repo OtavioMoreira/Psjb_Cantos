@@ -6,8 +6,12 @@
     "password": "admin123",
     "role": "admin",
     "status": "ativo",
-    "movementId": 1,
-    "movement": "Ministério de Música",
+    "movements": [
+      {
+        "id": 1,
+        "name": "Ministério de Música"
+      }
+    ],
     "parish": "Paróquia Catedral São João Batista",
     "instrument": "Coordenação",
     "createdAt": "2025-01-10T10:00:00-03:00",
@@ -21,8 +25,12 @@
     "password": "cantos123",
     "role": "musico",
     "status": "ativo",
-    "movementId": 1,
-    "movement": "Ministério de Música",
+    "movements": [
+      {
+        "id": 1,
+        "name": "Ministério de Música"
+      }
+    ],
     "parish": "Paróquia Catedral São João Batista",
     "instrument": "Violão",
     "createdAt": "2025-02-03T09:00:00-03:00",
@@ -36,8 +44,12 @@
     "password": "senha123",
     "role": "musico",
     "status": "ativo",
-    "movementId": 1,
-    "movement": "Ministério de Música",
+    "movements": [
+      {
+        "id": 1,
+        "name": "Ministério de Música"
+      }
+    ],
     "parish": "Paróquia Catedral São João Batista",
     "instrument": "Voz",
     "createdAt": "2025-03-15T14:20:00-03:00",
@@ -51,8 +63,12 @@
     "password": "senha123",
     "role": "musico",
     "status": "ativo",
-    "movementId": 1,
-    "movement": "Ministério de Música",
+    "movements": [
+      {
+        "id": 1,
+        "name": "Ministério de Música"
+      }
+    ],
     "parish": "Paróquia Catedral São João Batista",
     "instrument": "Teclado",
     "createdAt": "2025-05-02T20:00:00-03:00",
@@ -66,8 +82,12 @@
     "password": "senha123",
     "role": "musico",
     "status": "pendente",
-    "movementId": 3,
-    "movement": "Pastoral da Juventude",
+    "movements": [
+      {
+        "id": 3,
+        "name": "Pastoral da Juventude"
+      }
+    ],
     "parish": "Paróquia Catedral São João Batista",
     "instrument": "Voz",
     "createdAt": "2026-09-22T16:45:00-03:00",
@@ -81,8 +101,7 @@
     "password": "senha123",
     "role": "musico",
     "status": "pendente",
-    "movementId": null,
-    "movement": "",
+    "movements": [],
     "parish": "Paróquia Catedral São João Batista",
     "instrument": "Violão",
     "createdAt": "2026-09-24T08:10:00-03:00",
@@ -96,8 +115,12 @@
     "password": "senha123",
     "role": "musico",
     "status": "bloqueado",
-    "movementId": 1,
-    "movement": "Ministério de Música",
+    "movements": [
+      {
+        "id": 1,
+        "name": "Ministério de Música"
+      }
+    ],
     "blockedReason": "Cadastro duplicado — usar a conta nova.",
     "parish": "Paróquia Catedral São João Batista",
     "instrument": "Baixo",
@@ -112,8 +135,12 @@
     "password": "senha123",
     "role": "musico",
     "status": "ativo",
-    "movementId": 5,
-    "movement": "Catequese",
+    "movements": [
+      {
+        "id": 5,
+        "name": "Catequese"
+      }
+    ],
     "parish": "Paróquia Catedral São João Batista",
     "instrument": "Flauta",
     "createdAt": "2025-08-09T10:30:00-03:00",

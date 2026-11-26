@@ -48,14 +48,14 @@ export function useTestDb() {
 
   let n = 0;
   const factory = {
-    user: (opts: { name?: string; email?: string; status?: UserStatus; roles?: Role[]; movementId?: number | null } = {}) => {
+    user: (opts: { name?: string; email?: string; status?: UserStatus; roles?: Role[]; movementIds?: number[] } = {}) => {
       n++;
       return repos.users.create({
         name: opts.name ?? `Pessoa ${n}`,
         email: opts.email ?? `pessoa${n}@teste.com`,
         passwordHash: "hash-de-teste",
         phone: null,
-        movementId: opts.movementId ?? null,
+        movementIds: opts.movementIds ?? [],
         status: opts.status ?? "active",
         roles: opts.roles ?? ["musico"],
       });

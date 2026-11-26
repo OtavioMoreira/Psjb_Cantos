@@ -10,7 +10,7 @@ let adapters: ReturnType<typeof makeTestContainer>["adapters"];
 const PASSWORD = "senha1234";
 
 async function addUser(email: string, roles: Role[] = ["musico"], status: UserStatus = "active") {
-  return adapters.users.create({ name: email.split("@")[0], email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementId: null, status, roles });
+  return adapters.users.create({ name: email.split("@")[0], email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementIds: [], status, roles });
 }
 const login = (email: string, password = PASSWORD) => app.inject({ method: "POST", url: "/api/auth/login", payload: { email, password } });
 const tokenOf = async (email: string, password = PASSWORD) => (await login(email, password)).json().accessToken as string;
@@ -30,17 +30,24 @@ beforeEach(async () => {
 describe("PATCH /api/me", () => {
   it("atualiza só os campos enviados (nome, telefone, movimento, paróquia, instrumento)", async () => {
     const mv = await adapters.movements.create("RCC");
+    const cat = await adapters.movements.create("Catequese");
     const res = await app.inject({
       method: "PATCH",
       url: "/api/me",
       headers: as(adminToken),
-      payload: { name: "  Ana Admin ", movementId: mv.id, parish: "Catedral", instrument: "Violão" },
+      payload: { name: "  Ana Admin ", movementIds: [mv.id, cat.id, mv.id], parish: "Catedral", instrument: "Violão" },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().user).toMatchObject({ name: "Ana Admin", movement: { id: mv.id, name: "RCC" }, parish: "Catedral", instrument: "Violão", email: "admin@x.com" });
+    expect(res.json().user).toMatchObject({
+      name: "Ana Admin",
+      movements: [{ id: cat.id, name: "Catequese" }, { id: mv.id, name: "RCC" }],
+      parish: "Catedral",
+      instrument: "Violão",
+      email: "admin@x.com",
+    });
 
-    const clear = await app.inject({ method: "PATCH", url: "/api/me", headers: as(adminToken), payload: { parish: "", movementId: null } });
-    expect(clear.json().user).toMatchObject({ name: "Ana Admin", parish: null, movement: null, instrument: "Violão" });
+    const clear = await app.inject({ method: "PATCH", url: "/api/me", headers: as(adminToken), payload: { parish: "", movementIds: [] } });
+    expect(clear.json().user).toMatchObject({ name: "Ana Admin", parish: null, movements: [], instrument: "Violão" });
   });
 
   it("não aceita e-mail, papel nem status (mass assignment) e confere o movimento", async () => {
@@ -48,8 +55,8 @@ describe("PATCH /api/me", () => {
       const res = await app.inject({ method: "PATCH", url: "/api/me", headers: as(adminToken), payload });
       expect(res.statusCode).toBe(400);
     }
-    const res = await app.inject({ method: "PATCH", url: "/api/me", headers: as(adminToken), payload: { movementId: 999 } });
-    expect(res.json().error.details.fields).toEqual({ movementId: "Movimento não encontrado." });
+    const res = await app.inject({ method: "PATCH", url: "/api/me", headers: as(adminToken), payload: { movementIds: [999] } });
+    expect(res.json().error.details.fields).toEqual({ movementIds: "Movimento não encontrado." });
   });
 });
 
@@ -88,17 +95,29 @@ describe("POST /api/auth/password", () => {
 });
 
 describe("PATCH /api/admin/users/:id", () => {
-  it("edita nome, e-mail, movimento e papéis", async () => {
+  it("edita nome, e-mail, movimentos e papéis", async () => {
     const ana = await addUser("ana@x.com");
     const mv = await adapters.movements.create("Catequese");
     const res = await app.inject({
       method: "PATCH",
       url: `/api/admin/users/${ana.id}`,
       headers: as(adminToken),
-      payload: { name: "Ana Souza", email: " ANA.SOUZA@x.com", movementId: mv.id, roles: ["admin", "musico", "admin"] },
+      payload: { name: "Ana Souza", email: " ANA.SOUZA@x.com", movementIds: [mv.id], roles: ["admin", "musico", "admin"] },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().user).toMatchObject({ name: "Ana Souza", email: "ana.souza@x.com", movement: { name: "Catequese" }, roles: ["admin", "musico"] });
+    expect(res.json().user).toMatchObject({ name: "Ana Souza", email: "ana.souza@x.com", movements: [{ name: "Catequese" }], roles: ["admin", "musico"] });
+  });
+
+  it("só os movimentos (edição direto na tabela): troca a lista inteira sem mexer no resto", async () => {
+    const ana = await addUser("ana@x.com");
+    const [a, b] = [await adapters.movements.create("RCC"), await adapters.movements.create("Catequese")];
+    const patch = (movementIds: unknown) => app.inject({ method: "PATCH", url: `/api/admin/users/${ana.id}`, headers: as(adminToken), payload: { movementIds } });
+    expect((await patch([a.id, b.id])).json().user).toMatchObject({ email: "ana@x.com", roles: ["musico"], movements: [{ id: b.id }, { id: a.id }] });
+    expect((await patch([b.id])).json().user.movements).toEqual([{ id: b.id, name: "Catequese" }]);
+    expect((await patch([])).json().user.movements).toEqual([]);
+    expect((await patch([a.id, 999])).statusCode).toBe(400);
+    expect((await patch(null)).statusCode).toBe(400);
+    expect((await patch(Array.from({ length: 21 }, (_, i) => i + 1))).statusCode).toBe(400);
   });
 
   it("e-mail de outra conta → 409; papel inexistente ou lista vazia → 400", async () => {

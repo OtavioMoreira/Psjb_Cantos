@@ -9,7 +9,7 @@ let adapters: ReturnType<typeof makeTestContainer>["adapters"];
 
 const PASSWORD = "senha1234";
 const addUser = async (email: string, status: UserStatus = "active") =>
-  adapters.users.create({ name: "Maria Silva", email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementId: null, status, roles: ["musico"] });
+  adapters.users.create({ name: "Maria Silva", email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementIds: [], status, roles: ["musico"] });
 const login = (email: string, opts: { password?: string; device?: string; remember?: boolean } = {}) =>
   app.inject({
     method: "POST",

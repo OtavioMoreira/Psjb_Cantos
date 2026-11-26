@@ -80,7 +80,7 @@ export class InMemoryUsers implements UserRepository {
       passwordHash: d.passwordHash,
       phone: d.phone,
       photoUrl: null,
-      movement: this.movementRef(d.movementId),
+      movements: this.movementRefs(d.movementIds),
       parish: null,
       instrument: null,
       status: d.status,
@@ -100,7 +100,7 @@ export class InMemoryUsers implements UserRepository {
     const order = { pending: 0, blocked: 1, active: 2 };
     return this.rows
       .filter((r) => (!f.status || r.status === f.status) && (!f.role || r.roles.includes(f.role)))
-      .filter((r) => !q || plain(`${r.name} ${r.email} ${r.movement?.name ?? ""}`).includes(q))
+      .filter((r) => !q || plain(`${r.name} ${r.email} ${r.movements.map((m) => m.name).join(" ")}`).includes(q))
       .sort((a, b) => order[a.status] - order[b.status] || a.name.localeCompare(b.name));
   }
   async list(f: UserFilters) {
@@ -128,24 +128,26 @@ export class InMemoryUsers implements UserRepository {
     u.photoUrl = photoUrl;
     return this.pub(u);
   }
-  private movementRef(id: number | null) {
-    return id ? { id, name: this.movements?.rows.find((m) => m.id === id)?.name ?? "" } : null;
+  private movementRefs(ids: number[]) {
+    return ids
+      .map((id) => ({ id, name: this.movements?.rows.find((m) => m.id === id)?.name ?? "" }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
   async updateProfile(id: string, d: ProfileData) {
     const u = this.rows.find((r) => r.id === id);
     if (!u) return null;
-    const { movementId, ...rest } = d;
+    const { movementIds, ...rest } = d;
     Object.assign(u, Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)));
-    if (movementId !== undefined) u.movement = this.movementRef(movementId);
+    if (movementIds) u.movements = this.movementRefs(movementIds);
     return this.pub(u);
   }
   async adminUpdate(id: string, d: AdminUserData) {
     const u = this.rows.find((r) => r.id === id);
     if (!u) return null;
     if (d.email && this.rows.some((r) => r.email === d.email && r.id !== id)) throw new AppError("EMAIL_TAKEN", "Já existe uma conta com este e-mail.");
-    const { movementId, ...rest } = d;
+    const { movementIds, ...rest } = d;
     Object.assign(u, Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)));
-    if (movementId !== undefined) u.movement = this.movementRef(movementId);
+    if (movementIds) u.movements = this.movementRefs(movementIds);
     return this.pub(u);
   }
   async updatePassword(id: string, passwordHash: string, mustChange: boolean) {
@@ -172,7 +174,7 @@ export class InMemoryUsers implements UserRepository {
     return this.rows
       .filter((r) => r.status === "active" && r.id !== excludeId && (r.name.toLowerCase().includes(t) || r.email.includes(t)))
       .slice(0, limit)
-      .map((r) => ({ id: r.id, name: r.name, email: r.email, photoUrl: r.photoUrl, movement: r.movement?.name ?? null }));
+      .map((r) => ({ id: r.id, name: r.name, email: r.email, photoUrl: r.photoUrl, movements: r.movements.map((m) => m.name) }));
   }
 }
 
@@ -196,6 +198,9 @@ export class InMemoryMovements implements MovementRepository {
     const m = this.rows.find((x) => x.id === id);
     if (m) m.name = name;
     return m ?? null;
+  }
+  async missingIds(ids: number[]) {
+    return ids.filter((id) => !this.rows.some((m) => m.id === id));
   }
   async delete(id: number) {
     const m = this.rows.find((x) => x.id === id);

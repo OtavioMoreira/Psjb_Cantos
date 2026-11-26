@@ -4,10 +4,16 @@ import { dbUrl, useTestDb } from "../support/db.js";
 describe.skipIf(!dbUrl)("PgUserRepository", () => {
   const { repos, factory, pool } = useTestDb();
 
-  it("cria com papéis e movimento e lê de volta (com o hash só em findByEmailWithPassword)", async () => {
+  it("cria com papéis e movimentos e lê de volta (com o hash só em findByEmailWithPassword)", async () => {
     const mv = await repos.movements.create("Catequese");
-    const u = await factory.user({ name: "Ana", email: "ana@teste.com", roles: ["admin", "musico"], movementId: mv.id });
-    expect(u).toMatchObject({ name: "Ana", roles: ["admin", "musico"], movement: { id: mv.id, name: "Catequese" }, status: "active" });
+    const rcc = await repos.movements.create("RCC");
+    const u = await factory.user({ name: "Ana", email: "ana@teste.com", roles: ["admin", "musico"], movementIds: [rcc.id, mv.id] });
+    expect(u).toMatchObject({
+      name: "Ana",
+      roles: ["admin", "musico"],
+      movements: [{ id: mv.id, name: "Catequese" }, { id: rcc.id, name: "RCC" }],
+      status: "active",
+    });
     expect(u).not.toHaveProperty("passwordHash");
 
     expect(await repos.users.findById(u.id)).toMatchObject({ email: "ana@teste.com" });
@@ -27,13 +33,17 @@ describe.skipIf(!dbUrl)("PgUserRepository", () => {
     const mv = await repos.movements.create("Pastoral da Juventude");
     await factory.user({ name: "Zeca", status: "active" });
     await factory.user({ name: "Bia", status: "blocked" });
-    await factory.user({ name: "Caio", status: "pending", movementId: mv.id });
+    const cat = await repos.movements.create("Catequese");
+    await factory.user({ name: "Caio", status: "pending", movementIds: [cat.id, mv.id] });
     await factory.user({ name: "Admin", roles: ["admin"] });
 
     expect((await repos.users.list({})).map((u) => u.name)).toEqual(["Caio", "Bia", "Admin", "Zeca"]);
     expect((await repos.users.list({ status: "blocked" })).map((u) => u.name)).toEqual(["Bia"]);
     expect((await repos.users.list({ role: "admin" })).map((u) => u.name)).toEqual(["Admin"]);
     expect((await repos.users.list({ q: "juventude" })).map((u) => u.name)).toEqual(["Caio"]);
+    // Com 2 movimentos a pessoa aparece uma vez só (sem duplicar linhas no JOIN).
+    expect((await repos.users.list({ q: "e" })).filter((u) => u.name === "Caio")).toHaveLength(1);
+    expect(await repos.users.count({ q: "catequese" })).toBe(1);
   });
 
   it("pagina mantendo a ordem, conta com os filtros e resume por status; busca ignora acento", async () => {
@@ -73,7 +83,9 @@ describe.skipIf(!dbUrl)("PgUserRepository", () => {
 
   it("filterActiveIds e searchActive só trazem contas ativas, sem a própria pessoa", async () => {
     const me = await factory.user({ name: "Eu Mesma" });
-    const ativa = await factory.user({ name: "Ana Ativa" });
+    const rcc = await repos.movements.create("Renovação Carismática");
+    const cat = await repos.movements.create("Catequese");
+    const ativa = await factory.user({ name: "Ana Ativa", movementIds: [rcc.id, cat.id] });
     const pendente = await factory.user({ name: "Ana Pendente", status: "pending" });
     const bloqueada = await factory.user({ name: "Ana Bloqueada", status: "blocked" });
 
@@ -81,6 +93,8 @@ describe.skipIf(!dbUrl)("PgUserRepository", () => {
     expect(await repos.users.filterActiveIds([])).toEqual([]);
     expect((await repos.users.searchActive("ana", me.id, 10)).map((p) => p.name)).toEqual(["Ana Ativa"]);
     expect((await repos.users.searchActive("", me.id, 10)).map((p) => p.name)).toEqual(["Ana Ativa"]);
+    // Por qualquer um dos movimentos, sem acento; os nomes vêm em ordem.
+    expect(await repos.users.searchActive("renovacao", me.id, 10)).toMatchObject([{ name: "Ana Ativa", movements: ["Catequese", "Renovação Carismática"] }]);
   });
 });
 
@@ -90,17 +104,18 @@ describe.skipIf(!dbUrl)("PgUserRepository: perfil e admin", () => {
   it("updateProfile muda só o que foi enviado e limpa com null", async () => {
     const mv = await repos.movements.create("RCC");
     const u = await factory.user({ name: "Ana" });
-    expect(await repos.users.updateProfile(u.id, { parish: "Catedral", instrument: "Violão", movementId: mv.id })).toMatchObject({
+    expect(await repos.users.updateProfile(u.id, { parish: "Catedral", instrument: "Violão", movementIds: [mv.id] })).toMatchObject({
       name: "Ana",
       parish: "Catedral",
       instrument: "Violão",
-      movement: { id: mv.id, name: "RCC" },
+      movements: [{ id: mv.id, name: "RCC" }],
     });
-    expect(await repos.users.updateProfile(u.id, { name: "Ana Souza", parish: null, movementId: null })).toMatchObject({
+    expect(await repos.users.updateProfile(u.id, { name: "Ana Souza" })).toMatchObject({ movements: [{ id: mv.id }] });
+    expect(await repos.users.updateProfile(u.id, { name: "Ana Souza", parish: null, movementIds: [] })).toMatchObject({
       name: "Ana Souza",
       parish: null,
       instrument: "Violão",
-      movement: null,
+      movements: [],
     });
     expect(await repos.users.updateProfile(u.id, {})).toMatchObject({ name: "Ana Souza" });
     expect(await repos.users.updateProfile("00000000-0000-0000-0000-000000000000", { name: "X" })).toBeNull();
@@ -206,10 +221,11 @@ describe.skipIf(!dbUrl)("PgMovementRepository", () => {
   it("lista em ordem alfabética com a contagem de membros", async () => {
     const pj = await repos.movements.create("Pastoral da Juventude");
     await repos.movements.create("Catequese");
-    await factory.user({ movementId: pj.id });
-    await factory.user({ movementId: pj.id });
+    const cat = (await repos.movements.list()).find((m) => m.name === "Catequese")!;
+    await factory.user({ movementIds: [pj.id, cat.id] });
+    await factory.user({ movementIds: [pj.id] });
     expect((await repos.movements.list()).map((m) => [m.name, m.members])).toEqual([
-      ["Catequese", 0],
+      ["Catequese", 1],
       ["Pastoral da Juventude", 2],
     ]);
   });
@@ -225,9 +241,13 @@ describe.skipIf(!dbUrl)("PgMovementRepository", () => {
 
   it("não exclui movimento com pessoas (MOVEMENT_IN_USE); sem pessoas, exclui", async () => {
     const m = await repos.movements.create("Legião de Maria");
-    await factory.user({ movementId: m.id });
+    const u = await factory.user({ movementIds: [m.id] });
     await expect(repos.movements.delete(m.id)).rejects.toMatchObject({ code: "MOVEMENT_IN_USE" });
     expect((await repos.movements.findById(m.id))?.members).toBe(1);
+    // Excluir a pessoa libera o movimento (CASCADE em user_movements).
+    await repos.users.delete(u.id);
+    expect((await repos.movements.findById(m.id))?.members).toBe(0);
+    expect(await repos.movements.missingIds([m.id, 999])).toEqual([999]);
     const vazio = await repos.movements.create("Vazio");
     expect(await repos.movements.delete(vazio.id)).toBe(true);
     expect(await repos.movements.delete(vazio.id)).toBe(false);

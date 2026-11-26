@@ -9,7 +9,7 @@ let token: string;
 
 const PASSWORD = "senha1234";
 const addUser = async (email: string) =>
-  adapters.users.create({ name: "Ana Souza", email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementId: null, status: "active", roles: ["musico"] });
+  adapters.users.create({ name: "Ana Souza", email, passwordHash: await adapters.hasher.hash(PASSWORD), phone: null, movementIds: [], status: "active", roles: ["musico"] });
 const request = (payload: object) => app.inject({ method: "POST", url: "/api/me/email", headers: { authorization: `Bearer ${token}` }, payload });
 const confirm = (t: string) => app.inject({ method: "POST", url: "/api/auth/confirm-email", payload: { token: t } });
 

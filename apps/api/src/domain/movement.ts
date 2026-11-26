@@ -1,4 +1,4 @@
-/** Movimento ou pastoral da paróquia. Cada usuário participa de no máximo um. */
+/** Movimento ou pastoral da paróquia. Uma pessoa pode participar de vários. */
 export interface Movement {
   id: number;
   name: string;
