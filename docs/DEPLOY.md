@@ -101,9 +101,9 @@ Rodado desta máquina, com a `DATABASE_URL_UNPOOLED` do `apps/api/.env.local` (g
 - [ ] Rodar a coleção do Postman com o ambiente `psjb-producao` (sem criar lixo no banco, ou apagando depois).
 
 ### 4.5 E-mail com o domínio da paróquia
-- [ ] No painel do Resend, adicionar o domínio `psjb.org.br` (região `sa-east-1`). Ele mostra os registros da seção 6.
-- [ ] Cadastrar os registros no Cloudflare (**sem proxy**, nuvem cinza).
-- [ ] Verificar no Resend e trocar `EMAIL_FROM` para `Cantos PSJB <nao-responda@psjb.org.br>`; redeploy da API.
+- [x] No painel do Resend, adicionar o domínio `psjb.org.br` (região `sa-east-1`). Ele mostra os registros da seção 6.
+- [x] Cadastrar os registros no Cloudflare (**sem proxy**, nuvem cinza). Feito em 26/11/2026: `resend._domainkey` (TXT), `send` e `rsend` (CNAME); sem DMARC, para não mexer em nada do e-mail da HostGator.
+- [x] Verificar no Resend e trocar `EMAIL_FROM` para `Cantos PSJB <nao-responda@psjb.org.br>`; redeploy da API. Verificado em 26/11/2026; `EMAIL_ENABLED` apagada (e-mails e 2FA ligados).
 - [ ] Testar um e-mail para Gmail e outro para Outlook/Hotmail (caixa de entrada, não spam).
 
 ### 4.6 Domínio `cantos.psjb.org.br`
