@@ -1,6 +1,7 @@
 import { AppError } from "../../domain/errors.js";
 import { toMassDTO, type MassBody, type MassDTO, type MassPatch } from "../../dtos/mass.dto.js";
 import type { Mass, MassSlot } from "../../domain/mass.js";
+import { hasRole } from "../../domain/user.js";
 import { massSharedEmail, massWhen } from "../../emails/templates.js";
 import type { EmailSender, MassData, MassFilters, MassRepository, SongRepository, UserRepository } from "../../interfaces/index.js";
 import { sendQuietly } from "../auth/emailTokens.js";
@@ -19,6 +20,18 @@ async function assertSongs(songs: SongRepository, slots: MassSlot[]) {
   if (missing.length) throw new AppError("VALIDATION_ERROR", "Há cantos que não existem no repertório.", { unknownSongIds: missing });
 }
 
+/** Sugerir uma missa para todos é coisa de admin (a "missa do padre"). */
+async function assertCanSuggest(users: UserRepository, userId: string) {
+  const user = await users.findById(userId);
+  if (!user || !hasRole(user, "admin")) throw new AppError("FORBIDDEN", "Só administradores sugerem missas para todos.");
+}
+
+/** A sugestão aparece na semana da data: sem data, não teria quando aparecer. */
+function assertSuggestionDate(suggested: boolean, date: string | null) {
+  if (suggested && !date)
+    throw new AppError("VALIDATION_ERROR", "Confira os dados enviados.", { fields: { date: "Informe a data: a sugestão aparece na semana dela." } });
+}
+
 export class ListMassesAction {
   constructor(private readonly deps: Deps) {}
   async execute(userId: string, filters: MassFilters): Promise<MassDTO[]> {
@@ -34,10 +47,23 @@ export class GetMassAction {
   }
 }
 
+/**
+ * Sugestões da semana para qualquer pessoa logada: de hoje até o domingo (hoje, se for domingo).
+ * Só leitura: cada pessoa cria a própria missa com base nela.
+ */
+export class ListSuggestedMassesAction {
+  constructor(private readonly deps: Deps) {}
+  async execute(userId: string): Promise<MassDTO[]> {
+    return (await this.deps.masses.listWeekSuggestions()).map((m) => toMassDTO(m, userId));
+  }
+}
+
 export class CreateMassAction {
-  constructor(private readonly deps: Deps & { songs: SongRepository }) {}
+  constructor(private readonly deps: Deps & { songs: SongRepository; users: UserRepository }) {}
   async execute(userId: string, body: MassBody & { id?: string }): Promise<MassDTO> {
     const { id, ...data } = body;
+    if (data.suggested) await assertCanSuggest(this.deps.users, userId);
+    assertSuggestionDate(data.suggested, data.date);
     await assertSongs(this.deps.songs, data.slots);
     return toMassDTO(await this.deps.masses.create(userId, data, id), userId);
   }
@@ -45,13 +71,14 @@ export class CreateMassAction {
 
 /**
  * PUT manda a missa inteira; PATCH só os campos que mudaram. Dono e convidados podem editar.
+ * Ligar ou desligar a sugestão para todos é só do dono, e o dono precisa ser admin.
  * Com `expectedVersion` (If-Match), recusa com 409 MASS_CONFLICT se outra pessoa salvou antes,
  * devolvendo a missa atual para o front juntar as alterações.
  */
 export class UpdateMassAction {
-  constructor(private readonly deps: Deps & { songs: SongRepository }) {}
+  constructor(private readonly deps: Deps & { songs: SongRepository; users: UserRepository }) {}
   async execute(userId: string, id: string, changes: MassBody | MassPatch, expectedVersion?: number): Promise<MassDTO> {
-    const { mass } = await loadMass(this.deps.masses, id, userId);
+    const { mass, access } = await loadMass(this.deps.masses, id, userId);
     const conflict = (current: Mass) =>
       new AppError("MASS_CONFLICT", `${current.updatedBy?.name ?? "Outra pessoa"} alterou esta missa enquanto você editava.`, {
         mass: toMassDTO(current, userId),
@@ -64,7 +91,13 @@ export class UpdateMassAction {
       season: changes.season !== undefined ? changes.season : mass.season,
       year: changes.year !== undefined ? changes.year : mass.year,
       slots: changes.slots ?? mass.slots,
+      suggested: changes.suggested ?? mass.suggested,
     };
+    if (data.suggested !== mass.suggested) {
+      if (access !== "owner") throw new AppError("FORBIDDEN", "Só quem criou a missa pode sugeri-la para todos.");
+      await assertCanSuggest(this.deps.users, userId);
+    }
+    assertSuggestionDate(data.suggested, data.date);
     if (changes.slots) await assertSongs(this.deps.songs, changes.slots);
     const updated = await this.deps.masses.update(id, data, userId, expectedVersion);
     if (!updated) {
@@ -97,6 +130,7 @@ export class DuplicateMassAction {
       season: mass.season,
       year: mass.year,
       slots: mass.slots,
+      suggested: false,
     });
     return toMassDTO(copy, userId);
   }

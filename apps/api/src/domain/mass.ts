@@ -56,6 +56,8 @@ export interface Mass {
   season: SeasonId | null;
   year: YearId | null;
   slots: MassSlot[];
+  /** Sugerida por um admin para todos (a "missa do padre"); aparece na semana da data. */
+  suggested: boolean;
   sharedWith: PersonRef[];
   /** Token do link de convite (só o dono vê). null = sem link ativo. */
   shareToken: string | null;

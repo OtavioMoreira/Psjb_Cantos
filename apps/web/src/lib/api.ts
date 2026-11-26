@@ -65,9 +65,12 @@ export interface ApiMass {
   season: string | null;
   year: string | null;
   slots: { id: string; moment: string; label: string; items: { songId: number; transpose: number }[] }[];
+  /** Sugerida por um admin para todos na semana da data. */
+  suggested: boolean;
   owner: ApiPerson;
   sharedWith: ApiPerson[];
-  access: "owner" | "shared";
+  /** "suggestion": a pessoa só vê a sugestão da semana (sem editar). */
+  access: "owner" | "shared" | "suggestion";
   shareToken: string | null;
   /** Vai de volta no If-Match: se outra pessoa salvou antes, a API responde 409 MASS_CONFLICT. */
   version: number;
@@ -75,7 +78,7 @@ export interface ApiMass {
   updatedAt: string;
 }
 
-export type ApiMassBody = Pick<ApiMass, "name" | "date" | "time" | "season" | "year" | "slots">;
+export type ApiMassBody = Pick<ApiMass, "name" | "date" | "time" | "season" | "year" | "slots" | "suggested">;
 
 /** Senha certa com o 2FA ligado: falta o código enviado por e-mail. */
 export interface LoginChallenge {
@@ -353,6 +356,8 @@ export const api = {
   },
   masses: {
     list: async () => (await authed<{ masses: ApiMass[] }>("/masses")).masses,
+    /** Missas sugeridas para todos de hoje até domingo. */
+    suggestions: async () => (await authed<{ masses: ApiMass[] }>("/masses/suggestions")).masses,
     get: async (id: string) => (await authed<{ mass: ApiMass }>(`/masses/${id}`)).mass,
     create: async (id: string, body: ApiMassBody) => (await authed<{ mass: ApiMass }>("/masses", { method: "POST", body: JSON.stringify({ id, ...body }) })).mass,
     /** Com `version`, só grava se ninguém salvou depois dela (senão, 409 MASS_CONFLICT com a missa atual). */

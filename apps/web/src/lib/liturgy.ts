@@ -90,6 +90,12 @@ export function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Janela das "Sugestões da semana": de hoje até o domingo (hoje, se for domingo). Igual à da API. */
+export function suggestionWeek() {
+  const today = todayIso();
+  return { today, sunday: new Date().getDay() === 0 ? today : nextSundayIso() };
+}
+
 export function nextSundayIso() {
   const d = new Date();
   d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7));

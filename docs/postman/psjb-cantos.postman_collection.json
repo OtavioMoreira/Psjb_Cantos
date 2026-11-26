@@ -2264,6 +2264,35 @@
           ]
         },
         {
+          "name": "Sugestões da semana",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/masses/suggestions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "masses",
+                "suggestions"
+              ]
+            },
+            "description": "Missas que um admin marcou como **sugeridas para todos** (`suggested: true`, a \"missa do padre\"), com data **de hoje até o domingo** (hoje, se for domingo), no fuso de Brasília. Qualquer pessoa logada vê. Só leitura: `access: \"suggestion\"` e `sharedWith: []` para quem não é dono nem convidado; o front cria uma missa nova com base nela."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Criar missa",
           "request": {
             "method": "POST",
@@ -2277,7 +2306,7 @@
                 "masses"
               ]
             },
-            "description": "Todos os campos são opcionais. `slots` são os momentos em ordem; `moment: \"extra\"` é canto adicional com nome livre. `transpose` vai de −6 a +5. `songId` é o id do canto em `data/songs.json`.",
+            "description": "Todos os campos são opcionais. `suggested: true` (só admin, exige `date`; músico → 403) sugere a missa para todos na semana da data. `slots` são os momentos em ordem; `moment: \"extra\"` é canto adicional com nome livre. `transpose` vai de −6 a +5. `songId` é o id do canto em `data/songs.json`.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Domingo — Missa das 19h\",\n  \"date\": \"2026-10-11\",\n  \"time\": \"19:00\",\n  \"season\": \"tempo-comum\",\n  \"year\": \"A\",\n  \"slots\": [\n    {\n      \"id\": \"s1\",\n      \"moment\": \"entrada\",\n      \"label\": \"Entrada\",\n      \"items\": [\n        {\n          \"songId\": 77,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s2\",\n      \"moment\": \"ato-penitencial\",\n      \"label\": \"Ato Penitencial\",\n      \"items\": [\n        {\n          \"songId\": 141,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s3\",\n      \"moment\": \"salmo\",\n      \"label\": \"Salmo\",\n      \"items\": [\n        {\n          \"songId\": 214,\n          \"transpose\": 0\n        }\n      ]\n    },\n    {\n      \"id\": \"s4\",\n      \"moment\": \"comunhao\",\n      \"label\": \"Comunhão\",\n      \"items\": [\n        {\n          \"songId\": 382,\n          \"transpose\": -2\n        }\n      ]\n    },\n    {\n      \"id\": \"s5\",\n      \"moment\": \"extra\",\n      \"label\": \"Ação de graças\",\n      \"items\": []\n    }\n  ]\n}",

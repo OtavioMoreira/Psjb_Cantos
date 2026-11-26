@@ -25,6 +25,11 @@ export class MassController {
     return { masses: await this.c.actions.listMasses.execute(requireAuth(req).userId, filters) };
   };
 
+  /** Sugestões da semana (missas do padre), para qualquer pessoa logada. */
+  suggestions = async (req: FastifyRequest): Promise<{ masses: MassDTO[] }> => {
+    return { masses: await this.c.actions.listSuggestedMasses.execute(requireAuth(req).userId) };
+  };
+
   get = async (req: FastifyRequest): Promise<{ mass: MassDTO }> => {
     return { mass: await this.c.actions.getMass.execute(requireAuth(req).userId, this.id(req)) };
   };

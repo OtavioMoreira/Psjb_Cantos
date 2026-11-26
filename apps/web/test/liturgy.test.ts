@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { formatNumber, liturgicalSeason, liturgicalYear } from "@/lib/liturgy";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { formatNumber, liturgicalSeason, liturgicalYear, suggestionWeek } from "@/lib/liturgy";
 
 // O editor cria as datas com "T12:00:00" (meio-dia local). Os testes usam o mesmo formato.
 const at = (iso: string) => new Date(`${iso}T12:00:00`);
@@ -62,5 +62,18 @@ describe("Número do canto", () => {
     expect(formatNumber(45)).toBe("Nº 045");
     expect(formatNumber(1234)).toBe("Nº 1234");
     expect(formatNumber(null)).toBeNull();
+  });
+});
+
+describe("Sugestões da semana (suggestionWeek)", () => {
+  afterEach(() => vi.useRealTimers());
+  it("vai de hoje até o domingo; no domingo, só o próprio dia", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 26, 10)); // quinta, 26/11/2026
+    expect(suggestionWeek()).toEqual({ today: "2026-11-26", sunday: "2026-11-29" });
+    vi.setSystemTime(new Date(2026, 10, 29, 20)); // domingo à noite
+    expect(suggestionWeek()).toEqual({ today: "2026-11-29", sunday: "2026-11-29" });
+    vi.setSystemTime(new Date(2026, 10, 30, 8)); // segunda: já é a semana seguinte
+    expect(suggestionWeek()).toEqual({ today: "2026-11-30", sunday: "2026-12-06" });
   });
 });

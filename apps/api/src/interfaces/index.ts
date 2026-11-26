@@ -94,6 +94,7 @@ export interface MassData {
   season: SeasonId | null;
   year: YearId | null;
   slots: MassSlot[];
+  suggested: boolean;
 }
 
 export interface MassFilters {
@@ -106,6 +107,8 @@ export interface MassRepository {
   findById(id: string): Promise<Mass | null>;
   /** Missas que a pessoa criou ou que foram compartilhadas com ela. */
   listForUser(userId: string, filters: MassFilters): Promise<Mass[]>;
+  /** Missas sugeridas da semana: de hoje até o domingo seguinte (hoje, se for domingo), no fuso de Brasília. */
+  listWeekSuggestions(): Promise<Mass[]>;
   /** `id` opcional: o front gera o UUID para salvar offline e sincronizar depois. Lança MASS_EXISTS se já existe. */
   create(ownerId: string, data: MassData, id?: string): Promise<Mass>;
   /**

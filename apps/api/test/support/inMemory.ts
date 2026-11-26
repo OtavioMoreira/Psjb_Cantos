@@ -211,6 +211,14 @@ export class InMemoryMovements implements MovementRepository {
   }
 }
 
+/** Hoje e o domingo desta semana (hoje, se for domingo), no fuso de Brasília, como no Postgres. */
+export function weekWindow(now = new Date()) {
+  const today = now.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  const d = new Date(`${today}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7));
+  return { today, sunday: d.toISOString().slice(0, 10) };
+}
+
 export class InMemoryMasses implements MassRepository {
   rows: Mass[] = [];
   constructor(private readonly users: InMemoryUsers) {}
@@ -227,6 +235,13 @@ export class InMemoryMasses implements MassRepository {
     return this.rows
       .filter((m) => m.owner.id === userId || m.sharedWith.some((p) => p.id === userId))
       .filter((m) => !f.q || m.name.toLowerCase().includes(f.q.toLowerCase()))
+      .map((m) => structuredClone(m));
+  }
+  async listWeekSuggestions() {
+    const { today, sunday } = weekWindow();
+    return this.rows
+      .filter((m) => m.suggested && m.date && m.date >= today && m.date <= sunday)
+      .sort((a, b) => a.date!.localeCompare(b.date!) || (a.time ?? "99").localeCompare(b.time ?? "99"))
       .map((m) => structuredClone(m));
   }
   async create(ownerId: string, d: MassData, id?: string) {

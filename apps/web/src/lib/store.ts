@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import usersJson from "@data/users.json";
 import type { Mass, MassSlot, MomentId, User } from "./types";
 import { mergeMass } from "./massMerge";
-import { liturgicalSeason, liturgicalYear, nextSundayIso } from "./liturgy";
+import { liturgicalSeason, liturgicalYear, nextSundayIso, suggestionWeek } from "./liturgy";
 import { api, API_ENABLED, ApiError, type ApiMass, type ApiPerson, type ApiUser } from "./api";
 
 /**
@@ -564,6 +564,8 @@ function seedMasses(): Mass[] {
       updatedAt: new Date().toISOString(),
       ownerId: "u-admin",
       sharedWith: ["u-1", "u-2"],
+      // Na demonstração, a missa de exemplo também é a sugestão da semana.
+      suggested: true,
       slots: DEFAULT_SLOTS.map((s) => ({
         id: uid(),
         ...s,
@@ -675,8 +677,59 @@ export function duplicateMass(id: string) {
     // A cópia é de quem duplicou e começa sem compartilhamento.
     ownerId: undefined,
     sharedWith: [],
+    suggested: false,
   };
   return saveMass(copy);
+}
+
+/* ---------------- Sugestões da semana (a missa do padre) ---------------- */
+
+const suggestionsStore = createStore<{ list: Mass[]; owners: Record<string, string>; loaded: boolean }>("psjb:suggestions", {
+  list: [],
+  owners: {},
+  loaded: false,
+});
+
+/**
+ * Missas que um admin sugeriu para todos, de hoje até domingo. Com a API, vêm do servidor (busca
+ * uma vez por tela); na demonstração, das missas deste aparelho marcadas como sugeridas.
+ */
+export function useWeekSuggestions(): { list: (Mass & { ownerName: string })[]; loading: boolean } {
+  const all = useMasses();
+  const remote = suggestionsStore.useValue();
+  const people = usePeopleLookup();
+  useEffect(() => {
+    if (!API_ENABLED) return;
+    api.masses
+      .suggestions()
+      .then((list) => {
+        rememberPeople(list.map((m) => m.owner));
+        suggestionsStore.write({ list: list.map(fromApi), owners: Object.fromEntries(list.map((m) => [m.id, m.owner.name])), loaded: true });
+      })
+      .catch(() => suggestionsStore.write({ ...suggestionsStore.read(), loaded: true }));
+  }, []);
+  return useMemo(() => {
+    if (API_ENABLED) return { list: remote.list.map((m) => ({ ...m, ownerName: remote.owners[m.id] ?? "Coordenação" })), loading: !remote.loaded };
+    const { today, sunday } = suggestionWeek();
+    const list = all
+      .filter((m) => m.suggested && m.date >= today && m.date <= sunday)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+      .map((m) => ({ ...m, ownerName: people(m.ownerId ?? "")?.name ?? "Coordenação" }));
+    return { list, loading: false };
+  }, [all, remote, people]);
+}
+
+/** Cria uma missa da pessoa com base na sugestão: mesmo nome, data, horário e cantos, sem compartilhamento. */
+export function massFromSuggestion(s: Mass) {
+  return saveMass({
+    ...structuredClone(s),
+    id: massId(),
+    ownerId: undefined,
+    sharedWith: [],
+    shareToken: null,
+    version: undefined,
+    suggested: false,
+  });
 }
 
 export function addSongToMass(massId: string, moment: MomentId, songId: number) {
@@ -735,7 +788,15 @@ function later(id: string, task: () => Promise<unknown>) {
   };
 }
 
-const toBody = (m: Mass) => ({ name: m.name, date: m.date || null, time: m.time || null, season: m.season, year: m.year, slots: m.slots });
+const toBody = (m: Mass) => ({
+  name: m.name,
+  date: m.date || null,
+  time: m.time || null,
+  season: m.season,
+  year: m.year,
+  slots: m.slots,
+  suggested: Boolean(m.suggested),
+});
 
 function fromApi(m: ApiMass): Mass {
   return {
@@ -751,6 +812,7 @@ function fromApi(m: ApiMass): Mass {
     sharedWith: m.sharedWith.map((p) => p.id),
     shareToken: m.shareToken,
     version: m.version,
+    suggested: m.suggested ?? false,
   };
 }
 
@@ -859,6 +921,7 @@ export async function joinMassByToken(token: string) {
 }
 
 function clearMassCache() {
+  suggestionsStore.write({ list: [], owners: {}, loaded: false });
   serverMasses.clear();
   serverBase.clear();
   massesStore.write(null);

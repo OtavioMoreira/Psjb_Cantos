@@ -144,6 +144,12 @@ Os eixos:
   - Filtros Próximas, Passadas e Todas, e busca.
   - **Duplicar** cria "Cópia de …" sem data. **Excluir** tem "Desfazer".
   - O card mostra o progresso: "X de Y momentos".
+- **Missa sugerida da semana (a "missa do padre", 26/11/2026):** um **admin** monta uma missa normal e liga **"Sugerir esta missa para todos"** no editor (só na missa que ele criou; exige data, e apagar a data desliga a sugestão).
+  - **Quando aparece:** em **"Sugestões da semana"**, no topo de **Minhas Missas** e de **Nova missa**, para todas as pessoas logadas, **só de hoje até o domingo** (hoje, se for domingo), no fuso de Brasília. Pode haver mais de uma (ex.: 8h, 10h e 19h). Sugestão de semanas seguintes ainda não aparece e a de dias passados some, para a lista nunca crescer. Sem sugestão na semana, a caixa some.
+  - **O que a pessoa faz:** vê nome, data, horário, tempo, ano, quem sugeriu e os cantos ("Ver os cantos") e clica em **"Usar como base"**: nasce uma **missa dela**, com o mesmo nome, data, horário, momentos, cantos e tons, sem compartilhamento e sem ser sugestão, e o editor abre. Mudar a cópia não mexe na sugestão, e mudar a sugestão não mexe nas cópias já criadas.
+  - **Quem só vê a sugestão não edita** a missa do admin (403) e ela não entra em "Minhas Missas" dessa pessoa; a API também esconde a lista de convidados do admin (`access: "suggestion"`, `sharedWith: []`). Se o admin compartilhou a missa com alguém, essa pessoa edita os cantos normalmente, mas **ligar ou desligar a sugestão é só do dono admin** (músico → 403).
+  - O card da missa do admin mostra o selo dourado **"Sugerida para todos"**; na caixa, o próprio admin vê "Sugerida por você" e [Editar sugestão].
+  - API: campo `suggested` da missa (coluna `masses.suggested`, migration 014; o banco recusa sugestão sem data) e `GET /api/masses/suggestions`.
 - **"Abrir no Modo Missa":** fica desabilitado se a missa não tem nenhum canto.
 - **PDF da missa:** para quem não tem tablet imprimir, ou para ter tudo na ordem sem internet.
   - O botão **"Baixar PDF"** fica no editor e nos cards de "Minhas Missas", e fica desabilitado se a missa não tem cantos.

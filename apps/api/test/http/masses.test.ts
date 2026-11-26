@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../../src/buildApp.js";
 import type { Role, UserStatus } from "../../src/domain/user.js";
-import { makeTestContainer } from "../support/inMemory.js";
+import { makeTestContainer, weekWindow } from "../support/inMemory.js";
 
 let app: FastifyInstance;
 let adapters: ReturnType<typeof makeTestContainer>["adapters"];
@@ -277,5 +277,67 @@ describe("Movimentos", () => {
     expect(ok.json().user.movements).toEqual([{ id, name: "Catequese" }]);
     const bad = await app.inject({ method: "POST", url: "/api/users", payload: { ...base, email: "c2@x.com", movementIds: [999] } });
     expect(bad.json().error.details.fields.movementIds).toBe("Movimento não encontrado.");
+  });
+});
+
+describe("Missa sugerida (a missa do padre)", () => {
+  const { today, sunday } = weekWindow();
+  const plusDays = (iso: string, n: number) => {
+    const d = new Date(`${iso}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+
+  it("só admin sugere, e precisa de data; músico recebe 403", async () => {
+    expect((await req("ana", "POST", "/masses", { ...MASS, suggested: true })).statusCode).toBe(403);
+    const semData = await req("admin", "POST", "/masses", { ...MASS, date: null, suggested: true });
+    expect(semData.json().error.details.fields.date).toMatch(/Informe a data/);
+    const ok = await req("admin", "POST", "/masses", { ...MASS, date: sunday, suggested: true });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json().mass).toMatchObject({ suggested: true, access: "owner" });
+
+    // Tirar a data de uma sugestão também é recusado.
+    expect((await req("admin", "PATCH", `/masses/${ok.json().mass.id}`, { date: null })).statusCode).toBe(400);
+  });
+
+  it("aparece para todos só na semana da data (de hoje até domingo), em ordem, sem a lista de convidados", async () => {
+    const make = async (date: string, time: string, suggested = true) =>
+      (await req("admin", "POST", "/masses", { ...MASS, name: `Missa ${date} ${time}`, date, time, suggested })).json().mass.id as string;
+    const domingo19 = await make(sunday, "19:00");
+    const domingo10 = await make(sunday, "10:00");
+    await make(plusDays(sunday, 7), "10:00"); // próxima semana: ainda não aparece
+    await make(plusDays(today, -1), "10:00"); // ontem: já passou
+    await make(sunday, "08:00", false); // missa comum do admin
+    await req("admin", "PUT", `/masses/${domingo19}/shares`, { userIds: [ids.bruno] });
+
+    const res = await req("ana", "GET", "/masses/suggestions");
+    expect(res.statusCode).toBe(200);
+    const list = res.json().masses as { id: string; access: string; sharedWith: unknown[]; owner: { name: string } }[];
+    expect(list.map((m) => m.id)).toEqual([domingo10, domingo19]);
+    expect(list[1]).toMatchObject({ access: "suggestion", sharedWith: [], owner: { name: "Admin" } });
+
+    // Ver a sugestão não dá acesso de edição à missa do admin.
+    expect((await req("ana", "PUT", `/masses/${domingo10}`, MASS)).statusCode).toBe(403);
+    expect((await req("ana", "GET", `/masses/${domingo10}`)).statusCode).toBe(403);
+    // E não entra em "Minhas Missas" de quem só vê a sugestão.
+    expect((await req("ana", "GET", "/masses")).json().masses).toEqual([]);
+  });
+
+  it("convidado edita os cantos, mas não liga nem desliga a sugestão", async () => {
+    const id = (await req("admin", "POST", "/masses", { ...MASS, date: sunday, suggested: true })).json().mass.id;
+    await req("admin", "PUT", `/masses/${id}/shares`, { userIds: [ids.ana] });
+    // O editor manda a missa inteira (com suggested igual): passa.
+    expect((await req("ana", "PUT", `/masses/${id}`, { ...MASS, date: sunday, suggested: true })).statusCode).toBe(200);
+    expect((await req("ana", "PATCH", `/masses/${id}`, { suggested: false })).statusCode).toBe(403);
+    expect((await req("admin", "PATCH", `/masses/${id}`, { suggested: false })).json().mass.suggested).toBe(false);
+  });
+
+  it("duplicar uma sugestão gera uma missa comum", async () => {
+    const id = (await req("admin", "POST", "/masses", { ...MASS, date: sunday, suggested: true })).json().mass.id;
+    expect((await req("admin", "POST", `/masses/${id}/duplicate`)).json().mass.suggested).toBe(false);
+  });
+
+  it("sem login: 401", async () => {
+    expect((await app.inject({ method: "GET", url: "/api/masses/suggestions" })).statusCode).toBe(401);
   });
 });

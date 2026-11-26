@@ -69,6 +69,7 @@ export async function routes(app: FastifyInstance, { container }: { container: C
 
     logged.get("/masses", masses.list);
     logged.post("/masses", masses.create);
+    logged.get("/masses/suggestions", masses.suggestions);
     logged.get("/masses/:id", masses.get);
     logged.put("/masses/:id", masses.replace);
     logged.patch("/masses/:id", masses.patch);

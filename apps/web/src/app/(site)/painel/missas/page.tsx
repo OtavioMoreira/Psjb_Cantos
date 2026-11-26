@@ -8,6 +8,7 @@ import { normalize } from "@/lib/search";
 import { ButtonLink } from "@/components/ui/Button";
 import { Cross } from "@/components/ui/Ornament";
 import { MassCard } from "@/components/mass/MassCard";
+import { WeekSuggestions } from "@/components/mass/WeekSuggestions";
 
 type View = "proximas" | "passadas" | "todas";
 
@@ -28,6 +29,9 @@ export default function MissasPage() {
         <ButtonLink href="/painel/missas/nova">
           <Plus size={18} /> Nova missa
         </ButtonLink>
+      </div>
+      <div className="mt-6">
+        <WeekSuggestions />
       </div>
       <div className="mt-6 flex flex-wrap gap-3">
         <label className="relative min-w-[200px] flex-1">

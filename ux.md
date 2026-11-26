@@ -428,6 +428,15 @@ Seções em cards empilhados, com largura máxima de 640px:
 ### 4.7 Minhas Missas (`/painel/missas`)
 ```
 Minhas Missas                         [+ Nova missa]
+┌ ✦ Sugestões da semana (gold-soft, borda gold) ───────────┐
+│ Missas sugeridas pela coordenação para esta semana…       │
+│ ┌▌1º Domingo do Advento — Missa das 10h ───────┐ ┌ … ┐   │
+│ │ domingo, 29 de novembro de 2026 · 10h · Advento · Ano B│
+│ │ Sugerida por Pe. Diego · 9 cantos              │       │
+│ │ ˅ Ver os cantos  (Entrada  Nº 039 Ao Senhor…)  │       │
+│ │ [⧉ Usar como base]  ([✎ Editar sugestão] admin)│       │
+│ └────────────────────────────────────────────────┘       │
+└───────────────────────────────────────────────────────────┘
 [🔍 Buscar missa]  [Próximas | Passadas | Todas]
 ┌───────────────────────────────────────────────────┐
 │▌ 25º Domingo do Tempo Comum        dom, 28 set    │
@@ -437,6 +446,8 @@ Minhas Missas                         [+ Nova missa]
 │  [⤢ Modo Missa] [✎ Editar] [⬇ PDF] [👥 Compartilhar 3]  [⋯]│
 └───────────────────────────────────────────────────┘
 ```
+- **Sugestões da semana:** caixa `gold-soft` acima da busca, também no topo de **Nova missa** (texto mais curto). Cards em 1 coluna (2 a partir de 1024 px) com a faixa do tempo, data por extenso, "Sugerida por {nome}" e "N cantos"; "Ver os cantos" (44 px) abre a lista momento → Nº + título; [Usar como base] cria a missa da pessoa e abre o editor com o toast "Missa criada com base na sugestão. Agora é só ajustar." A caixa some quando não há sugestão de hoje até domingo. A missa sugerida do admin ganha o selo dourado "✦ Sugerida para todos" no card.
+- **Editor (admin, na própria missa):** abaixo do cabeçalho, o cartão "✦ Sugerir esta missa para todos" com caixa de marcar (fundo `gold-soft` quando ligada). Sem data, fica desabilitado com "Defina a data primeiro: a sugestão aparece na semana dela."
 - **Missa compartilhada comigo:** no lugar das iniciais, "👥 Compartilhada por {nome}". Não tem botão Compartilhar, e o ⋯ troca "Excluir" por "Sair desta missa" (com "Desfazer").
 - O botão Compartilhar aparece para o dono da missa, qualquer que seja o papel.
 

@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Check, CloudOff, Eye, GripVertical, Loader2, Minus, Plus, RotateCcw, Tablet, Trash2, Users, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CloudOff, Eye, GripVertical, Loader2, Minus, Plus, RotateCcw, Sparkles, Tablet, Trash2, Users, X } from "lucide-react";
 import type { Mass, MassSlot, Song } from "@/lib/types";
-import { massAccess, saveMass, setMassShares, uid, useMassMergeNotice, useMassSyncError, useMasses, usePeopleLookup, usePrefs, useSession } from "@/lib/store";
+import { massAccess, saveMass, setMassShares, uid, useIsAdmin, useMassMergeNotice, useMassSyncError, useMasses, usePeopleLookup, usePrefs, useSession } from "@/lib/store";
 import { useSongIndex } from "@/lib/useSongIndex";
 import { SEASON_STYLE, formatNumber, liturgicalSeason, liturgicalYear } from "@/lib/liturgy";
 import { keyLabel, wrapSemitones } from "@/lib/chords";
@@ -38,6 +38,7 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
   const person = usePeopleLookup();
   const syncError = useMassSyncError();
   const owner = massAccess(mass, userId) === "dono";
+  const isAdmin = useIsAdmin();
   // Quem tem acesso vem do store (muda pelo modal ou pela sincronização), não da cópia do editor.
   const live = useMasses().find((m) => m.id === mass.id);
   const shared = (live ?? mass).sharedWith ?? [];
@@ -104,7 +105,8 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
   const onDate = (date: string) =>
     update((m) => {
       const d = date ? new Date(date + "T12:00:00") : null;
-      return { ...m, date, season: d ? liturgicalSeason(d) : m.season, year: d ? liturgicalYear(d) : m.year };
+      // A sugestão aparece na semana da data: sem data, deixa de ser sugestão.
+      return { ...m, date, season: d ? liturgicalSeason(d) : m.season, year: d ? liturgicalYear(d) : m.year, suggested: date ? m.suggested : false };
     });
 
   const current = mass.slots.find((s) => s.id === activeSlot) ?? null;
@@ -203,6 +205,36 @@ export function MassEditor({ initial, isNew = false }: { initial: Mass; isNew?: 
           </span>
         </div>
       </div>
+
+      {/* A missa do padre: só admin, na própria missa. */}
+      {owner && (isAdmin || mass.suggested) && (
+        <label
+          className={`mt-4 flex cursor-pointer items-start gap-3 rounded-[16px] border p-4 shadow-card sm:p-5 ${
+            mass.suggested ? "border-gold bg-gold-soft/60" : "border-border bg-surface"
+          }`}
+        >
+          <input
+            type="checkbox"
+            role="switch"
+            checked={Boolean(mass.suggested)}
+            disabled={!isAdmin || !mass.date}
+            onChange={(e) => update((m) => ({ ...m, suggested: e.target.checked }))}
+            className="mt-1 h-5 w-5 shrink-0 accent-[var(--primary-solid)] disabled:opacity-50"
+          />
+          <span className="min-w-0">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Sparkles size={16} className="shrink-0 text-gold-ink" /> Sugerir esta missa para todos
+            </span>
+            <span className="mt-0.5 block text-sm text-ink-muted">
+              {!mass.date
+                ? "Defina a data primeiro: a sugestão aparece na semana dela."
+                : mass.suggested
+                  ? "Na semana da data, ela aparece em “Sugestões da semana” para todas as pessoas, que podem criar a própria com base nela. O que você mudar aqui vale para quem ainda não usou."
+                  : "Na semana da data, ela aparece em “Sugestões da semana” para todas as pessoas, que podem criar a própria com base nela."}
+            </span>
+          </span>
+        </label>
+      )}
 
       {error && <p className="mt-4 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">Não conseguimos carregar os cantos. Verifique sua conexão.</p>}
 

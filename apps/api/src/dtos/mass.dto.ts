@@ -24,6 +24,8 @@ export const massBodySchema = z.object({
     .default(null),
   season: z.enum(SEASONS).nullable().default(null),
   year: z.enum(YEARS).nullable().default(null),
+  /** Só admin, e só o dono, liga ou desliga. Exige data. */
+  suggested: z.boolean().default(false),
   slots: z
     .array(slotSchema)
     .max(40)
@@ -45,6 +47,7 @@ export const massPatchSchema = z
     time: massBodySchema.shape.time.unwrap(),
     season: massBodySchema.shape.season.unwrap(),
     year: massBodySchema.shape.year.unwrap(),
+    suggested: massBodySchema.shape.suggested.unwrap(),
     slots: massBodySchema.shape.slots.unwrap(),
   })
   .partial()
@@ -84,10 +87,11 @@ export interface MassDTO {
   season: Mass["season"];
   year: Mass["year"];
   slots: Mass["slots"];
+  suggested: boolean;
   owner: PersonDTO;
   sharedWith: PersonDTO[];
-  /** Como a pessoa que pediu enxerga a missa: dona ou convidada. */
-  access: MassAccess;
+  /** Como a pessoa que pediu enxerga a missa: dona, convidada ou só a sugestão da semana (leitura). */
+  access: MassAccess | "suggestion";
   /** Só para o dono: token do link de convite (null = sem link). Convidados recebem sempre null. */
   shareToken: string | null;
   /** Mandar de volta no If-Match do PUT/PATCH: se outra pessoa salvou antes, a API responde 409. */
@@ -106,9 +110,11 @@ export function toMassDTO(m: Mass, viewerId: string): MassDTO {
     season: m.season,
     year: m.year,
     slots: m.slots,
+    suggested: m.suggested,
     owner: m.owner,
-    sharedWith: m.sharedWith,
-    access: massAccess(m, viewerId) ?? "shared",
+    // Quem só vê a sugestão não precisa saber com quem o admin compartilhou.
+    sharedWith: massAccess(m, viewerId) ? m.sharedWith : [],
+    access: massAccess(m, viewerId) ?? (m.suggested ? "suggestion" : "shared"),
     shareToken: massAccess(m, viewerId) === "owner" ? m.shareToken : null,
     version: m.version,
     updatedBy: m.updatedBy,

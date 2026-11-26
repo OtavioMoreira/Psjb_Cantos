@@ -118,4 +118,6 @@ export interface Mass {
   shareToken?: string | null;
   /** Com a API: versão no servidor (controle de concorrência na edição). */
   version?: number;
+  /** Sugerida por um admin para todos (a "missa do padre"): aparece em "Sugestões da semana". */
+  suggested?: boolean;
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, LogOut, MoreHorizontal, Pencil, Tablet, Trash2, Users } from "lucide-react";
+import { Copy, LogOut, MoreHorizontal, Pencil, Sparkles, Tablet, Trash2, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Mass } from "@/lib/types";
 import { SEASON_STYLE, formatDateShort } from "@/lib/liturgy";
@@ -53,6 +53,11 @@ export function MassCard({ mass }: { mass: Mass }) {
               {mass.season && ` · ${SEASON_STYLE[mass.season].label}`}
               {mass.year && ` · Ano ${mass.year}`}
             </p>
+            {mass.suggested && (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-2.5 py-1 text-xs font-semibold text-gold-ink">
+                <Sparkles size={13} /> Sugerida para todos
+              </p>
+            )}
             {(!owner || shared.length > 0) && (
               <p className="mt-2 flex items-center gap-2 text-sm text-ink-muted">
                 {owner ? (

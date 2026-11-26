@@ -28,6 +28,7 @@ import {
   GetMassAction,
   LeaveMassAction,
   ListMassesAction,
+  ListSuggestedMassesAction,
   ShareMassAction,
   UpdateMassAction,
 } from "./actions/masses/MassActions.js";
@@ -165,6 +166,7 @@ export function buildContainer(env: Env, adapters: Adapters) {
       renameMovement: new RenameMovementAction(deps),
       deleteMovement: new DeleteMovementAction(deps),
       listMasses: new ListMassesAction(deps),
+      listSuggestedMasses: new ListSuggestedMassesAction(deps),
       getMass: new GetMassAction(deps),
       createMass: new CreateMassAction(deps),
       updateMass: new UpdateMassAction(deps),

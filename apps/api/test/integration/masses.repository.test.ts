@@ -9,6 +9,7 @@ const mass = (over: Partial<MassData> = {}): MassData => ({
   season: null,
   year: null,
   slots: [],
+  suggested: false,
   ...over,
 });
 
@@ -20,6 +21,23 @@ async function brDate(pool: { query: (sql: string) => Promise<{ rows: { d: strin
 
 describe.skipIf(!dbUrl)("PgMassRepository", () => {
   const { repos, factory, pool } = useTestDb();
+
+  it("sugestões da semana: de hoje até o domingo (fuso de Brasília), só as marcadas; o banco exige data", async () => {
+    const admin = await factory.user({ roles: ["admin", "musico"] });
+    // Domingo desta semana segundo o próprio Postgres (hoje, se hoje for domingo).
+    const { rows } = await pool.query<{ d: number }>("SELECT extract(isodow FROM (now() AT TIME ZONE 'America/Sao_Paulo')::date)::int AS d");
+    const toSunday = (7 - rows[0].d) % 7;
+    const sunday = await brDate(pool, toSunday);
+    const a = await repos.masses.create(admin.id, mass({ name: "Domingo 10h", date: sunday, time: "10:00", suggested: true }));
+    const b = await repos.masses.create(admin.id, mass({ name: "Hoje", date: await brDate(pool, 0), time: "19:00", suggested: true }));
+    await repos.masses.create(admin.id, mass({ name: "Próxima semana", date: await brDate(pool, toSunday + 1), suggested: true }));
+    await repos.masses.create(admin.id, mass({ name: "Ontem", date: await brDate(pool, -1), suggested: true }));
+    await repos.masses.create(admin.id, mass({ name: "Comum", date: sunday }));
+    const list = await repos.masses.listWeekSuggestions();
+    expect(list.map((m) => m.id)).toEqual(toSunday === 0 ? [a.id, b.id] : [b.id, a.id]);
+    expect(list[0].suggested).toBe(true);
+    await expect(repos.masses.create(admin.id, mass({ suggested: true }))).rejects.toThrow(/masses_suggested_has_date/);
+  });
 
   it("guarda data e hora exatamente como enviadas (sem erro de fuso) e os momentos em JSON", async () => {
     const owner = await factory.user();
