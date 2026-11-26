@@ -404,7 +404,7 @@ No mobile, a sidebar vira a barra inferior de 4 itens (ver seção 3).
 Seções em cards empilhados, com largura máxima de 640px:
 ```
 ┌ Dados pessoais ─────────────────────────────┐
-│ [avatar 72px] Alterar foto                   │
+│ [avatar 72px com as iniciais]                │
 │ Nome     [Ana Souza                    ]     │
 │ E-mail   [ana@exemplo.com              ]     │
 │                          [Salvar alterações] │
@@ -504,7 +504,7 @@ Só aparecem pessoas com conta ativa.
 - **Publicar no site:** modal que explica que as páginas são geradas de antemão e que a atualização leva alguns minutos, com a linha de status ("Há alterações não publicadas (a última em …)" ou "Nenhuma alteração desde a última publicação. Última publicação: …, por …"). Toast: "Publicação pedida. O site atualiza em alguns minutos."
   - **Com alterações pendentes**, o botão vira `primary` com uma bolinha dourada e, abaixo dele, "Há alterações não publicadas" em `gold-ink`; sem pendências, "Publicado em 24 nov, 14:03 por {primeiro nome}" em `ink-muted`. O status é conferido ao abrir a tela, ao voltar para a aba e depois de cada alteração em cantos, flags ou salmos.
 - **Auditoria** (`/painel/admin/auditoria`): filtros em pílulas (Tudo, Usuários, Cantos, Flags, Movimentos, Publicação, Salmos, ≥ 44 px), "N registros" e uma lista em card: à esquerda a data ("seg., 24 de nov., 14:03"), à direita "**Padre João** bloqueou “Maria Souza”" e, abaixo, o detalhe em `ink-muted` ("Motivo: …", "Alterou: letra, título"). Ações em cantos levam ao editor. No celular, a data fica em cima. "Mostrar mais (N)" no fim.
-- **Perfil (com a API):** avatar de 72 px com a foto, [Enviar foto/Trocar foto] e "JPG, PNG ou WebP, até 2 MB". Nome, paróquia, movimentos, instrumento e senha salvam no servidor (botão com spinner enquanto salva). O e-mail fica só leitura (fundo `surface-2`), com a dica "É o seu login." e o link [✉ Trocar e-mail], que abre um modal com "Novo e-mail" e "Sua senha" e o botão [Enviar link]. Enviado, o link dá lugar a um aviso verde: "Enviamos um link para {novo}… Até lá, você continua entrando com {atual}."
+- **Perfil (com a API):** avatar de 72 px com as iniciais (sem troca de foto desde 26/11/2026). Nome, paróquia, movimentos, instrumento e senha salvam no servidor (botão com spinner enquanto salva). O e-mail fica só leitura (fundo `surface-2`), com a dica "É o seu login." e o link [✉ Trocar e-mail], que abre um modal com "Novo e-mail" e "Sua senha" e o botão [Enviar link]. Enviado, o link dá lugar a um aviso verde: "Enviamos um link para {novo}… Até lá, você continua entrando com {atual}."
 - **Senha temporária:** quem entra com a senha gerada pelo admin é levado a `/painel/perfil#seguranca` (qualquer outra página do painel redireciona para lá). No topo, aviso em `gold-soft` com 🔑 "Você entrou com uma senha temporária…", e o primeiro campo se chama "Senha temporária".
 
 ### 4.8 Montar Missa: editor (`/painel/missas/nova`)

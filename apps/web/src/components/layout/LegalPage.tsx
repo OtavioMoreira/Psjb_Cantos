@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Divider } from "@/components/ui/Ornament";
 
 /** Data da versão em vigor dos termos e da política (mudou → atualizar aqui e avisar no site). */
-export const LEGAL_VERSION = "24 de novembro de 2026";
+export const LEGAL_VERSION = "26 de novembro de 2026";
 export const PARISH_EMAIL = "secretaria@psjb.org.br";
 
 /** Moldura das páginas de termos e privacidade: título, data da versão, seções e o contato. */

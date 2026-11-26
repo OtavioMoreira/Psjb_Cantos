@@ -317,11 +317,6 @@ export async function syncAdminUsers(query: Parameters<typeof api.admin.users>[0
   return { ids: page.users.map((u) => u.id), total: page.total, counts: page.counts };
 }
 
-/** Troca a foto do perfil (só com a API). */
-export async function uploadMyPhoto(file: File) {
-  syncApiUser(await api.uploadPhoto(file));
-}
-
 /** Com a API, aplica a resposta do servidor; se falhar, recarrega a lista e repassa o erro para a tela. */
 async function applyAdmin(id: string, call: () => Promise<ApiUser>) {
   try {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Camera, KeyRound, Loader2, Mail, MailCheck } from "lucide-react";
-import { changePassword, initials, setPrefs, updateUser, uploadMyPhoto, usePrefs, useUser } from "@/lib/store";
+import { useState } from "react";
+import { KeyRound, Loader2, Mail, MailCheck } from "lucide-react";
+import { changePassword, initials, setPrefs, updateUser, usePrefs, useUser } from "@/lib/store";
 import { api, API_ENABLED, ApiError } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
 import type { User } from "@/lib/types";
@@ -59,7 +59,7 @@ function PersonalCard({ user }: { user: User }) {
   const dirty = name.trim() !== user.name || email !== user.email;
   return (
     <Card title="Dados pessoais">
-      <PhotoPicker user={user} name={name} />
+      <ProfileAvatar user={user} name={name} />
       <form
         className="space-y-4"
         onSubmit={(e) => {
@@ -186,10 +186,8 @@ function ChangeEmail({ current }: { current: string }) {
   );
 }
 
-/** Foto do perfil: com a API, envia (JPG, PNG ou WebP até 2 MB); na demonstração, só as iniciais. */
-function PhotoPicker({ user, name }: { user: User; name: string }) {
-  const input = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+/** Avatar do perfil: só as iniciais (a troca de foto saiu em 26/11/2026; quem já tinha foto continua vendo). */
+function ProfileAvatar({ user, name }: { user: User; name: string }) {
   return (
     <div className="mb-5 flex items-center gap-4">
       <span className="relative grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-full bg-primary-solid font-serif text-3xl font-semibold text-[#FFFDF8]">
@@ -200,38 +198,6 @@ function PhotoPicker({ user, name }: { user: User; name: string }) {
           initials(name || user.name)
         )}
       </span>
-      {API_ENABLED ? (
-        <div>
-          <input
-            ref={input}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="sr-only"
-            aria-label="Escolher foto"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (!file) return;
-              if (file.size > 2 * 1024 * 1024) return toast("A foto pode ter no máximo 2 MB.");
-              setBusy(true);
-              try {
-                await uploadMyPhoto(file);
-                toast("Foto atualizada.");
-              } catch (err) {
-                toast(err instanceof ApiError ? err.message : "Não foi possível enviar a foto.");
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
-          <Button type="button" variant="secondary" disabled={busy} onClick={() => input.current?.click()}>
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />} {user.photoUrl ? "Trocar foto" : "Enviar foto"}
-          </Button>
-          <p className="mt-1.5 text-xs text-ink-muted">JPG, PNG ou WebP, até 2 MB.</p>
-        </div>
-      ) : (
-        <span className="text-sm text-ink-muted">A foto de perfil chega junto com a API.</span>
-      )}
     </div>
   );
 }

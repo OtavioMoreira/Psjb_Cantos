@@ -34,7 +34,7 @@ export default function PrivacidadePage() {
             consegue vê-la.
           </li>
           <li>
-            <strong>Opcionais:</strong> telefone ou WhatsApp, foto, movimento ou pastoral, paróquia e instrumento ou voz. Você pode apagar cada um no
+            <strong>Opcionais:</strong> telefone ou WhatsApp, movimento ou pastoral, paróquia e instrumento ou voz. Você pode apagar cada um no
             perfil.
           </li>
           <li>
@@ -59,7 +59,7 @@ export default function PrivacidadePage() {
             missa compartilhada. Não enviamos propaganda.
           </li>
           <li>Proteger as contas contra acessos indevidos (legítimo interesse).</li>
-          <li>Mostrar o seu nome e a sua foto para as pessoas da equipe com quem você compartilha missas.</li>
+          <li>Mostrar o seu nome para as pessoas da equipe com quem você compartilha missas.</li>
         </ul>
         <p>Seus dados não são vendidos nem cedidos a ninguém.</p>
       </section>
@@ -78,7 +78,7 @@ export default function PrivacidadePage() {
         <p>O site usa serviços de terceiros que tratam os dados em nome da paróquia, só para fazer o site funcionar:</p>
         <ul>
           <li>
-            <strong>Vercel</strong>: hospedagem do site e dos arquivos (fotos, PDFs e áudios).
+            <strong>Vercel</strong>: hospedagem do site e dos arquivos (PDFs e áudios dos cantos).
           </li>
           <li>
             <strong>Neon</strong>: banco de dados, na região de São Paulo.
@@ -103,7 +103,7 @@ export default function PrivacidadePage() {
           <li>Registros de auditoria da administração: 2 anos.</li>
         </ul>
         <p>
-          Quando uma conta é excluída, saem junto o perfil, a foto, as sessões e as missas criadas pela pessoa (quem as recebeu perde o acesso). Nos
+          Quando uma conta é excluída, saem junto o perfil, as sessões e as missas criadas pela pessoa (quem as recebeu perde o acesso). Nos
           registros de auditoria, fica só o nome.
         </p>
       </section>

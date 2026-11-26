@@ -254,11 +254,6 @@ export const api = {
   async changePassword(currentPassword: string, newPassword: string) {
     return (await authed<{ user: ApiUser }>("/auth/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) })).user;
   },
-  async uploadPhoto(file: File) {
-    const body = new FormData();
-    body.append("photo", file);
-    return (await authed<{ user: ApiUser }>("/me/photo", { method: "PUT", body })).user;
-  },
   admin: {
     /** Uma página da lista (pendentes primeiro), o total com os filtros e o resumo por status de todas as contas. */
     users: (q: { q?: string; status?: ApiUser["status"]; role?: ApiUser["roles"][number]; page?: number; pageSize?: number } = {}) => {
