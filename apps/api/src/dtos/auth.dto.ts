@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { passwordSchema } from "./user.dto.js";
+import { movementIdsSchema, passwordSchema } from "./user.dto.js";
 import type { UserDTO } from "./user.dto.js";
 
 export const loginSchema = z.object({
@@ -27,6 +27,8 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export const resetPasswordSchema = z.object({
   token: z.string().min(20, "Link inválido.").max(200),
   password: passwordSchema,
+  /** Só no convite (opcional): movimentos que a pessoa marca ao criar a senha. Somam aos que o admin já marcou. */
+  movementIds: movementIdsSchema.default([]),
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 

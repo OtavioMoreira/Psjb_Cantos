@@ -23,7 +23,7 @@ const emailSchema = z.string().trim().toLowerCase().pipe(z.email("E-mail inváli
 const phoneSchema = optionalText(20).refine((v) => v === null || /^[\d\s()+-]{8,20}$/.test(v), "Telefone inválido.");
 export const MOVEMENTS_MAX = 20;
 /** Lista de movimentos da pessoa (substitui a inteira). Vazia = nenhum. */
-const movementIdsSchema = z
+export const movementIdsSchema = z
   .array(z.coerce.number().int().positive())
   .max(MOVEMENTS_MAX, `No máximo ${MOVEMENTS_MAX} movimentos.`)
   .transform((ids) => [...new Set(ids)]);

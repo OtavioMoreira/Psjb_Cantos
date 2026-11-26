@@ -11,6 +11,8 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { AuthCard, DemoNote } from "./AuthCard";
 import { CAPTCHA_ENABLED, HumanCheck } from "./HumanCheck";
 import { PasswordStrength, passwordScore } from "./PasswordStrength";
+import { MovementPicker } from "@/components/user/MovementPicker";
+import type { Movement } from "@/lib/movements";
 
 export function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -106,6 +108,7 @@ export function ResetPassword() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [movements, setMovements] = useState<Movement[]>([]);
 
   if (state !== "form") {
     return (
@@ -155,10 +158,12 @@ export function ResetPassword() {
           setError("");
           if (password.length < 8 || passwordScore(password) < 2) return setError("Use pelo menos 8 caracteres, com letras e números.");
           if (password !== confirm) return setError("As senhas não conferem.");
-          if (!API_ENABLED) return setState(resetPassword(token, password) ? "ok" : "invalido");
+          // Movimentos só no convite (na redefinição comum, a pessoa muda pelo perfil).
+          const chosen = invite ? movements : [];
+          if (!API_ENABLED) return setState(resetPassword(token, password, chosen) ? "ok" : "invalido");
           setLoading(true);
           api
-            .resetPassword(token, password)
+            .resetPassword(token, password, chosen.map((m) => m.id))
             .then((r) => {
               setEmail(r.email);
               setState("ok");
@@ -175,6 +180,13 @@ export function ResetPassword() {
           <PasswordStrength password={password} />
         </div>
         <Field label="Confirmar nova senha" name="confirm" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        {invite && (
+          <MovementPicker
+            value={movements}
+            onChange={setMovements}
+            hint="Marque os movimentos e pastorais de que você participa. Dá para mudar depois no seu perfil."
+          />
+        )}
         {error && (
           <p role="alert" className="text-sm text-danger">
             {error}

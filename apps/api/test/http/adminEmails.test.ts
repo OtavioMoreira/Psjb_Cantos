@@ -46,6 +46,25 @@ describe("Convite (POST /api/admin/users/invite)", () => {
     expect(ok.json().user.status).toBe("active");
   });
 
+  it("ao criar a senha, a pessoa pode marcar movimentos: somam aos do admin; inexistente → 400 sem gastar o link", async () => {
+    const [rcc, cat, coral] = [await adapters.movements.create("RCC"), await adapters.movements.create("Catequese"), await adapters.movements.create("Coral")];
+    await invite({ name: "Bia Lima", email: "bia@x.com", movementIds: [rcc.id] });
+    const token = adapters.email.token("bia@x.com")!;
+    const accept = (movementIds: number[]) => app.inject({ method: "POST", url: "/api/auth/reset", payload: { token, password: "minha12345", movementIds } });
+
+    expect((await accept([999])).statusCode).toBe(400);
+    expect((await accept([cat.id, rcc.id])).statusCode).toBe(200);
+    const bia = adapters.users.rows.find((u) => u.email === "bia@x.com")!;
+    expect(bia.movements.map((m) => m.name)).toEqual(["Catequese", "RCC"]);
+    expect(bia.status).toBe("active");
+
+    // Na redefinição comum de senha, movimentos enviados são ignorados.
+    await app.inject({ method: "POST", url: `/api/admin/users/${bia.id}/reset-link`, headers: as() });
+    const resetToken = adapters.email.token("bia@x.com")!;
+    await app.inject({ method: "POST", url: "/api/auth/reset", payload: { token: resetToken, password: "outra12345", movementIds: [coral.id] } });
+    expect(adapters.users.rows.find((u) => u.email === "bia@x.com")!.movements.map((m) => m.name)).toEqual(["Catequese", "RCC"]);
+  });
+
   it("papel padrão é músico; e-mail repetido é 409; valida os campos", async () => {
     expect((await invite({ name: "Caio Reis", email: "caio@x.com" })).json().user.roles).toEqual(["musico"]);
     expect((await invite({ name: "Outro", email: "caio@x.com" })).json().error.code).toBe("EMAIL_TAKEN");

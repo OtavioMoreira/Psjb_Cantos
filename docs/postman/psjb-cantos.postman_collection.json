@@ -346,7 +346,7 @@
                 "reset"
               ]
             },
-            "description": "Cole em `resetToken` o token do link recebido (`/redefinir-senha?token=…`). Também serve para o link de **convite** (ativa a conta pendente). Uso único; derruba as sessões abertas. Resposta: `{ email }`. Sem um token válido, 400 INVALID_TOKEN (é o que esta requisição de exemplo espera).",
+            "description": "Cole em `resetToken` o token do link recebido (`/redefinir-senha?token=…`). Também serve para o link de **convite** (ativa a conta pendente); no convite, `movementIds` (opcional) soma movimentos aos que o admin marcou. Uso único; derruba as sessões abertas. Resposta: `{ email }`. Sem um token válido, 400 INVALID_TOKEN (é o que esta requisição de exemplo espera).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"novaSenha123\"\n}",

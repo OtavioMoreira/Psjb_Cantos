@@ -1,7 +1,8 @@
 import { AppError } from "../../domain/errors.js";
 import type { ForgotPasswordInput, ResetPasswordInput } from "../../dtos/auth.dto.js";
 import { passwordResetEmail } from "../../emails/templates.js";
-import type { HumanVerifier, PasswordHasher, SessionRepository, TrustedDeviceRepository, UserRepository } from "../../interfaces/index.js";
+import { ensureMovementsExist } from "../movements/MovementActions.js";
+import type { HumanVerifier, MovementRepository, PasswordHasher, SessionRepository, TrustedDeviceRepository, UserRepository } from "../../interfaces/index.js";
 import { requireHuman } from "./captcha.js";
 import { issueLinkToken, sendQuietly, sentRecently, type EmailTokenDeps } from "./emailTokens.js";
 
@@ -11,6 +12,7 @@ interface Deps extends EmailTokenDeps {
   sessions: SessionRepository;
   trustedDevices: TrustedDeviceRepository;
   hasher: PasswordHasher;
+  movements: MovementRepository;
 }
 
 /**
@@ -36,12 +38,15 @@ export class RequestPasswordResetAction {
 /**
  * Define a senha pelo link do e-mail (redefinição ou convite). O token é de uso único; as sessões
  * abertas e os aparelhos confiáveis caem, porque quem pede um link novo pode ter perdido o controle da conta.
- * No convite, a conta pendente passa a ativa: foi um admin que convidou.
+ * No convite, a conta pendente passa a ativa: foi um admin que convidou. A pessoa também pode marcar
+ * os seus movimentos, que se **somam** aos que o admin já marcou (nunca tiram nenhum).
  */
 export class ResetPasswordAction {
   constructor(private readonly deps: Deps) {}
 
   async execute(input: ResetPasswordInput): Promise<{ email: string }> {
+    // Antes de gastar o token: movimento inexistente é erro de formulário, e o link continua valendo.
+    await ensureMovementsExist(this.deps.movements, input.movementIds);
     const token = await this.deps.authTokens.consume(this.deps.tokens.hashRefreshToken(input.token), ["password_reset", "invite"], this.deps.clock.now());
     const user = token && (await this.deps.users.findById(token.userId));
     if (!token || !user) throw new AppError("INVALID_TOKEN", "Link inválido ou expirado. Peça um novo.");
@@ -51,6 +56,10 @@ export class ResetPasswordAction {
     await this.deps.sessions.revokeAllForUser(user.id);
     await this.deps.trustedDevices.revokeAllForUser(user.id);
     if (token.purpose === "invite" && user.status === "pending") await this.deps.users.updateStatus(user.id, "active");
+    if (token.purpose === "invite" && input.movementIds.length) {
+      const movementIds = [...new Set([...user.movements.map((m) => m.id), ...input.movementIds])];
+      await this.deps.users.updateProfile(user.id, { movementIds });
+    }
     return { email: user.email };
   }
 }

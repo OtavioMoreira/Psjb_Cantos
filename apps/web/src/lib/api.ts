@@ -223,7 +223,9 @@ export const api = {
   /** Sempre responde igual, exista ou não a conta. */
   forgotPassword: (email: string, captchaToken?: string) => call<{ ok: true }>("/auth/forgot", { method: "POST", body: JSON.stringify({ email, captchaToken }) }),
   /** Link de redefinição ou de convite. INVALID_TOKEN se o link venceu ou já foi usado. */
-  resetPassword: (token: string, password: string) => call<{ email: string }>("/auth/reset", { method: "POST", body: JSON.stringify({ token, password }) }),
+  /** `movementIds` só vale no convite: somam aos movimentos que o admin já marcou. */
+  resetPassword: (token: string, password: string, movementIds: number[] = []) =>
+    call<{ email: string }>("/auth/reset", { method: "POST", body: JSON.stringify({ token, password, movementIds }) }),
   /** Pede a troca do próprio e-mail: o link vai para o endereço novo. */
   requestEmailChange: (email: string, password: string) => authed<{ ok: true }>("/me/email", { method: "POST", body: JSON.stringify({ email, password }) }),
   /** Confirma pelo link do e-mail (não precisa estar logado). */

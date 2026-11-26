@@ -294,10 +294,12 @@ export function requestPasswordReset(email: string) {
   return t;
 }
 
-export function resetPassword(t: string, password: string) {
+/** No convite, os movimentos escolhidos somam aos que o admin já marcou. */
+export function resetPassword(t: string, password: string, movements: User["movements"] = []) {
   const u = usersStore.read().find((x) => x.token && x.token === t);
   if (!u) return false;
-  writeUser(u.id, { password, token: null });
+  const merged = [...u.movements, ...movements.filter((m) => !u.movements.some((x) => x.id === m.id))].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  writeUser(u.id, { password, token: null, movements: merged });
   return true;
 }
 

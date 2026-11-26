@@ -363,7 +363,7 @@ Comportamento:
 - O reenvio tem uma contagem regressiva de 60 s. "Voltar para o login" volta sempre para a aba **Entrar**.
 - A recuperação responde sempre a mesma coisa, sem revelar se o e-mail existe. `/redefinir-senha?token=` tem nova senha + confirmação, com medidor de força.
 - Na demonstração (sem API), uma caixa amarela **"Demonstração"** simula o link que chegaria na caixa de entrada. Com a API, o e-mail sai de verdade e a caixa não aparece.
-- `/redefinir-senha?token=…&convite=1` (link do convite) troca os textos: "Bem-vindo! Crie sua senha", botão "Criar senha" e, no fim, "Conta pronta!". Depois de salvar, [Entrar] leva para `/entrar?email=…`, com o e-mail preenchido.
+- `/redefinir-senha?token=…&convite=1` (link do convite) troca os textos: "Bem-vindo! Crie sua senha", botão "Criar senha" e, no fim, "Conta pronta!". Abaixo das senhas, **"Movimentos (opcional)"** com as mesmas etiquetas marcáveis do cadastro e a dica "Dá para mudar depois no seu perfil." (somam aos que o admin já marcou). Depois de salvar, [Entrar] leva para `/entrar?email=…`, com o e-mail preenchido.
 - `/confirmar-email?token=` com a API confirma a **troca de e-mail** feita no perfil: "E-mail alterado! A partir de agora, você entra com {novo}" + [Ir para o painel].
 - **2FA (com a API, `LOGIN_2FA`):** depois da senha, o mesmo cartão mostra a etapa do código:
 ```

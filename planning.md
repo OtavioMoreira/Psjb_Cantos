@@ -340,7 +340,7 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | POST | `/api/auth/login/verify` | ✅ | 2FA: `{ challengeId, code, trustDevice }` → sessão (igual ao login). `trustDevice` grava o cookie `psjb_device` (30 dias). 400 `INVALID_CODE` (com `attemptsLeft`) ou `INVALID_TOKEN` (vencido, usado ou 5 tentativas) |
 | POST | `/api/auth/login/resend` | ✅ | 2FA: `{ challengeId }` → código novo e `challengeId` novo. 429 `TOO_SOON` (com `retryAfter`) antes de 60 s |
 | POST | `/api/auth/forgot` | ✅ | `{ email }` → sempre 202 (não revela se a conta existe). Só conta ativa recebe o link (1 h); no máximo 1 por minuto |
-| POST | `/api/auth/reset` | ✅ | `{ token, password }` → `{ email }`. Link de redefinição ou de convite (ativa a conta pendente). Derruba as sessões e os aparelhos confiáveis. 400 `INVALID_TOKEN` |
+| POST | `/api/auth/reset` | ✅ | `{ token, password, movementIds? }` → `{ email }`. Link de redefinição ou de convite (ativa a conta pendente; no convite, `movementIds` soma aos movimentos que o admin marcou). Derruba as sessões e os aparelhos confiáveis. 400 `INVALID_TOKEN` |
 | POST | `/api/me/email` | ✅ | logado: `{ email, password }` → 202 e link (24 h) para o novo endereço. 400 com `fields`, 429 `TOO_SOON`, 502 `EMAIL_FAILED` |
 | POST | `/api/auth/confirm-email` | ✅ | público: `{ token }` → `{ email }` (o novo) e aviso ao endereço antigo. 409 `EMAIL_TAKEN` se outra conta pegou o endereço |
 | POST | `/api/auth/refresh` | ✅ | cookie → novo access token e refresh **rotacionado**; reuso revoga a família |
