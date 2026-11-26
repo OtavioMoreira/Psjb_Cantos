@@ -92,8 +92,8 @@ Rodado desta máquina, com a `DATABASE_URL_UNPOOLED` do `apps/api/.env.local` (g
 
 ### 4.4 Testes na URL `*.vercel.app`
 - [ ] Repertório: lista, busca, filtros, detalhe com cifra, PDF e áudio vindos do Blob.
-- [ ] Login do superadmin com o código do 2FA chegando no e-mail.
-- [ ] Recuperação de senha e troca de e-mail (links apontando para `APP_URL`).
+- [x] Login do superadmin com o código do 2FA chegando no e-mail. (26/11/2026)
+- [ ] Recuperação de senha e troca de e-mail (links apontando para `APP_URL`). Recuperação ok em 26/11/2026; falta a troca de e-mail.
 - [ ] Convite de um usuário de teste e ativação.
 - [ ] Missas: criar, compartilhar, link de convite, Modo Missa, PDF.
 - [ ] Admin: editar um canto, enviar arquivo, "Publicar no site" gerando um novo build.
@@ -104,7 +104,7 @@ Rodado desta máquina, com a `DATABASE_URL_UNPOOLED` do `apps/api/.env.local` (g
 - [x] No painel do Resend, adicionar o domínio `psjb.org.br` (região `sa-east-1`). Ele mostra os registros da seção 6.
 - [x] Cadastrar os registros no Cloudflare (**sem proxy**, nuvem cinza). Feito em 26/11/2026: `resend._domainkey` (TXT), `send` e `rsend` (CNAME); sem DMARC, para não mexer em nada do e-mail da HostGator.
 - [x] Verificar no Resend e trocar `EMAIL_FROM` para `Cantos PSJB <nao-responda@psjb.org.br>`; redeploy da API. Verificado em 26/11/2026; `EMAIL_ENABLED` apagada (e-mails e 2FA ligados).
-- [ ] Testar um e-mail para Gmail e outro para Outlook/Hotmail (caixa de entrada, não spam).
+- [ ] Testar um e-mail para Gmail e outro para Outlook/Hotmail (caixa de entrada, não spam). Gmail ok em 26/11/2026; falta Outlook/Hotmail.
 
 ### 4.6 Domínio `cantos.psjb.org.br`
 Só depois da aprovação do site na URL `*.vercel.app`, porque hoje esse endereço ainda serve o site antigo da HostGator.
