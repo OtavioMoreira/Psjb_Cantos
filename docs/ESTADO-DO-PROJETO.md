@@ -36,7 +36,7 @@ apps/web  (Next.js 16)  ── /api/* (rewrite, mesmo domínio) ──▶  apps/
 | Admin › Usuários | Lista, filtros, ativar, **editar dados e papel, bloquear/liberar, senha temporária, excluir** (com "Desfazer") | ✅ Tudo pela API, inclusive convidar, reenviar convite e enviar link de redefinição; **busca, filtros e paginação no servidor** (24/11) |
 | Admin › Auditoria (24/11) | Quem fez o quê na administração, filtro por tipo, 50 por vez | ✅ |
 | Termos e privacidade (24/11) | `/termos` e `/privacidade`, ligados no cadastro e no rodapé | — (páginas estáticas) |
-| Desafio "não sou um robô" (24/11) | Turnstile ou reCAPTCHA de verdade no cadastro, na recuperação e no login depois de 3 senhas erradas | ✅ (desligado até criar as chaves) |
+| Desafio "não sou um robô" (24/11) | Turnstile ou reCAPTCHA de verdade no cadastro, na recuperação e no login depois de 3 senhas erradas | ✅ **ligado em produção** (26/11/2026) |
 | Admin › Cantos (**novo**) | Lista com busca e "Mostrar mais"; editor com número, título, autor, tom, letra com pré-visualização, flags agrupadas, PDF da cifra, PDF da partitura, áudio, Audiomack, "Visível no repertório", excluir | ✅ |
 | Admin › Flags (**novo**) | Flags por grupo (momento, tempo, ano, tema, outras), criar, editar (nome, identificador, cor, ordem), excluir | ✅ |
 | Admin › Movimentos (**novo**) | Criar, renomear, excluir (bloqueado se houver pessoas) | ✅ |
@@ -95,7 +95,7 @@ Todas ficaram prontas em 15/10/2026: trocar o próprio e-mail, recuperar senha, 
 | Item | Prioridade | Observação |
 |---|---|---|
 | **Deploy na Vercel** (front + API) com Neon, Blob e **Resend** | Alta | Configuração descrita no README; criar o Deploy Hook do front e pôr em `SITE_DEPLOY_HOOK_URL`; instalar o Resend pelo Marketplace e configurar SPF/DKIM/DMARC no DNS do `psjb.org.br` |
-| **Chaves do desafio "não sou um robô"** (Cloudflare Turnstile) | Alta | Código pronto e testado contra o Turnstile (24/11/2026), desligado até criar as chaves: `CAPTCHA_SECRET` na API e `NEXT_PUBLIC_CAPTCHA_SITE_KEY` no front (depende de uma conta Cloudflare) |
+| **Chaves do desafio "não sou um robô"** (Cloudflare Turnstile) | Alta | ✅ **Feito em 26/11/2026:** `CAPTCHA_SECRET` na API e `NEXT_PUBLIC_CAPTCHA_SITE_KEY` no front (depende de uma conta Cloudflare) |
 | **Revisar** os termos de uso e a política de privacidade com a paróquia | Média | Páginas `/termos` e `/privacidade` prontas (24/11/2026), escritas a partir do que o sistema faz de fato; precisam do aval da paróquia (contato usado: secretaria@psjb.org.br) |
 | SEO: redirecionamentos das URLs antigas | Baixa | `sitemap.xml`, `robots.txt`, canonical e JSON-LD prontos (24/11/2026). Falta saber o formato das URLs do site antigo (o banco legado não registra; o servidor antigo recusa leitura automática) |
 | **Testes de tela (Playwright) no CI**: login, editor, convite, admin | Média | Hoje os testes de tela são manuais (scripts locais) |
@@ -114,7 +114,7 @@ Já feitos em 14/10/2026: os 623 cantos do legado migrados para `songs` (antigo 
 
 ## 5. Próximos passos sugeridos
 1. **Migrations 009 a 012 no Neon e deploy** das entregas de 24/11 (`docs/DEPLOY.md` §8). Depois, os testes do §4.4, incluindo envio de um MP3 acima de 4 MB e o Modo Missa sem internet.
-2. **Acesso ao Cloudflare** do `psjb.org.br`: destrava o e-mail com o domínio da paróquia (§4.5), o domínio `cantos.psjb.org.br` (§4.6) e as chaves do **Turnstile** (`CAPTCHA_SECRET` na API e `NEXT_PUBLIC_CAPTCHA_SITE_KEY` no front).
+2. ✅ **Cloudflare (26/11/2026):** e-mail com o domínio da paróquia (Resend verificado, remetente `nao-responda@psjb.org.br`, 2FA ligado) e Turnstile ligado. O e-mail da paróquia continua na HostGator. Falta a troca do `cantos.psjb.org.br` (§4.6 do DEPLOY), quando decidirem lançar.
 3. **Revisões com a paróquia:** termos de uso e política de privacidade; classificação dos cantos e cifras completadas (`docs/REVISAO-*.md`); flags em aberto (Velas, Preces, Saída, Creio e Sequências como momento?).
 4. **Testes de tela com Playwright no CI** (precisa instalar o `@playwright/test`).
 5. **Redirecionamento das URLs antigas**: falta saber o formato dos endereços do site antigo.
