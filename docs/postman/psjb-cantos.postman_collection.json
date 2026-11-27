@@ -720,46 +720,6 @@
           ]
         },
         {
-          "name": "Trocar foto",
-          "request": {
-            "method": "PUT",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/me/photo",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "me",
-                "photo"
-              ]
-            },
-            "description": "multipart/form-data com o campo `photo`. Já aponta para `foto-exemplo.png` (nesta pasta); no Postman, escolha o arquivo de novo na aba Body se ele não achar. Em produção vai para o Vercel Blob; local, para `apps/api/uploads/`.",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "photo",
-                  "type": "file",
-                  "src": "foto-exemplo.png",
-                  "description": "JPG, PNG ou WebP de até 2 MB"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status ' + pm.response.code, () => pm.expect(pm.response.code).to.be.below(400));"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Buscar pessoas (para compartilhar)",
           "request": {
             "method": "GET",

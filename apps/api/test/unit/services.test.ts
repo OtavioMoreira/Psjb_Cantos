@@ -4,7 +4,6 @@ import path from "node:path";
 import { SignJWT } from "jose";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { sniffSongFile } from "../../src/actions/songs/SongActions.js";
-import { sniffImage } from "../../src/actions/users/UpdateMyPhotoAction.js";
 import { ConsoleEmailSender } from "../../src/services/ConsoleEmailSender.js";
 import { Argon2PasswordHasher } from "../../src/services/Argon2PasswordHasher.js";
 import { JoseTokenService } from "../../src/services/JoseTokenService.js";
@@ -111,22 +110,6 @@ describe("LocalDiskStorage", async () => {
 });
 
 describe("Identificação de arquivos pelos bytes (o nome e o Content-Type não valem)", () => {
-  it.each([
-    ["JPEG", Buffer.from([0xff, 0xd8, 0xff, 0xe0]), "jpg"],
-    ["PNG", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]), "png"],
-    ["WebP", Buffer.from("RIFF\0\0\0\0WEBPVP8 "), "webp"],
-  ])("foto %s", (_n, data, ext) => {
-    expect(sniffImage(data)?.ext).toBe(ext);
-  });
-  it.each([
-    ["GIF", Buffer.from("GIF89a")],
-    ["SVG (pode ter script)", Buffer.from('<svg onload="alert(1)">')],
-    ["HTML", Buffer.from("<!doctype html>")],
-    ["vazio", Buffer.alloc(0)],
-  ])("foto recusa %s", (_n, data) => {
-    expect(sniffImage(data)).toBeNull();
-  });
-
   it("PDF só nos tipos de PDF; áudio MP3 (ID3 ou frame), M4A e OGG", () => {
     expect(sniffSongFile("cifra-pdf", Buffer.from("%PDF-1.7"))?.contentType).toBe("application/pdf");
     expect(sniffSongFile("partitura-pdf", Buffer.from("%PDF-1.4"))?.ext).toBe("pdf");

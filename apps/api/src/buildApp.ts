@@ -5,7 +5,6 @@ import helmet from "@fastify/helmet";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { SONG_FILE_MAX_BYTES } from "./actions/songs/SongActions.js";
-import { PHOTO_MAX_BYTES } from "./actions/users/UpdateMyPhotoAction.js";
 import type { Container } from "./container.js";
 import { errorHandler } from "./http/errorHandler.js";
 import { counterStore } from "./http/rateLimitStore.js";
@@ -36,8 +35,8 @@ export async function buildApp({ container, uploadsDir, logger = true }: AppOpti
     skipOnError: true,
     store: counterStore(container.rateLimits),
   });
-  // Teto geral; cada action confere o limite do seu tipo (foto 2 MB, arquivos de canto 4 MB).
-  await app.register(multipart, { limits: { fileSize: Math.max(PHOTO_MAX_BYTES, SONG_FILE_MAX_BYTES) + 1, files: 1 } });
+  // Teto geral: arquivos de canto até 4 MB pela API (acima disso, direto ao Blob).
+  await app.register(multipart, { limits: { fileSize: SONG_FILE_MAX_BYTES + 1, files: 1 } });
   // Import sob demanda: só serve a pasta local em desenvolvimento. Na Vercel (com Blob) o plugin nem carrega,
   // porque uma dependência dele (content-disposition 3) é ESM e o runtime de lá recusa o require().
   if (uploadsDir) {

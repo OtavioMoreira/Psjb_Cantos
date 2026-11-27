@@ -19,7 +19,6 @@ import { LogoutAction } from "./actions/auth/LogoutAction.js";
 import { RefreshSessionAction } from "./actions/auth/RefreshSessionAction.js";
 import { CreateUserAction } from "./actions/users/CreateUserAction.js";
 import { GetMeAction } from "./actions/users/GetMeAction.js";
-import { UpdateMyPhotoAction } from "./actions/users/UpdateMyPhotoAction.js";
 import { SearchUsersAction } from "./actions/users/SearchUsersAction.js";
 import {
   CreateMassAction,
@@ -142,7 +141,6 @@ export function buildContainer(env: Env, adapters: Adapters) {
       logout: new LogoutAction(deps),
       createUser: new CreateUserAction(deps),
       getMe: new GetMeAction(deps),
-      updateMyPhoto: new UpdateMyPhotoAction(deps),
       updateMe: new UpdateMeAction(deps),
       requestEmailChange: new RequestEmailChangeAction(deps),
       confirmEmailChange: new ConfirmEmailChangeAction(deps),

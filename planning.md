@@ -262,7 +262,7 @@ Estado do cliente em `localStorage`:
 ### E7. API: usuários, papéis e autenticação JWT 🟡
 - ✅ `apps/api` com Fastify + TypeScript em **arquitetura hexagonal** (§6.1).
 - ✅ Banco: tabelas `users`, `roles` (admin, musico), `user_roles` e `sessions`, com migrations em SQL (`npm run db:migrate -w api`) e seed do superadmin (`npm run db:seed -w api`).
-- ✅ Cadastro público (`POST /api/users`), que cria a conta **pendente**; login, refresh rotativo e logout; `GET /api/me`; foto do perfil (`PUT /api/me/photo`).
+- ✅ Cadastro público (`POST /api/users`), que cria a conta **pendente**; login, refresh rotativo e logout; `GET /api/me`. (A foto do perfil, `PUT /api/me/photo`, saiu em 26/11/2026.)
 - ✅ Gestão só para admin: listar, ativar, editar (dados e papéis), bloquear/liberar, gerar senha temporária e excluir (`/api/admin/users/*`), protegidos pelo middleware `requireRole("admin")`. O admin não age sobre si mesmo e sempre sobra pelo menos um admin ativo (409 `LAST_ADMIN`).
 - ✅ Perfil: `PATCH /api/me` (nome, telefone, movimento, paróquia, instrumento) e troca de senha (`POST /api/auth/password`, que derruba as sessões dos outros aparelhos). Troca do e-mail com confirmação do novo endereço (`POST /api/me/email` + `POST /api/auth/confirm-email`).
 - ✅ **E-mail (Resend)**: recuperação de senha, convite (`/api/admin/users/invite`, reenvio), link de redefinição pelo admin, aviso de conta liberada e **2FA** (`/auth/login/verify`, `/auth/login/resend`, aparelho confiável). Migration `007_auth_tokens.sql` (`auth_tokens`, `trusted_devices`).
@@ -346,7 +346,6 @@ As rotas com ID usam query string (`?id=`, `?token=`) porque o site é exportado
 | POST | `/api/auth/refresh` | ✅ | cookie → novo access token e refresh **rotacionado**; reuso revoga a família |
 | POST | `/api/auth/logout` | ✅ | revoga a sessão e apaga o cookie (204) |
 | GET | `/api/me` | ✅ | `Authorization: Bearer` → `{ user }` |
-| PUT | `/api/me/photo` | ✅ | multipart, campo `photo` (JPG/PNG/WebP, até 2 MB) → `{ user }` com a nova `photoUrl` |
 | GET | `/api/admin/users?status=&role=&q=&page=&pageSize=` | ✅ | listagem (admin): pendentes, depois bloqueados e ativos. Paginada (50 por página, máx. 100), busca sem acento; devolve `total` e `counts` por status |
 | PATCH | `/api/admin/users/:id/activate` | ✅ | admin ativa (ou desbloqueia) a conta. Pendente → ativo manda o e-mail "Sua conta foi liberada" |
 | POST | `/api/admin/users/invite/bulk` | ✅ | admin: `{ people: [{ name, email }] (1 a 50), roles? }` → 200 com um resultado por pessoa: `invited`, `exists` ou `email_failed` (26/11/2026) |

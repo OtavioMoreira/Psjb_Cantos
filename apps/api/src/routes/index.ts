@@ -49,7 +49,6 @@ export async function routes(app: FastifyInstance, { container }: { container: C
   app.get("/me", { preHandler: isAuthenticated }, users.me);
   app.patch("/me", { preHandler: isAuthenticated }, users.updateMe);
   app.post("/me/email", { preHandler: isAuthenticated, ...strict(10) }, users.requestEmailChange);
-  app.put("/me/photo", { preHandler: isAuthenticated }, users.updatePhoto);
 
   // Repertório público (só cantos ativos)
   app.get("/songs", songs.list);

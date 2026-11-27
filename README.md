@@ -85,7 +85,7 @@ API_URL=http://localhost:3333 npm run dev:web
 |---|---|---|
 | POST | `/api/users` | público: cadastro, a conta nasce **pendente** |
 | POST | `/api/auth/login` · `/refresh` · `/logout` | público (refresh e logout usam o cookie) |
-| GET | `/api/me` · PUT `/api/me/photo` | logado (`Authorization: Bearer`) |
+| GET | `/api/me` | logado (`Authorization: Bearer`) |
 | GET | `/api/movements` | público: lista de movimentos (cadastro) |
 | GET | `/api/users/search` | logado: pessoas ativas para compartilhar missa |
 | GET · POST | `/api/masses` | logado: minhas missas (criadas ou compartilhadas comigo) e criar |

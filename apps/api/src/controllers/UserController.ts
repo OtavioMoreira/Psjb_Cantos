@@ -1,6 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Container } from "../container.js";
-import { AppError } from "../domain/errors.js";
 import { confirmEmailSchema } from "../dtos/auth.dto.js";
 import { changeEmailSchema, createUserSchema, searchUsersQuerySchema, updateMeSchema, type UserDTO } from "../dtos/user.dto.js";
 import { validate } from "../http/validate.js";
@@ -32,20 +31,6 @@ export class UserController {
   /** Pública: quem clica no link pode estar em outro aparelho, sem login. O token é a prova. */
   confirmEmailChange = async (req: FastifyRequest) => {
     return this.c.actions.confirmEmailChange.execute(validate(confirmEmailSchema, req.body).token);
-  };
-
-  /** multipart/form-data com o campo "photo". */
-  updatePhoto = async (req: FastifyRequest): Promise<{ user: UserDTO }> => {
-    const { userId } = requireAuth(req);
-    const file = await req.file();
-    if (!file || file.fieldname !== "photo") throw new AppError("VALIDATION_ERROR", "Envie a imagem no campo \"photo\".");
-    let data: Buffer;
-    try {
-      data = await file.toBuffer();
-    } catch {
-      throw new AppError("INVALID_FILE", "A foto pode ter no máximo 2 MB.");
-    }
-    return { user: await this.c.actions.updateMyPhoto.execute(userId, data) };
   };
 
   /** Pessoas ativas para compartilhar missa: GET /api/users/search?q=ana */

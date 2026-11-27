@@ -201,20 +201,6 @@ describe("Erros e cabeçalhos", () => {
     expect(site.headers["access-control-allow-credentials"]).toBe("true");
   });
 
-  it("foto acima de 2 MB é recusada", async () => {
-    await addUser("ana@x.com");
-    const token = await tokenOf("ana@x.com");
-    const big = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(2 * 1024 * 1024)]);
-    const boundary = "----b";
-    const res = await app.inject({
-      method: "PUT",
-      url: "/api/me/photo",
-      headers: { authorization: `Bearer ${token}`, "content-type": `multipart/form-data; boundary=${boundary}` },
-      payload: Buffer.concat([Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="a.png"\r\n\r\n`), big, Buffer.from(`\r\n--${boundary}--\r\n`)]),
-    });
-    expect(res.statusCode).toBe(415);
-    expect(adapters.storage.files.size).toBe(0);
-  });
 });
 
 const PROD_ENV = { NODE_ENV: "production", JWT_SECRET: "segredo-de-producao-com-mais-de-32-caracteres", RESEND_API_KEY: "re_teste" };
