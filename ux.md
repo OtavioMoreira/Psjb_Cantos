@@ -608,6 +608,7 @@ Comportamento:
 - **Offline** (implementado em 24/11/2026): ao abrir, a página, os scripts e o índice de cantos ficam em cache (Service Worker). Sem conexão, aparece no canto superior esquerdo, abaixo do cabeçalho, a pílula "Sem internet · disponível offline ✓" (ou só "Sem internet", se ainda não deu tempo de guardar), no fundo `ui` da paleta.
 - Todos os alvos têm no mínimo 56×56px e espaçamento mínimo de 12px entre eles.
 - **🎧 Áudio:** só aparece quando o canto tem MP3 (no cabeçalho do tablet em diante; no celular, no rodapé, entre Anterior e Próximo, porque o cabeçalho não comporta mais um botão em 360 px). Abre uma barra abaixo do cabeçalho, no fundo `ui` da paleta, com o player e as velocidades 0,75× · 1× · 1,25× (a ativa em `soft`/`chord`). A barra não some com os controles e segue aberta ao trocar de canto.
+- **🎼 Partitura (Salmo e Aclamação):** quando o canto desses momentos tem PDF da partitura, a área da letra mostra as páginas do PDF na largura da tela (abaixo do título, no lugar da cifra), com um bloco pulsando enquanto carrega. O botão de partitura no cabeçalho (ativo em `soft`/`chord`) volta para a letra. Sem tom enquanto a partitura aparece. Noite: partitura invertida; Sépia: amarelada. Se não abrir, a letra aparece com "Não conseguimos abrir a partitura agora." em `muted`.
 
 ### 4.10 PDF da missa (modal "Baixar missa em PDF")
 Aberto pelo botão **"Baixar PDF"** (editor e cards de Minhas Missas; desabilitado sem cantos).

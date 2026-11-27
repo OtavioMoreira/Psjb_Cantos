@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Expand, Guitar, Headphones, List, Minus, Moon, Plus, Shrink, Sun, SunDim, Type, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Expand, FileMusic, Guitar, Headphones, List, Minus, Moon, Plus, Shrink, Sun, SunDim, Type, X } from "lucide-react";
 import type { MassItem, MassSlot } from "@/lib/types";
 import { saveMass, setPrefs, usePrefs, useMasses } from "@/lib/store";
 import { useHydrated } from "@/lib/hooks";
@@ -14,13 +14,17 @@ import { ChordSheet } from "@/components/song/ChordSheet";
 import { Cross } from "@/components/ui/Ornament";
 import { massEditUrl } from "@/lib/routes";
 import { useOffline, useOfflineReady } from "@/lib/offline";
+import { PdfScore } from "@/components/mass/PdfScore";
 
 // Paletas próprias de alto contraste (ux.md §2.1)
 const PALETTES = {
-  dia: { bg: "#FFFFFF", ink: "#000000", chord: "#1F3D2B", ui: "#F3ECDD", muted: "#5B6159", line: "#E4DAC6", soft: "#E3ECE5", Icon: Sun, label: "Dia" },
-  noite: { bg: "#000000", ink: "#F2E9D8", chord: "#F2B84B", ui: "#141414", muted: "#A9A294", line: "#2A2A2A", soft: "#1F2E25", Icon: Moon, label: "Noite" },
-  sepia: { bg: "#F4ECD8", ink: "#2B2118", chord: "#7A1F1F", ui: "#E8DCC0", muted: "#6B5B45", line: "#D8C9A6", soft: "#E8DCC0", Icon: SunDim, label: "Sépia" },
+  dia: { bg: "#FFFFFF", ink: "#000000", chord: "#1F3D2B", ui: "#F3ECDD", muted: "#5B6159", line: "#E4DAC6", soft: "#E3ECE5", score: undefined, Icon: Sun, label: "Dia" },
+  noite: { bg: "#000000", ink: "#F2E9D8", chord: "#F2B84B", ui: "#141414", muted: "#A9A294", line: "#2A2A2A", soft: "#1F2E25", score: "invert(0.92) hue-rotate(180deg)", Icon: Moon, label: "Noite" },
+  sepia: { bg: "#F4ECD8", ink: "#2B2118", chord: "#7A1F1F", ui: "#E8DCC0", muted: "#6B5B45", line: "#D8C9A6", soft: "#E8DCC0", score: "sepia(0.45) brightness(0.97)", Icon: SunDim, label: "Sépia" },
 } as const;
+
+// Salmo e Aclamação vêm da diocese com a melodia na partitura: nesses momentos, o PDF aparece no lugar da letra.
+const SCORE_MOMENTS = new Set<string>(["salmo", "aclamacao"]);
 
 interface Step {
   slot: MassSlot;
@@ -48,6 +52,9 @@ export function MassMode() {
   const [visited, setVisited] = useState<Set<number>>(new Set([0]));
   // Player do canto atual (ensaio, ou para puxar a melodia). Continua aberto ao trocar de canto.
   const [audioOpen, setAudioOpen] = useState(false);
+  // Partitura ou letra no Salmo e na Aclamação (a escolha vale para os dois até sair do Modo Missa).
+  const [preferScore, setPreferScore] = useState(true);
+  const [failedScores, setFailedScores] = useState<Set<string>>(new Set());
   const scroller = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -65,6 +72,11 @@ export function MassMode() {
   );
   const step = steps[index];
   const song = step ? byId.get(step.item.songId) : undefined;
+  const scorePdf = step && SCORE_MOMENTS.has(step.slot.moment) ? song?.media.partituraPdf ?? null : null;
+  const scoreFailed = Boolean(scorePdf && failedScores.has(scorePdf));
+  const scoreUrl = scorePdf && !scoreFailed ? scorePdf : null;
+  const showScore = Boolean(scoreUrl && preferScore && !done);
+  const onScoreError = useCallback((url: string) => setFailedScores((s) => new Set(s).add(url)), []);
 
   // Controles somem após 4s sem interação.
   const poke = useCallback(() => {
@@ -290,7 +302,7 @@ export function MassMode() {
               </p>
               <h1 className="truncate font-serif text-xl font-semibold leading-tight sm:text-2xl">{done ? mass.name : song?.title}</h1>
             </div>
-            {!done && song?.key && showChords && (
+            {!done && song?.key && showChords && !showScore && (
               <div className="hidden items-center gap-1 lg:flex" aria-label="Tom">
                 <button aria-label="Descer meio tom" onClick={() => setTranspose(-1)} className={btn}>
                   <Minus size={22} />
@@ -305,6 +317,18 @@ export function MassMode() {
             )}
             {/* No celular, o botão fica no rodapé (não cabe no cabeçalho em 360 px). */}
             {audioButton && <span className="hidden sm:contents">{audioButton}</span>}
+            {!done && scoreUrl && (
+              <button
+                aria-label={preferScore ? "Mostrar a letra" : "Mostrar a partitura"}
+                aria-pressed={preferScore}
+                title={preferScore ? "Letra" : "Partitura"}
+                onClick={() => setPreferScore((v) => !v)}
+                className={btn}
+                style={preferScore ? { background: pal.soft, color: pal.chord } : undefined}
+              >
+                <FileMusic size={22} />
+              </button>
+            )}
             <button aria-label="Diminuir letra" onClick={() => setPrefs({ massFontSize: Math.max(18, fontSize - 2) })} className={`${btn} text-sm font-bold`}>
               A−
             </button>
@@ -331,7 +355,7 @@ export function MassMode() {
           </header>
 
           {/* Tom no retrato/celular */}
-          {!done && song?.key && showChords && (
+          {!done && song?.key && showChords && !showScore && (
             <div className={`flex items-center justify-center gap-2 border-b py-1 lg:hidden ${controls ? "" : "hidden"}`} style={{ borderColor: pal.line }}>
               <button aria-label="Descer meio tom" onClick={() => setTranspose(-1)} className={btn}>
                 <Minus size={20} />
@@ -375,15 +399,24 @@ export function MassMode() {
                   {formatNumber(song.number)}
                   {song.composer && ` · ${song.composer}`}
                 </p>
-                <ChordSheet
-                  lyrics={song.lyrics}
-                  transpose={step.item.transpose}
-                  fontSize={fontSize}
-                  preferFlats={prefs.preferFlats}
-                  showChords={showChords}
-                  plain
-                  chordClassName="[color:var(--mm-chord)]"
-                />
+                {scoreFailed && (
+                  <p className="mb-4 text-sm" style={{ color: pal.muted }}>
+                    Não conseguimos abrir a partitura agora. Mostrando a letra.
+                  </p>
+                )}
+                {showScore && scoreUrl ? (
+                  <PdfScore key={scoreUrl} src={scoreUrl} title={song.title} filter={pal.score} onError={onScoreError} />
+                ) : (
+                  <ChordSheet
+                    lyrics={song.lyrics}
+                    transpose={step.item.transpose}
+                    fontSize={fontSize}
+                    preferFlats={prefs.preferFlats}
+                    showChords={showChords}
+                    plain
+                    chordClassName="[color:var(--mm-chord)]"
+                  />
+                )}
                 <div className="h-24" />
               </div>
             ) : null}
