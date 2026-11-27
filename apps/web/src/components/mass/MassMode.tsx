@@ -55,6 +55,8 @@ export function MassMode() {
   // Partitura ou letra no Salmo e na Aclamação (a escolha vale para os dois até sair do Modo Missa).
   const [preferScore, setPreferScore] = useState(true);
   const [failedScores, setFailedScores] = useState<Set<string>>(new Set());
+  // 1º acorde de cada partitura (null = PDF sem acordes em texto, ex.: escaneado: aí não dá para trocar o tom).
+  const [scoreKeys, setScoreKeys] = useState<Record<string, string | null>>({});
   const scroller = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -77,6 +79,14 @@ export function MassMode() {
   const scoreUrl = scorePdf && !scoreFailed ? scorePdf : null;
   const showScore = Boolean(scoreUrl && preferScore && !done);
   const onScoreError = useCallback((url: string) => setFailedScores((s) => new Set(s).add(url)), []);
+  // O tom da partitura vem do 1º acorde do próprio PDF (fundamental + menor), para bater com o que aparece nela.
+  const onScoreChords = useCallback(
+    (url: string, first: string | null) => setScoreKeys((k) => ({ ...k, [url]: first?.match(/^[A-G][#b]?(m(?!aj))?/)?.[0] ?? null })),
+    [],
+  );
+  const scoreKey = showScore && scoreUrl ? scoreKeys[scoreUrl] : null;
+  // Tom: na partitura, só se ela tiver acordes em texto; na letra, só com a cifra à mostra.
+  const tomKey = done ? null : showScore ? (scoreKey ?? null) : showChords ? (song?.key ?? null) : null;
 
   // Controles somem após 4s sem interação.
   const poke = useCallback(() => {
@@ -302,13 +312,13 @@ export function MassMode() {
               </p>
               <h1 className="truncate font-serif text-xl font-semibold leading-tight sm:text-2xl">{done ? mass.name : song?.title}</h1>
             </div>
-            {!done && song?.key && showChords && !showScore && (
+            {tomKey && step && (
               <div className="hidden items-center gap-1 lg:flex" aria-label="Tom">
                 <button aria-label="Descer meio tom" onClick={() => setTranspose(-1)} className={btn}>
                   <Minus size={22} />
                 </button>
                 <span className="min-w-[6.5rem] text-center text-sm font-semibold" aria-live="polite">
-                  {keyLabel(song.key, step.item.transpose, prefs.preferFlats)}
+                  {keyLabel(tomKey, step.item.transpose, prefs.preferFlats)}
                 </span>
                 <button aria-label="Subir meio tom" onClick={() => setTranspose(1)} className={btn}>
                   <Plus size={22} />
@@ -355,12 +365,12 @@ export function MassMode() {
           </header>
 
           {/* Tom no retrato/celular */}
-          {!done && song?.key && showChords && !showScore && (
+          {tomKey && step && (
             <div className={`flex items-center justify-center gap-2 border-b py-1 lg:hidden ${controls ? "" : "hidden"}`} style={{ borderColor: pal.line }}>
               <button aria-label="Descer meio tom" onClick={() => setTranspose(-1)} className={btn}>
                 <Minus size={20} />
               </button>
-              <span className="text-sm font-semibold">Tom: {keyLabel(song.key, step.item.transpose, prefs.preferFlats)}</span>
+              <span className="text-sm font-semibold">Tom: {keyLabel(tomKey, step.item.transpose, prefs.preferFlats)}</span>
               <button aria-label="Subir meio tom" onClick={() => setTranspose(1)} className={btn}>
                 <Plus size={20} />
               </button>
@@ -405,7 +415,16 @@ export function MassMode() {
                   </p>
                 )}
                 {showScore && scoreUrl ? (
-                  <PdfScore key={scoreUrl} src={scoreUrl} title={song.title} filter={pal.score} onError={onScoreError} />
+                  <PdfScore
+                    key={scoreUrl}
+                    src={scoreUrl}
+                    title={song.title}
+                    filter={pal.score}
+                    transpose={step.item.transpose}
+                    preferFlats={prefs.preferFlats}
+                    onError={onScoreError}
+                    onChords={onScoreChords}
+                  />
                 ) : (
                   <ChordSheet
                     lyrics={song.lyrics}
